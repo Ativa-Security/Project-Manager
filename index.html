@@ -556,6 +556,34 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
 .costs-total-row td { font-weight: 700; border-top: 2px solid var(--border2); background: rgba(37,99,235,0.05); font-family: var(--mono); }
 .cost-cat-badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
 
+/* ══════════════════════════════════
+   MFA SCREENS
+══════════════════════════════════ */
+#mfa-setup-screen, #mfa-verify-screen {
+  position: fixed; inset: 0; z-index: 9998;
+  background: linear-gradient(160deg, #070b14 0%, #0c1529 40%, #0d2260 100%);
+  display: none; align-items: center; justify-content: center;
+}
+#mfa-setup-screen.active, #mfa-verify-screen.active { display: flex; }
+.mfa-card {
+  background: rgba(10,16,33,0.9); border: 1px solid rgba(37,99,235,0.25);
+  border-radius: var(--r3); padding: 36px 40px; width: 420px; max-width: 95vw;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.5); backdrop-filter: blur(20px); text-align: center;
+}
+.mfa-icon { font-size: 40px; margin-bottom: 12px; }
+.mfa-title { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+.mfa-sub { font-size: 13px; color: var(--text2); margin-bottom: 24px; line-height: 1.6; }
+.mfa-qr { background: #fff; border-radius: 12px; padding: 16px; display: inline-block; margin-bottom: 20px; }
+.mfa-secret { font-family: var(--mono); font-size: 11px; color: var(--accent2); background: rgba(37,99,235,0.08); border: 1px solid rgba(37,99,235,0.2); border-radius: var(--r); padding: 8px 14px; margin-bottom: 20px; letter-spacing: .08em; word-break: break-all; }
+.mfa-code-inputs { display: flex; gap: 8px; justify-content: center; margin-bottom: 16px; }
+.mfa-digit { width: 44px; height: 52px; border-radius: var(--r); border: 1.5px solid var(--border2); background: rgba(255,255,255,0.05); color: var(--text); font-size: 22px; font-weight: 700; text-align: center; font-family: var(--mono); outline: none; transition: border-color .15s; }
+.mfa-digit:focus { border-color: var(--accent); background: rgba(37,99,235,0.08); }
+.mfa-error { font-size: 12px; color: var(--red); background: var(--red-bg); padding: 8px 12px; border-radius: var(--r); margin-bottom: 12px; display: none; }
+.mfa-steps { text-align: left; background: rgba(37,99,235,0.06); border-radius: var(--r); padding: 14px 16px; margin-bottom: 20px; }
+.mfa-step { font-size: 12px; color: var(--text2); margin-bottom: 6px; display: flex; gap: 8px; }
+.mfa-step:last-child { margin-bottom: 0; }
+.mfa-step-num { color: var(--accent2); font-weight: 700; flex-shrink: 0; }
+
 .rep-section { margin-bottom: 28px; }
 .rep-section-title { font-size: 13px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
 .rep-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
@@ -656,6 +684,43 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
         <button onclick="window.openRegisterModal()" style="font-size:12px;color:var(--accent2);background:none;border:none;cursor:pointer;font-family:var(--font);text-decoration:underline">Registrar</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════ -->
+<!--        MFA SETUP SCREEN           -->
+<!-- ══════════════════════════════════ -->
+<div id="mfa-setup-screen">
+  <div class="mfa-card">
+    <div class="mfa-icon">🔐</div>
+    <div class="mfa-title">Configurar autenticação em 2 fatores</div>
+    <div class="mfa-sub">Para proteger sua conta, escaneie o QR Code abaixo com o <strong>Microsoft Authenticator</strong>.</div>
+    <div class="mfa-steps">
+      <div class="mfa-step"><span class="mfa-step-num">1.</span><span>Abra o <strong>Microsoft Authenticator</strong> no seu celular</span></div>
+      <div class="mfa-step"><span class="mfa-step-num">2.</span><span>Toque em <strong>"+"</strong> → <strong>"Outro conta (Google, Facebook...)"</strong></span></div>
+      <div class="mfa-step"><span class="mfa-step-num">3.</span><span>Escaneie o QR Code abaixo</span></div>
+      <div class="mfa-step"><span class="mfa-step-num">4.</span><span>Digite o código de 6 dígitos gerado para confirmar</span></div>
+    </div>
+    <div class="mfa-qr"><canvas id="mfa-qr-canvas" width="180" height="180"></canvas></div>
+    <div class="mfa-secret" id="mfa-secret-display"></div>
+    <div class="mfa-code-inputs" id="mfa-setup-inputs"></div>
+    <div class="mfa-error" id="mfa-setup-error">Código inválido. Tente novamente.</div>
+    <button class="login-btn" onclick="verifyMfaSetup()">Confirmar e ativar</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════ -->
+<!--        MFA VERIFY SCREEN          -->
+<!-- ══════════════════════════════════ -->
+<div id="mfa-verify-screen">
+  <div class="mfa-card">
+    <div class="mfa-icon">📱</div>
+    <div class="mfa-title">Verificação em 2 fatores</div>
+    <div class="mfa-sub">Abra o <strong>Microsoft Authenticator</strong> e digite o código de 6 dígitos para <strong id="mfa-verify-email"></strong>.</div>
+    <div class="mfa-code-inputs" id="mfa-verify-inputs"></div>
+    <div class="mfa-error" id="mfa-verify-error">Código inválido. Tente novamente.</div>
+    <button class="login-btn" id="mfa-verify-btn" onclick="verifyMfaCode()">Verificar</button>
+    <button onclick="cancelMfa()" style="margin-top:10px;background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;font-family:var(--font)">← Voltar ao login</button>
   </div>
 </div>
 
@@ -1830,7 +1895,7 @@ function renderKanban(){
 let ganttMode = 'year'; // 'year' | 'month'
 let ganttMonth = new Date().getMonth();
 let ganttYear  = new Date().getFullYear();
-let ganttFilters = { status:[], prio:[], owner:[], dept:[] };
+let ganttFilters = { status:[], prio:[], owner:[], dept:[], dateStart:'', dateEnd:'' };
 
 function ganttNav(dir){
   if(ganttMode==='year'){ ganttYear+=dir; }
@@ -1852,7 +1917,13 @@ function toggleGanttFilter(type, value){
 }
 
 function clearGanttFilters(){
-  ganttFilters = { status:[], prio:[], owner:[], dept:[] };
+  ganttFilters = { status:[], prio:[], owner:[], dept:[], dateStart:'', dateEnd:'' };
+  renderGantt();
+}
+
+function applyGanttDateFilter(){
+  ganttFilters.dateStart = document.getElementById('gantt-date-start')?.value||'';
+  ganttFilters.dateEnd   = document.getElementById('gantt-date-end')?.value||'';
   renderGantt();
 }
 
@@ -1862,12 +1933,14 @@ function applyGanttFilters(projs){
     if(ganttFilters.prio.length   && !ganttFilters.prio.includes(p.prio))     return false;
     if(ganttFilters.owner.length  && !ganttFilters.owner.includes(p.owner))   return false;
     if(ganttFilters.dept.length   && !ganttFilters.dept.includes(p.dept||'')) return false;
+    if(ganttFilters.dateStart && p.end   && p.end   < ganttFilters.dateStart) return false;
+    if(ganttFilters.dateEnd   && p.start && p.start > ganttFilters.dateEnd)   return false;
     return true;
   });
 }
 
 function hasGanttFilters(){
-  return Object.values(ganttFilters).some(a=>a.length>0);
+  return Object.values(ganttFilters).some(v=>Array.isArray(v)?v.length>0:v!=='');
 }
 
 function renderGantt(){
@@ -1941,6 +2014,15 @@ function renderGantt(){
     <!-- Filters -->
     <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;padding:10px 12px;background:rgba(10,16,33,0.4);border:1px solid rgba(37,99,235,0.1);border-radius:var(--r)">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;min-width:80px">📅 Período</span>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <label style="font-size:11px;color:var(--text3)">De:</label>
+          <input type="date" id="gantt-date-start" class="form-input" style="padding:3px 8px;font-size:11px;width:140px" value="${ganttFilters.dateStart}" onchange="applyGanttDateFilter()">
+          <label style="font-size:11px;color:var(--text3)">Até:</label>
+          <input type="date" id="gantt-date-end" class="form-input" style="padding:3px 8px;font-size:11px;width:140px" value="${ganttFilters.dateEnd}" onchange="applyGanttDateFilter()">
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;min-width:80px">Status</span>
         ${chip('status','todo','A fazer','var(--gray)')}
         ${chip('status','progress','Em andamento','var(--accent2)')}
@@ -1960,7 +2042,7 @@ function renderGantt(){
       </div>`:''}
       ${allDepts.length>0?`
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <span style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;min-width:80px">Departamento</span>
+        <span style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;min-width:80px">Setor</span>
         ${allDepts.map(d=>chip('dept',d,d)).join('')}
       </div>`:''}
     </div>
@@ -2584,7 +2666,7 @@ window.switchSettingsTab  = function(tab,el){
 };
 window.adminAddUser       = function(){ if(window._firebaseAdminAddUser)       window._firebaseAdminAddUser(); };
 window.updateUserRole     = function(d,r){ if(window._firebaseUpdateUserRole)  window._firebaseUpdateUserRole(d,r); };
-window.toggleUserActive   = function(d,a){ if(window._firebaseToggleUserActive) window._firebaseToggleUserActive(d,a); };
+window.toggleUserActive   = function(d,a){ if(window._firebaseToggleUserActive) window._firebaseToggleUserActive(d,a===true||a==='true'); };
 window.resetUserPassword  = function(e){ if(window._firebaseResetPassword)     window._firebaseResetPassword(e); };
 window.doLogout = function(){ 
   try {
@@ -2595,6 +2677,185 @@ window.doLogout = function(){
 
 // ─── INIT ───
 renderAll();
+</script>
+
+<!-- QR Code library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- TOTP library -->
+<script src="https://cdn.jsdelivr.net/npm/otpauth@9.3.6/dist/otpauth.umd.min.js"></script>
+
+<script>
+// ══════════════════════════════════
+//   MFA — TOTP (Microsoft Authenticator)
+// ══════════════════════════════════
+let _mfaCurrentUser  = null;
+let _mfaTotpSecret   = null;
+let _mfaSetupTotp    = null;
+
+// Build 6 digit input boxes
+function buildDigitInputs(containerId, onComplete){
+  const wrap = document.getElementById(containerId);
+  wrap.innerHTML = '';
+  for(let i=0;i<6;i++){
+    const inp = document.createElement('input');
+    inp.type='text'; inp.maxLength=1; inp.className='mfa-digit';
+    inp.inputMode='numeric'; inp.pattern='[0-9]';
+    inp.addEventListener('input', e=>{
+      e.target.value = e.target.value.replace(/\D/g,'');
+      if(e.target.value && i<5) wrap.children[i+1].focus();
+      const code = [...wrap.children].map(x=>x.value).join('');
+      if(code.length===6 && onComplete) onComplete(code);
+    });
+    inp.addEventListener('keydown', e=>{
+      if(e.key==='Backspace' && !e.target.value && i>0) wrap.children[i-1].focus();
+    });
+    wrap.appendChild(inp);
+  }
+  wrap.children[0].focus();
+}
+
+function getMfaCode(containerId){
+  const wrap = document.getElementById(containerId);
+  return [...wrap.children].map(x=>x.value).join('');
+}
+
+function clearDigits(containerId){
+  const wrap = document.getElementById(containerId);
+  [...wrap.children].forEach(x=>x.value='');
+  wrap.children[0]?.focus();
+}
+
+// Generate random base32 secret
+function generateSecret(){
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let s = '';
+  const arr = new Uint8Array(20);
+  crypto.getRandomValues(arr);
+  arr.forEach(b=>s+=chars[b%32]);
+  return s;
+}
+
+// Show MFA setup screen (first login)
+function showMfaSetup(user, secret){
+  _mfaCurrentUser = user;
+  _mfaTotpSecret  = secret;
+
+  // Build TOTP object
+  _mfaSetupTotp = new OTPAuth.TOTP({
+    issuer: 'Ativa Security PM',
+    label:  user.email,
+    algorithm: 'SHA1',
+    digits: 6,
+    period: 30,
+    secret: OTPAuth.Secret.fromBase32(secret),
+  });
+
+  // Show secret
+  document.getElementById('mfa-secret-display').textContent = secret.match(/.{1,4}/g).join(' ');
+
+  // Draw QR code
+  const canvas = document.getElementById('mfa-qr-canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,180,180);
+
+  // Use QRCode lib to generate to a temp div then draw
+  const tmp = document.createElement('div');
+  new QRCode(tmp, {
+    text: _mfaSetupTotp.toString(),
+    width: 180, height: 180,
+    colorDark: '#000000', colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.M
+  });
+  setTimeout(()=>{
+    const img = tmp.querySelector('img');
+    if(img){ const i=new Image(); i.onload=()=>ctx.drawImage(i,0,0,180,180); i.src=img.src; }
+    else{
+      const c2=tmp.querySelector('canvas');
+      if(c2) ctx.drawImage(c2,0,0,180,180);
+    }
+  },300);
+
+  // Build digit inputs
+  document.getElementById('mfa-setup-error').style.display='none';
+  buildDigitInputs('mfa-setup-inputs', ()=>verifyMfaSetup());
+
+  document.getElementById('mfa-setup-screen').classList.add('active');
+  document.getElementById('login-screen').style.display='none';
+}
+
+// Verify setup code and save secret to Firestore
+window.verifyMfaSetup = async function(){
+  const code = getMfaCode('mfa-setup-inputs');
+  const err  = document.getElementById('mfa-setup-error');
+  err.style.display='none';
+
+  if(code.length<6){ err.textContent='Digite os 6 dígitos.'; err.style.display='block'; return; }
+
+  const expected = _mfaSetupTotp.generate();
+  if(code !== expected){
+    err.textContent='Código inválido. Verifique o app e tente novamente.';
+    err.style.display='block';
+    clearDigits('mfa-setup-inputs'); return;
+  }
+
+  // Save secret to Firestore
+  try {
+    await _db.collection('Users').doc(_mfaCurrentUser.uid).update({ mfaSecret: _mfaTotpSecret, mfaEnabled: true });
+  } catch(e){ console.error(e); }
+
+  // MFA setup done — proceed to app
+  document.getElementById('mfa-setup-screen').classList.remove('active');
+  window._proceedAfterMfa(_mfaCurrentUser);
+};
+
+// Show MFA verify screen (subsequent logins)
+function showMfaVerify(user, secret){
+  _mfaCurrentUser = user;
+  _mfaTotpSecret  = secret;
+  document.getElementById('mfa-verify-email').textContent = user.email;
+  document.getElementById('mfa-verify-error').style.display='none';
+  document.getElementById('mfa-verify-btn').disabled=false;
+  document.getElementById('mfa-verify-btn').textContent='Verificar';
+  buildDigitInputs('mfa-verify-inputs', ()=>verifyMfaCode());
+  document.getElementById('mfa-verify-screen').classList.add('active');
+  document.getElementById('login-screen').style.display='none';
+}
+
+window.verifyMfaCode = function(){
+  const code = getMfaCode('mfa-verify-inputs');
+  const err  = document.getElementById('mfa-verify-error');
+  err.style.display='none';
+
+  if(code.length<6){ err.textContent='Digite os 6 dígitos.'; err.style.display='block'; return; }
+
+  const totp = new OTPAuth.TOTP({
+    issuer: 'Ativa Security PM',
+    label:  _mfaCurrentUser.email,
+    algorithm: 'SHA1',
+    digits: 6,
+    period: 30,
+    secret: OTPAuth.Secret.fromBase32(_mfaTotpSecret),
+  });
+
+  // Accept current and adjacent windows (±30s clock drift)
+  const delta = totp.validate({ token: code, window: 1 });
+  if(delta === null){
+    err.textContent='Código inválido ou expirado. Tente novamente.';
+    err.style.display='block';
+    clearDigits('mfa-verify-inputs'); return;
+  }
+
+  document.getElementById('mfa-verify-screen').classList.remove('active');
+  window._proceedAfterMfa(_mfaCurrentUser);
+};
+
+window.cancelMfa = function(){
+  _mfaCurrentUser=null; _mfaTotpSecret=null;
+  document.getElementById('mfa-verify-screen').classList.remove('active');
+  document.getElementById('mfa-setup-screen').classList.remove('active');
+  document.getElementById('login-screen').style.display='flex';
+  _auth.signOut();
+};
 </script>
 
 <!-- Firebase compat (login imediato, sem module) -->
@@ -2622,6 +2883,13 @@ window.doLogin = async function(){
   const btn   = document.getElementById('login-btn');
   const err   = document.getElementById('login-error');
   err.style.display='none';
+
+  // Domain restriction — only @ativait.com.br
+  if(!email.endsWith('@ativait.com.br')){
+    err.textContent = '⚠ Acesso restrito a e-mails @ativait.com.br';
+    err.style.display='block'; return;
+  }
+
   btn.disabled=true; btn.textContent='Entrando…';
   try {
     await _auth.signInWithEmailAndPassword(email, pass);
@@ -2642,80 +2910,88 @@ document.addEventListener('DOMContentLoaded', ()=>{
     if(user){
       loginScreen.style.display='none';
       let role='tecnico', userName=user.displayName||user.email.split('@')[0];
+      let mfaSecret=null, mfaEnabled=false, userData=null, userDocId=null;
       try {
-        // Busca na coleção Users (maiúsculo)
         let snap = await _db.collection('Users').where('email','==',user.email).get();
-        // Se não achar, tenta users (minúsculo)
         if(snap.empty) snap = await _db.collection('users').where('email','==',user.email).get();
         if(!snap.empty){
-          const data = snap.docs[0].data();
-          console.log('Firestore data:', JSON.stringify(data));
-          role = data.role||'tecnico';
-          if(data.name) userName=data.name;
-          if(data.active===false){ alert('Conta desativada.'); _auth.signOut(); return; }
-        } else {
-          console.log('Nenhum usuário encontrado para email:', user.email);
+          userData = snap.docs[0].data(); userDocId = snap.docs[0].id;
+          role = userData.role||'tecnico';
+          if(userData.name) userName=userData.name;
+          mfaSecret  = userData.mfaSecret||null;
+          mfaEnabled = userData.mfaEnabled||false;
+          if(userData.active===false){ alert('Conta desativada. Contate o administrador.'); _auth.signOut(); return; }
         }
-        console.log('Role final:', role);
+        console.log('Role:', role, '| MFA enabled:', mfaEnabled);
       } catch(e){ console.error('Erro ao buscar perfil:', e); }
 
-      const av=avColor(userName);
-      document.getElementById('user-pill').style.display='flex';
-      document.getElementById('logout-btn').style.display='inline-flex';
-      document.getElementById('user-display-name').textContent=userName;
-      document.getElementById('user-avatar').textContent=initials(userName);
-      document.getElementById('user-avatar').style.background=av.bg;
-      document.getElementById('user-avatar').style.color=av.text;
-      const rb=document.getElementById('user-role-badge');
-      rb.textContent=role==='admin'?'Admin':'Técnico';
-      rb.className='user-pill-role '+(role==='admin'?'role-admin':'role-tecnico');
-
-      window.currentUserRole=role;
-      const isAdmin=role==='admin';
-      document.querySelectorAll('.tab-btn').forEach(b=>{ if(b.textContent.includes('Relatórios')) b.style.display=isAdmin?'':'none'; });
-      const delBtn=document.querySelector('.btn-danger'); if(delBtn) delBtn.style.display=isAdmin?'':'none';
-      const setBtn=document.getElementById('settings-btn'); if(setBtn) setBtn.style.display=isAdmin?'':'none';
-      // Costs tab — admin only
-      window.applyCurrentRole = function(){
-        const isAdm = window.currentUserRole==='admin';
-        const costsTab=document.getElementById('detail-tab-costs');
-        if(costsTab) costsTab.style.display=isAdm?'':'none';
-        const delB=document.querySelector('.btn-danger'); if(delB) delB.style.display=isAdm?'':'none';
-        // Hide valor/hora field from technicians in project modal
-        const hrWrap=document.getElementById('pm-hourrate-wrap');
-        if(hrWrap) hrWrap.style.display=isAdm?'block':'none';
+      // ── Shared proceed function ──
+      window._proceedAfterMfa = async function(u){
+        const av=avColor(userName);
+        document.getElementById('user-pill').style.display='flex';
+        document.getElementById('logout-btn').style.display='inline-flex';
+        document.getElementById('user-display-name').textContent=userName;
+        document.getElementById('user-avatar').textContent=initials(userName);
+        document.getElementById('user-avatar').style.background=av.bg;
+        document.getElementById('user-avatar').style.color=av.text;
+        const rb=document.getElementById('user-role-badge');
+        rb.textContent=role==='admin'?'Admin':'Técnico';
+        rb.className='user-pill-role '+(role==='admin'?'role-admin':'role-tecnico');
+        window.currentUserRole=role;
+        const isAdmin=role==='admin';
+        document.querySelectorAll('.tab-btn').forEach(b=>{ if(b.textContent.includes('Relatórios')) b.style.display=isAdmin?'':'none'; });
+        const delBtn=document.querySelector('.btn-danger'); if(delBtn) delBtn.style.display=isAdmin?'':'none';
+        const setBtn=document.getElementById('settings-btn'); if(setBtn) setBtn.style.display=isAdmin?'':'none';
+        window.applyCurrentRole = function(){
+          const isAdm=window.currentUserRole==='admin';
+          const ct=document.getElementById('detail-tab-costs'); if(ct) ct.style.display=isAdm?'':'none';
+          const dB=document.querySelector('.btn-danger'); if(dB) dB.style.display=isAdm?'':'none';
+          const hr=document.getElementById('pm-hourrate-wrap'); if(hr) hr.style.display=isAdm?'block':'none';
+        };
+        window.applyCurrentRole();
+        try {
+          const snap=await _db.collection('projects').get();
+          if(!snap.empty){
+            const loaded=[]; snap.forEach(d=>loaded.push(d.data()));
+            projects.length=0; loaded.forEach(p=>projects.push(p));
+            const maxId=Math.max(...projects.map(p=>p.id||0),9); nextProjId=maxId+1;
+            const tids=projects.flatMap(p=>(p.tasks||[]).map(t=>t.id||0));
+            nextTaskId=tids.length>0?Math.max(...tids)+1:1000;
+          }
+          renderAll();
+          if(!isAdmin){ const a=document.querySelector('.tab-btn.active'); if(a&&a.textContent.includes('Relatórios')) document.querySelectorAll('.tab-btn')[0].click(); }
+        } catch(e){ console.error('Error loading projects:', e); renderAll(); }
+        window.saveProjectToFirebase = async function(p){
+          try { await _db.collection('projects').doc(String(p.id)).set(JSON.parse(JSON.stringify(p))); } catch(e){ console.error(e); }
+        };
+        window.deleteProjectFromFirebase = async function(id){
+          try { await _db.collection('projects').doc(String(id)).delete(); } catch(e){ console.error(e); }
+        };
       };
-      window.applyCurrentRole();
 
-      // Carregar projetos
-      try {
-        const snap=await _db.collection('projects').get();
-        console.log('Firebase projects snap - empty:', snap.empty, 'size:', snap.size);
-        if(!snap.empty){
-          const loaded=[]; snap.forEach(d=>{ console.log('Project doc:', d.id, d.data()?.name); loaded.push(d.data()); });
-          projects.length=0; loaded.forEach(p=>projects.push(p));
-          const maxId=Math.max(...projects.map(p=>p.id||0),9); nextProjId=maxId+1;
-          const tids=projects.flatMap(p=>(p.tasks||[]).map(t=>t.id||0));
-          nextTaskId=tids.length>0?Math.max(...tids)+1:1000;
-          console.log('Loaded', projects.length, 'projects, rendering...');
+      // ── MFA routing ──
+      if(typeof OTPAuth !== 'undefined'){
+        if(mfaEnabled && mfaSecret){
+          showMfaVerify(user, mfaSecret);
         } else {
-          console.log('No projects in Firebase yet');
+          showMfaSetup(user, generateSecret());
         }
-        renderAll();
-        if(!isAdmin){ const a=document.querySelector('.tab-btn.active'); if(a&&a.textContent.includes('Relatórios')) document.querySelectorAll('.tab-btn')[0].click(); }
-      } catch(e){ console.error('Error loading projects:', e); renderAll(); }
-
-      // Salvar/deletar projetos
-      window.saveProjectToFirebase = async function(p){
-        try { await _db.collection('projects').doc(String(p.id)).set(JSON.parse(JSON.stringify(p))); }
-        catch(e){ console.error(e); }
-      };
-      window.deleteProjectFromFirebase = async function(id){
-        try { await _db.collection('projects').doc(String(id)).delete(); }
-        catch(e){ console.error(e); }
-      };
+      } else {
+        // OTPAuth not loaded yet — wait and retry
+        setTimeout(async ()=>{
+          if(typeof OTPAuth !== 'undefined'){
+            if(mfaEnabled && mfaSecret) showMfaVerify(user, mfaSecret);
+            else showMfaSetup(user, generateSecret());
+          } else {
+            console.warn('OTPAuth not available, skipping MFA');
+            window._proceedAfterMfa(user);
+          }
+        }, 800);
+      }
 
     } else {
+      document.getElementById('mfa-setup-screen').classList.remove('active');
+      document.getElementById('mfa-verify-screen').classList.remove('active');
       loginScreen.style.display='flex';
       document.getElementById('user-pill').style.display='none';
       document.getElementById('logout-btn').style.display='none';
@@ -2745,11 +3021,11 @@ window._firebaseRenderSettingsUsers = async function(){
           <div class="avatar-sm" style="background:${avColor(u.name||u.email).bg};color:${avColor(u.name||u.email).text};width:34px;height:34px;font-size:12px;flex-shrink:0">${initials(u.name||u.email)}</div>
           <div class="user-row-info"><div class="user-row-name">${u.name||'—'}</div><div class="user-row-email">${u.email}</div></div>
           <span class="user-status-badge ${u.active!==false?'status-active':'status-inactive'}">${u.active!==false?'Ativo':'Inativo'}</span>
-          <select class="role-select" onchange="updateUserRole('${u.docId}','${u.col}',this.value)">
+          <select class="role-select" onchange="updateUserRole('${u.docId}',this.value)">
             <option value="admin"   ${u.role==='admin'  ?'selected':''}>Admin</option>
             <option value="tecnico" ${u.role==='tecnico'?'selected':''}>Técnico</option>
           </select>
-          <button class="icon-btn" onclick="toggleUserActive('${u.docId}','${u.col}',${u.active!==false})" style="color:${u.active!==false?'var(--amber)':'var(--green)'}">${u.active!==false?'⏸':'▶'}</button>
+          <button class="icon-btn" onclick="toggleUserActive('${u.docId}',${u.active!==false})" style="color:${u.active!==false?'var(--amber)':'var(--green)'}" title="${u.active!==false?'Desativar':'Ativar'}">${u.active!==false?'⏸':'▶'}</button>
           <button class="icon-btn" onclick="resetUserPassword('${u.email}')" style="color:var(--accent2)">🔑</button>
         </div>`).join('')}
       </div>
