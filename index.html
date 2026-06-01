@@ -1752,49 +1752,197 @@ function renderKanban(){
     </div>`).join('');
 }
 
+// Gantt state
+let ganttMode = 'year'; // 'year' | 'month'
+let ganttMonth = new Date().getMonth();
+let ganttYear  = new Date().getFullYear();
+let ganttFilters = { status:[], prio:[], owner:[], dept:[] };
+
+function ganttNav(dir){
+  if(ganttMode==='year'){ ganttYear+=dir; }
+  else { ganttMonth+=dir; if(ganttMonth>11){ganttMonth=0;ganttYear++;} if(ganttMonth<0){ganttMonth=11;ganttYear--;} }
+  renderGantt();
+}
+function setGanttMode(mode, btn){
+  ganttMode=mode;
+  document.querySelectorAll('.gantt-mode-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderGantt();
+}
+
+function toggleGanttFilter(type, value){
+  const arr = ganttFilters[type];
+  const idx = arr.indexOf(value);
+  if(idx>=0) arr.splice(idx,1); else arr.push(value);
+  renderGantt();
+}
+
+function clearGanttFilters(){
+  ganttFilters = { status:[], prio:[], owner:[], dept:[] };
+  renderGantt();
+}
+
+function applyGanttFilters(projs){
+  return projs.filter(p=>{
+    if(ganttFilters.status.length && !ganttFilters.status.includes(p.status)) return false;
+    if(ganttFilters.prio.length   && !ganttFilters.prio.includes(p.prio))     return false;
+    if(ganttFilters.owner.length  && !ganttFilters.owner.includes(p.owner))   return false;
+    if(ganttFilters.dept.length   && !ganttFilters.dept.includes(p.dept||'')) return false;
+    return true;
+  });
+}
+
+function hasGanttFilters(){
+  return Object.values(ganttFilters).some(a=>a.length>0);
+}
+
 function renderGantt(){
-  const months=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const year = new Date().getFullYear();
-  const yearStart = new Date(year+'-01-01');
-  const yearEnd   = new Date(year+'-12-31');
-  const totalDays = (yearEnd-yearStart)/(1000*3600*24)+1;
+  const MONTHS=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const MONTHS_FULL=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const today = new Date();
-  const todayFrac = Math.min(1,Math.max(0,(today-yearStart)/(totalDays*1000*3600*24)));
 
-  const sorted=[...projects].sort((a,b)=>a.start.localeCompare(b.start));
+  // Collect unique values for filter options
+  const allOwners = [...new Set(projects.map(p=>p.owner).filter(Boolean))].sort();
+  const allDepts  = [...new Set(projects.map(p=>p.dept||'').filter(Boolean))].sort();
+  const activeFilters = hasGanttFilters();
+  const filteredAll = applyGanttFilters(projects);
 
-  let html=`<div style="padding:16px 16px 4px">
-    <div class="gantt-month-headers">${months.map(m=>`<div class="gantt-month-h">${m}</div>`).join('')}</div>
+  // Filter chip helper
+  const chip = (type, value, label, color='var(--accent2)') => {
+    const active = ganttFilters[type].includes(value);
+    return `<button onclick="toggleGanttFilter('${type}','${value}')" style="
+      font-size:10px;font-weight:600;padding:3px 10px;border-radius:20px;border:1px solid ${active?color:'var(--border2)'};
+      background:${active?`rgba(37,99,235,0.15)`:'transparent'};color:${active?color:'var(--text3)'};
+      cursor:pointer;font-family:var(--font);transition:all .15s;white-space:nowrap">${label}</button>`;
+  };
+
+  // Define period boundaries
+  let periodStart, periodEnd, totalDays, columns, colLabel;
+  if(ganttMode==='year'){
+    periodStart = new Date(ganttYear+'-01-01');
+    periodEnd   = new Date(ganttYear+'-12-31');
+    totalDays   = (periodEnd-periodStart)/(1000*3600*24)+1;
+    columns     = MONTHS;
+    colLabel    = String(ganttYear);
+  } else {
+    periodStart = new Date(ganttYear,ganttMonth,1);
+    periodEnd   = new Date(ganttYear,ganttMonth+1,0);
+    totalDays   = periodEnd.getDate();
+    // Weekly columns for month view
+    const weeks = [];
+    for(let d=1;d<=totalDays;d+=7) weeks.push('S'+Math.ceil(d/7));
+    columns = weeks;
+    colLabel = `${MONTHS_FULL[ganttMonth]} ${ganttYear}`;
+  }
+
+  const todayFrac = Math.min(1,Math.max(0,(today-periodStart)/((totalDays)*1000*3600*24)));
+
+  // Filter projects that overlap with the period
+  const sorted = applyGanttFilters([...projects]).filter(p=>{
+    if(!p.start||!p.end) return false;
+    const ps=new Date(p.start+'T12:00:00'), pe=new Date(p.end+'T12:00:00');
+    return pe>=periodStart && ps<=periodEnd;
+  }).sort((a,b)=>a.start.localeCompare(b.start));
+
+  const navLabel = ganttMode==='year' ? String(ganttYear) : `${MONTHS_FULL[ganttMonth]} ${ganttYear}`;
+
+  let html=`<div style="padding:12px 16px 4px">
+    <!-- Controls -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="icon-btn" onclick="ganttNav(-1)" style="font-size:18px;color:var(--text2);padding:4px 8px">‹</button>
+        <span style="font-size:13px;font-weight:600;min-width:160px;text-align:center">${navLabel}</span>
+        <button class="icon-btn" onclick="ganttNav(1)" style="font-size:18px;color:var(--text2);padding:4px 8px">›</button>
+        <button class="icon-btn" onclick="ganttYear=new Date().getFullYear();ganttMonth=new Date().getMonth();renderGantt()" style="font-size:11px;color:var(--accent2);padding:4px 8px;border:1px solid rgba(37,99,235,0.3);border-radius:6px">Hoje</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        ${activeFilters?`<button onclick="clearGanttFilters()" style="font-size:11px;color:var(--red);background:var(--red-bg);border:1px solid rgba(255,95,95,0.3);border-radius:20px;padding:3px 10px;cursor:pointer;font-family:var(--font)">✕ Limpar filtros</button>`:''}
+        <div style="display:flex;background:rgba(10,16,33,0.5);border:1px solid rgba(37,99,235,0.15);border-radius:var(--r);padding:3px;gap:2px">
+          <button class="tab-btn gantt-mode-btn ${ganttMode==='year'?'active':''}" onclick="setGanttMode('year',this)" style="font-size:11px;padding:4px 12px">📅 Anual</button>
+          <button class="tab-btn gantt-mode-btn ${ganttMode==='month'?'active':''}" onclick="setGanttMode('month',this)" style="font-size:11px;padding:4px 12px">🗓 Mensal</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;padding:10px 12px;background:rgba(10,16,33,0.4);border:1px solid rgba(37,99,235,0.1);border-radius:var(--r)">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;min-width:80px">Status</span>
+        ${chip('status','todo','A fazer','var(--gray)')}
+        ${chip('status','progress','Em andamento','var(--accent2)')}
+        ${chip('status','review','Em revisão','var(--amber)')}
+        ${chip('status','done','Concluído','var(--green)')}
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;min-width:80px">Prioridade</span>
+        ${chip('prio','high','Alta 🔴','var(--red)')}
+        ${chip('prio','med','Média 🟡','var(--amber)')}
+        ${chip('prio','low','Baixa 🟢','var(--green)')}
+      </div>
+      ${allOwners.length>0?`
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;min-width:80px">Responsável</span>
+        ${allOwners.map(o=>chip('owner',o,o)).join('')}
+      </div>`:''}
+      ${allDepts.length>0?`
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;min-width:80px">Departamento</span>
+        ${allDepts.map(d=>chip('dept',d,d)).join('')}
+      </div>`:''}
+    </div>
+
+    ${activeFilters?`<div style="font-size:11px;color:var(--accent2);margin-bottom:8px">Mostrando ${sorted.length} de ${projects.length} projetos</div>`:''}
+
+    <!-- Gantt headers -->
+    <div class="gantt-month-headers">${columns.map(c=>`<div class="gantt-month-h">${c}</div>`).join('')}</div>
     <table class="gantt-table">`;
 
-  sorted.forEach(p=>{
-    const s=new Date(p.start+'T12:00:00'), e=new Date(p.end+'T12:00:00');
-    let left=((s-yearStart)/(totalDays*1000*3600*24))*100;
-    let w    =((e-s)/(totalDays*1000*3600*24))*100;
-    left=Math.max(0,Math.min(left,99)); w=Math.max(.8,Math.min(w,100-left));
-    const prog=getProg(p);
-    const av=avColor(p.owner);
-    html+=`<tr class="gantt-row-wrap">
-      <td class="gantt-name-col" onclick="showDetail(${p.id})" style="cursor:pointer" title="${p.name}">
-        <div style="display:flex;align-items:center;gap:7px">
-          <div class="avatar-sm" style="background:${av.bg};color:${av.text};width:20px;height:20px;font-size:8px">${initials(p.owner)}</div>
-          <span>${p.name}</span>
-        </div>
-      </td>
-      <td class="gantt-track-col" onclick="showDetail(${p.id})" style="cursor:pointer">
-        <div class="gantt-bar-container">
-          <div class="gantt-bg-lines">${months.map(()=>`<div class="gantt-month-line"></div>`).join('')}</div>
-          <div class="gantt-today" style="left:${todayFrac*100}%;background:var(--red)">
-            <span style="color:var(--red);font-size:9px;font-weight:700;position:absolute;top:-14px;left:50%;transform:translateX(-50%);white-space:nowrap">hoje</span>
+  if(sorted.length===0){
+    html+=`<tr><td colspan="2" style="text-align:center;padding:24px;color:var(--text3);font-size:13px">Nenhum projeto neste período</td></tr>`;
+  } else {
+    sorted.forEach(p=>{
+      const ps=new Date(p.start+'T12:00:00'), pe=new Date(p.end+'T12:00:00');
+      // Clamp to period
+      const clampStart = ps < periodStart ? periodStart : ps;
+      const clampEnd   = pe > periodEnd   ? periodEnd   : pe;
+      let left = ((clampStart-periodStart)/(totalDays*1000*3600*24))*100;
+      let w    = ((clampEnd-clampStart)/(totalDays*1000*3600*24))*100;
+      left=Math.max(0,Math.min(left,99)); w=Math.max(.8,Math.min(w,100-left));
+      const prog=getProg(p);
+      const av=avColor(p.owner||'?');
+      const startsBefore = ps < periodStart;
+      const endsAfter    = pe > periodEnd;
+
+      html+=`<tr class="gantt-row-wrap">
+        <td class="gantt-name-col" onclick="showDetail(${p.id})" style="cursor:pointer" title="${p.name}">
+          <div style="display:flex;align-items:center;gap:7px">
+            <div class="avatar-sm" style="background:${av.bg};color:${av.text};width:20px;height:20px;font-size:8px">${initials(p.owner||'?')}</div>
+            <div>
+              <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name}</div>
+              ${ganttMode==='month'?`<div style="font-size:9px;color:var(--text3)">${fmtShort(p.start)} → ${fmtShort(p.end)}</div>`:''}
+            </div>
           </div>
-          <div class="gantt-bar-el" title="${p.name}: ${fmtShort(p.start)} → ${fmtShort(p.end)}" style="left:${left}%;width:${w}%;background:${STATUS[p.status].barColor};color:#fff;opacity:${p.status==='done'?.7:1}">
-            <div style="position:absolute;left:0;top:0;bottom:0;width:${prog}%;background:rgba(255,255,255,0.2);border-radius:5px;pointer-events:none"></div>
-            <span style="position:relative;z-index:1;overflow:hidden;text-overflow:ellipsis">${p.name}</span>
+        </td>
+        <td class="gantt-track-col" onclick="showDetail(${p.id})" style="cursor:pointer">
+          <div class="gantt-bar-container">
+            <div class="gantt-bg-lines">${columns.map(()=>`<div class="gantt-month-line"></div>`).join('')}</div>
+            <div class="gantt-today" style="left:${todayFrac*100}%;background:var(--red)">
+              <span style="color:var(--red);font-size:9px;font-weight:700;position:absolute;top:-14px;left:50%;transform:translateX(-50%);white-space:nowrap">hoje</span>
+            </div>
+            <div class="gantt-bar-el" title="${p.name}: ${fmtShort(p.start)} → ${fmtShort(p.end)}"
+              style="left:${left}%;width:${w}%;background:${STATUS[p.status].barColor};color:#fff;opacity:${p.status==='done'?.7:1};
+              border-radius:${startsBefore?'0':'5px'} ${endsAfter?'0':'5px'} ${endsAfter?'0':'5px'} ${startsBefore?'0':'5px'}">
+              <div style="position:absolute;left:0;top:0;bottom:0;width:${prog}%;background:rgba(255,255,255,0.2);border-radius:inherit;pointer-events:none"></div>
+              ${startsBefore?`<span style="position:absolute;left:-10px;top:50%;transform:translateY(-50%);color:${STATUS[p.status].barColor};font-size:10px">◀</span>`:''}
+              <span style="position:relative;z-index:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name}</span>
+              ${endsAfter?`<span style="position:absolute;right:-10px;top:50%;transform:translateY(-50%);color:${STATUS[p.status].barColor};font-size:10px">▶</span>`:''}
+            </div>
           </div>
-        </div>
-      </td>
-    </tr>`;
-  });
+        </td>
+      </tr>`;
+    });
+  }
+
   html+=`</table></div>`;
   document.getElementById('gantt-container').innerHTML=html;
 }
