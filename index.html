@@ -886,8 +886,13 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
           <input class="form-input" id="pm-owner" placeholder="Nome do responsável" maxlength="30">
         </div>
         <div class="form-group">
-          <label class="form-label">Departamento</label>
-          <input class="form-input" id="pm-dept" placeholder="Ex: TI, Marketing..." maxlength="30">
+          <label class="form-label">Setor</label>
+          <select class="form-select" id="pm-dept">
+            <option value="">Selecione...</option>
+            <option value="Técnico">Técnico</option>
+            <option value="Comercial">Comercial</option>
+            <option value="Governança">Governança</option>
+          </select>
         </div>
       </div>
       <div class="form-group">
@@ -1038,6 +1043,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
     </div>
     <div class="settings-tabs">
       <button class="settings-tab active" onclick="window.switchSettingsTab('users',this)">👥 Usuários</button>
+      <button class="settings-tab" onclick="window.switchSettingsTab('sectors',this)">🏢 Setores</button>
     </div>
     <div class="settings-panel" id="settings-panel"></div>
   </div>
@@ -1092,6 +1098,74 @@ function getProg(p){ const t=p.tasks||[]; if(!t.length) return p.prog; return Ma
 function todayStr(){ return new Date().toISOString().split('T')[0]; }
 
 // ─── VIEWS ───
+// ─── SECTORS ───
+const DEFAULT_SECTORS = ['Técnico','Comercial','Governança'];
+let customSectors = [];
+try { customSectors = JSON.parse(localStorage.getItem('pm_custom_sectors')||'[]'); } catch(e){}
+
+function getAllSectors(){ return [...DEFAULT_SECTORS, ...customSectors.filter(s=>!DEFAULT_SECTORS.includes(s))]; }
+
+function loadSectorsIntoSelect(){
+  const sel = document.getElementById('pm-dept');
+  if(!sel) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Selecione...</option>' +
+    getAllSectors().map(s=>`<option value="${s}">${s}</option>`).join('');
+  if(current) sel.value = current;
+}
+
+function saveCustomSectors(){
+  try { localStorage.setItem('pm_custom_sectors', JSON.stringify(customSectors)); } catch(e){}
+}
+
+function renderSettingsSectors(){
+  const all = getAllSectors();
+  return `
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+      <div style="font-size:12px;font-weight:600;color:var(--accent2);margin-bottom:12px;text-transform:uppercase;letter-spacing:.05em">🏢 Gerenciar Setores</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+        ${all.map((s,i)=>{
+          const isDefault = DEFAULT_SECTORS.includes(s);
+          return `<div style="display:flex;align-items:center;gap:6px;background:var(--bg4);border:1px solid var(--border2);border-radius:20px;padding:4px 12px">
+            <span style="font-size:12px">${s}</span>
+            ${isDefault
+              ? `<span style="font-size:10px;color:var(--text3)">padrão</span>`
+              : `<button onclick="removeCustomSector('${s}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:0">×</button>`}
+          </div>`;
+        }).join('')}
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input class="form-input" id="new-sector-input" placeholder="Novo setor..." maxlength="30" style="max-width:200px;padding:6px 10px;font-size:13px">
+        <button class="btn btn-accent" onclick="addCustomSector()" style="padding:6px 14px;font-size:12px">+ Adicionar</button>
+      </div>
+      <div id="sector-error" style="font-size:11px;color:var(--red);margin-top:6px;display:none"></div>
+    </div>`;
+}
+
+window.addCustomSector = function(){
+  const inp = document.getElementById('new-sector-input');
+  const err = document.getElementById('sector-error');
+  const val = inp?.value.trim();
+  err.style.display='none';
+  if(!val){ err.textContent='Digite um nome.'; err.style.display='block'; return; }
+  if(getAllSectors().map(s=>s.toLowerCase()).includes(val.toLowerCase())){
+    err.textContent='Setor já existe.'; err.style.display='block'; return;
+  }
+  customSectors.push(val);
+  saveCustomSectors();
+  inp.value='';
+  // Re-render settings sectors section
+  const wrap = document.getElementById('settings-sectors-wrap');
+  if(wrap) wrap.innerHTML = renderSettingsSectors();
+};
+
+window.removeCustomSector = function(s){
+  customSectors = customSectors.filter(x=>x!==s);
+  saveCustomSectors();
+  const wrap = document.getElementById('settings-sectors-wrap');
+  if(wrap) wrap.innerHTML = renderSettingsSectors();
+};
+
 function renderAll(){ renderStats(); renderKanban(); renderGantt(); }
 window.renderAll = renderAll;
 
@@ -2260,7 +2334,8 @@ function openNewProjectModal(){
   editProjMode=false;
   document.getElementById('proj-modal-title').textContent='Novo Projeto';
   document.getElementById('proj-save-btn').textContent='Criar Projeto';
-  ['pm-name','pm-desc','pm-owner','pm-dept'].forEach(id=>document.getElementById(id).value='');
+  ['pm-name','pm-desc','pm-owner'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('pm-dept').value='';
   document.getElementById('pm-prog').value=0;
   document.getElementById('pm-prog-val').textContent='0%';
   document.getElementById('pm-status').value='todo';
@@ -2271,6 +2346,7 @@ function openNewProjectModal(){
   const hrWrap=document.getElementById('pm-hourrate-wrap');
   if(hrWrap) hrWrap.style.display=window.currentUserRole==='admin'?'block':'none';
   document.getElementById('proj-modal-overlay').classList.add('open');
+  loadSectorsIntoSelect();
   setTimeout(()=>document.getElementById('pm-name').focus(),200);
 }
 
@@ -2282,6 +2358,7 @@ function openEditProjectModal(){
   document.getElementById('pm-name').value=p.name;
   document.getElementById('pm-desc').value=p.desc||'';
   document.getElementById('pm-owner').value=p.owner||'';
+  loadSectorsIntoSelect();
   document.getElementById('pm-dept').value=p.dept||'';
   document.getElementById('pm-status').value=p.status;
   document.getElementById('pm-prio').value=p.prio;
@@ -2497,6 +2574,13 @@ window.closeSettings      = function(){ document.getElementById('settings-modal-
 window.switchSettingsTab  = function(tab,el){
   document.querySelectorAll('.settings-tab').forEach(t=>t.classList.remove('active')); el.classList.add('active');
   if(tab==='users'&&window._firebaseRenderSettingsUsers) window._firebaseRenderSettingsUsers();
+  else if(tab==='sectors'){
+    document.getElementById('settings-panel').innerHTML=`
+      <div style="padding:4px 0">
+        <div style="font-size:13px;color:var(--text2);margin-bottom:4px">Configure os setores disponíveis para seleção nos projetos.</div>
+        <div id="settings-sectors-wrap">${renderSettingsSectors()}</div>
+      </div>`;
+  }
 };
 window.adminAddUser       = function(){ if(window._firebaseAdminAddUser)       window._firebaseAdminAddUser(); };
 window.updateUserRole     = function(d,r){ if(window._firebaseUpdateUserRole)  window._firebaseUpdateUserRole(d,r); };
