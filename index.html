@@ -1114,17 +1114,39 @@ function switchMainTab(tab,btn){
 }
 
 // ─── REPORTS ───
-function renderReports(){
-  const now = new Date();
+let reportPeriodStart = '';
+let reportPeriodEnd   = '';
 
-  // Build per-user data
+function applyReportFilter(){
+  reportPeriodStart = document.getElementById('rep-filter-start')?.value||'';
+  reportPeriodEnd   = document.getElementById('rep-filter-end')?.value||'';
+  renderReports();
+}
+function clearReportFilter(){
+  reportPeriodStart=''; reportPeriodEnd='';
+  const s=document.getElementById('rep-filter-start'); if(s) s.value='';
+  const e=document.getElementById('rep-filter-end');   if(e) e.value='';
+  renderReports();
+}
+function filterProjectsByPeriod(projs){
+  if(!reportPeriodStart && !reportPeriodEnd) return projs;
+  return projs.filter(p=>{
+    const ps=p.start||''; const pe=p.end||'';
+    if(reportPeriodStart && pe && pe < reportPeriodStart) return false;
+    if(reportPeriodEnd   && ps && ps > reportPeriodEnd)   return false;
+    return true;
+  });
+}
+
+function renderReports(){
+  const filteredProjects = filterProjectsByPeriod(projects);
+  const isPeriodActive   = reportPeriodStart || reportPeriodEnd;
+
   const userMap = {};
-  projects.forEach(p => {
-    // Project owner stats
+  filteredProjects.forEach(p => {
     const owner = p.owner || 'Sem responsável';
     if(!userMap[owner]) userMap[owner] = { name:owner, dept:p.dept||'—', projs:[], tasks:[] };
     userMap[owner].projs.push(p);
-    // Task owner stats
     (p.tasks||[]).forEach(t => {
       const to = t.owner || owner;
       if(!userMap[to]) userMap[to] = { name:to, dept:p.dept||'—', projs:[], tasks:[] };
@@ -1132,149 +1154,126 @@ function renderReports(){
     });
   });
 
-  // Compute metrics per user
   const users = Object.values(userMap).map(u => {
-    // Projects
     const totalProjs = u.projs.length;
     const doneProjs  = u.projs.filter(p=>p.status==='done').length;
     const onTimeProjs= u.projs.filter(p=>p.status==='done' && !isOverdue(p.end,true)).length
                      + u.projs.filter(p=>p.status!=='done' && !isOverdue(p.end,false)).length;
     const lateProjs  = u.projs.filter(p=>isOverdue(p.end, p.status==='done')).length;
     const projOnTimePct = totalProjs>0 ? Math.round(onTimeProjs/totalProjs*100) : 100;
-
-    // Tasks — waiting tasks are excluded entirely from score (external blocker)
-    const totalTasks = u.tasks.length;
-    const doneTasks  = u.tasks.filter(t=>t.status==='done').length;
+    const totalTasks   = u.tasks.length;
+    const doneTasks    = u.tasks.filter(t=>t.status==='done').length;
     const waitingTasks = u.tasks.filter(t=>t.status==='waiting').length;
-    // Only count tasks that are not in waiting status
-    const scorableTasks = u.tasks.filter(t=>t.status!=='waiting');
-    const lateTasks = scorableTasks.filter(t=>{
+    const scorableTasks= u.tasks.filter(t=>t.status!=='waiting');
+    const lateTasks    = scorableTasks.filter(t=>{
       if(t.status==='done'){
-        if(t.concludedFromWaiting) return false; // was waiting → always on time
+        if(t.concludedFromWaiting) return false;
         if(!t.due) return false;
-        const concludedDate = t.concluded || todayStr();
-        return concludedDate > t.due;
+        return (t.concluded||todayStr()) > t.due;
       }
       return isOverdue(t.due, false);
     }).length;
-    const onTimeTasks = scorableTasks.length - lateTasks;
+    const onTimeTasks   = scorableTasks.length - lateTasks;
     const taskOnTimePct = scorableTasks.length>0 ? Math.round(onTimeTasks/scorableTasks.length*100) : 100;
-
-    // Overall score (weighted)
-    const score = totalProjs===0&&totalTasks===0 ? 0 :
-      Math.round((projOnTimePct*0.5 + taskOnTimePct*0.5));
-
+    const score = totalProjs===0&&totalTasks===0 ? 0 : Math.round((projOnTimePct*0.5+taskOnTimePct*0.5));
     return { ...u, totalProjs, doneProjs, onTimeProjs, lateProjs, projOnTimePct,
              totalTasks, doneTasks, lateTasks, waitingTasks, onTimeTasks, taskOnTimePct, score };
-  }).filter(u=>u.totalProjs>0||u.totalTasks>0)
-    .sort((a,b)=>b.score-a.score);
+  }).filter(u=>u.totalProjs>0||u.totalTasks>0).sort((a,b)=>b.score-a.score);
 
-  // Global KPIs
-  const totalProjs   = projects.length;
-  const doneProjs    = projects.filter(p=>p.status==='done').length;
-  const lateProjs    = projects.filter(p=>isOverdue(p.end,p.status==='done')).length;
-  const onTimeProjs  = totalProjs - lateProjs;
-  const allTasks     = projects.flatMap(p=>p.tasks||[]);
-  const totalTasks   = allTasks.length;
-  const lateTasks    = allTasks.filter(t=>isOverdue(t.due,t.status==='done')).length;
-  const onTimeTasks  = totalTasks - lateTasks;
-  const avgScore     = users.length>0 ? Math.round(users.reduce((s,u)=>s+u.score,0)/users.length) : 0;
+  const totalProjs  = filteredProjects.length;
+  const doneProjs   = filteredProjects.filter(p=>p.status==='done').length;
+  const lateProjs   = filteredProjects.filter(p=>isOverdue(p.end,p.status==='done')).length;
+  const onTimeProjs = totalProjs - lateProjs;
+  const allTasks    = filteredProjects.flatMap(p=>p.tasks||[]);
+  const totalTasks  = allTasks.length;
+  const lateTasks   = allTasks.filter(t=>!t.concludedFromWaiting&&isOverdue(t.due,t.status==='done')).length;
+  const onTimeTasks = totalTasks - lateTasks;
+  const avgScore    = users.length>0 ? Math.round(users.reduce((s,u)=>s+u.score,0)/users.length) : 0;
+  const completedProjs = filteredProjects.filter(p=>p.status==='done').sort((a,b)=>(b.end||'').localeCompare(a.end||''));
 
   function scoreColor(s){ return s>=80?'var(--green)':s>=60?'var(--amber)':'var(--red)'; }
-  function barColor(s){ return s>=80?'#34c97e':s>=60?'#f5a623':'#ff5f5f'; }
-  function medal(i){ return i===0?'🥇':i===1?'🥈':i===2?'🥉':''; }
-
+  function barColor(s)  { return s>=80?'#34c97e':s>=60?'#f5a623':'#ff5f5f'; }
+  function medal(i)     { return i===0?'🥇':i===1?'🥈':i===2?'🥉':''; }
   const av = (n)=>avColor(n);
 
   let html = `
-  <!-- KPIs globais -->
-  <div class="rep-section">
-    <div class="rep-section-title">Visão geral</div>
-    <div class="rep-kpis">
-      <div class="rep-kpi">
-        <div class="rep-kpi-n" style="color:var(--accent2)">${totalProjs}</div>
-        <div class="rep-kpi-l">Total de projetos</div>
+  <div class="panel" style="padding:14px 18px;margin-bottom:20px;background:rgba(10,16,33,0.5)">
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <span style="font-size:12px;font-weight:600;color:var(--text2)">🔍 Filtrar por período</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <label style="font-size:11px;color:var(--text3)">De:</label>
+        <input type="date" id="rep-filter-start" class="form-input" style="padding:5px 10px;font-size:12px;width:150px" value="${reportPeriodStart}">
       </div>
-      <div class="rep-kpi">
-        <div class="rep-kpi-n" style="color:var(--green)">${onTimeProjs}</div>
-        <div class="rep-kpi-l">Projetos no prazo</div>
-        <div class="rep-kpi-sub" style="color:var(--green)">${totalProjs>0?Math.round(onTimeProjs/totalProjs*100):0}%</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <label style="font-size:11px;color:var(--text3)">Até:</label>
+        <input type="date" id="rep-filter-end" class="form-input" style="padding:5px 10px;font-size:12px;width:150px" value="${reportPeriodEnd}">
       </div>
-      <div class="rep-kpi">
-        <div class="rep-kpi-n" style="color:var(--red)">${lateProjs}</div>
-        <div class="rep-kpi-l">Projetos atrasados</div>
-        <div class="rep-kpi-sub" style="color:var(--red)">${totalProjs>0?Math.round(lateProjs/totalProjs*100):0}%</div>
-      </div>
-      <div class="rep-kpi">
-        <div class="rep-kpi-n" style="color:var(--green)">${onTimeTasks}</div>
-        <div class="rep-kpi-l">Tarefas no prazo</div>
-        <div class="rep-kpi-sub" style="color:var(--green)">${totalTasks>0?Math.round(onTimeTasks/totalTasks*100):0}%</div>
-      </div>
-      <div class="rep-kpi">
-        <div class="rep-kpi-n" style="color:${scoreColor(avgScore)}">${avgScore}%</div>
-        <div class="rep-kpi-l">Score médio da equipe</div>
-        <div class="rep-kpi-sub" style="color:var(--text3)">${users.length} responsáveis</div>
-      </div>
+      <button class="btn btn-accent" onclick="applyReportFilter()" style="padding:6px 14px;font-size:12px">Filtrar</button>
+      ${isPeriodActive?`<button class="btn" onclick="clearReportFilter()" style="padding:6px 14px;font-size:12px">✕ Limpar</button><span style="font-size:11px;color:var(--accent2)">Mostrando ${totalProjs} de ${projects.length} projetos</span>`:''}
     </div>
   </div>
 
-  <!-- Ranking -->
+  <div class="rep-section">
+    <div class="rep-section-title">Visão geral${isPeriodActive?' · Período filtrado':''}</div>
+    <div class="rep-kpis" style="grid-template-columns:repeat(6,1fr)">
+      <div class="rep-kpi"><div class="rep-kpi-n" style="color:var(--accent2)">${totalProjs}</div><div class="rep-kpi-l">Total projetos</div></div>
+      <div class="rep-kpi"><div class="rep-kpi-n" style="color:var(--green)">${doneProjs}</div><div class="rep-kpi-l">Concluídos</div><div class="rep-kpi-sub" style="color:var(--green)">${totalProjs>0?Math.round(doneProjs/totalProjs*100):0}%</div></div>
+      <div class="rep-kpi"><div class="rep-kpi-n" style="color:var(--green)">${onTimeProjs}</div><div class="rep-kpi-l">No prazo</div><div class="rep-kpi-sub" style="color:var(--green)">${totalProjs>0?Math.round(onTimeProjs/totalProjs*100):0}%</div></div>
+      <div class="rep-kpi"><div class="rep-kpi-n" style="color:var(--red)">${lateProjs}</div><div class="rep-kpi-l">Atrasados</div><div class="rep-kpi-sub" style="color:var(--red)">${totalProjs>0?Math.round(lateProjs/totalProjs*100):0}%</div></div>
+      <div class="rep-kpi"><div class="rep-kpi-n" style="color:var(--green)">${onTimeTasks}</div><div class="rep-kpi-l">Tarefas no prazo</div><div class="rep-kpi-sub" style="color:var(--green)">${totalTasks>0?Math.round(onTimeTasks/totalTasks*100):0}%</div></div>
+      <div class="rep-kpi"><div class="rep-kpi-n" style="color:${scoreColor(avgScore)}">${avgScore}%</div><div class="rep-kpi-l">Score médio</div><div class="rep-kpi-sub" style="color:var(--text3)">${users.length} responsáveis</div></div>
+    </div>
+  </div>
+
+  ${completedProjs.length>0?`
+  <div class="rep-section">
+    <div class="rep-section-title">✅ Projetos concluídos (${completedProjs.length})</div>
+    <div class="panel" style="overflow:hidden">
+      <table class="rep-table">
+        <thead><tr><th>Projeto</th><th>Responsável</th><th>Depto</th><th>Início</th><th>Prazo</th><th>Tarefas</th><th>Status</th></tr></thead>
+        <tbody>${completedProjs.map(p=>{
+          const tasks=p.tasks||[];
+          const doneT=tasks.filter(t=>t.status==='done').length;
+          const late=isOverdue(p.end,true);
+          const col=late?'var(--red)':'var(--green)';
+          const av2=avColor(p.owner||'?');
+          return `<tr onclick="showDetail(${p.id})" style="cursor:pointer">
+            <td><div style="display:flex;align-items:center;gap:8px"><span style="width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0;display:inline-block"></span><span style="font-weight:600">${p.name}</span></div></td>
+            <td><div style="display:flex;align-items:center;gap:6px"><div class="avatar-sm" style="background:${av2.bg};color:${av2.text};width:22px;height:22px;font-size:9px">${initials(p.owner||'?')}</div><span style="color:var(--text2)">${p.owner||'—'}</span></div></td>
+            <td style="color:var(--text2)">${p.dept||'—'}</td>
+            <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${fmtDate(p.start)}</td>
+            <td style="font-family:var(--mono);font-size:11px;color:${col}">${fmtDate(p.end)}</td>
+            <td style="font-family:var(--mono);font-size:11px">${doneT}/${tasks.length}</td>
+            <td><span style="font-size:11px;font-weight:600;padding:2px 10px;border-radius:20px;background:${late?'rgba(255,95,95,0.12)':'rgba(52,201,126,0.12)'};color:${col}">${late?'⚠ Atrasado':'✓ No prazo'}</span></td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>
+    </div>
+  </div>`:''}
+
+  <!-- Ranking -->`;
+
+  html += `
   <div class="rep-section">
     <div class="rep-section-title">Ranking de desempenho</div>
     <div class="panel" style="overflow:hidden">
       <table class="rep-table">
-        <thead>
-          <tr>
-            <th style="width:40px">#</th>
-            <th>Responsável</th>
-            <th>Projetos no prazo</th>
-            <th>Tarefas no prazo</th>
-            <th>Score geral</th>
-            <th>Status</th>
-          </tr>
-        </thead>
+        <thead><tr><th style="width:40px">#</th><th>Responsável</th><th>Projetos no prazo</th><th>Tarefas no prazo</th><th>Score geral</th><th>Status</th></tr></thead>
         <tbody>
           ${users.map((u,i)=>`
           <tr>
             <td><span class="rep-rank ${i===0?'rep-rank-1':i===1?'rep-rank-2':i===2?'rep-rank-3':''}">${medal(i)||'#'+(i+1)}</span></td>
-            <td>
-              <div style="display:flex;align-items:center;gap:10px">
-                <div class="avatar-sm" style="background:${av(u.name).bg};color:${av(u.name).text};width:28px;height:28px;font-size:10px">${initials(u.name)}</div>
-                <div>
-                  <div style="font-weight:600;font-size:13px">${u.name}</div>
-                  <div style="font-size:11px;color:var(--text3)">${u.dept}</div>
-                </div>
-              </div>
-            </td>
-            <td>
-              <div style="display:flex;align-items:center;gap:8px">
-                <div style="font-size:12px;font-family:var(--mono);color:${scoreColor(u.projOnTimePct)}">${u.projOnTimePct}%</div>
-                <div style="flex:1;min-width:60px"><div class="rep-bar-wrap"><div class="rep-bar" style="width:${u.projOnTimePct}%;background:${barColor(u.projOnTimePct)}"></div></div></div>
-                <div style="font-size:11px;color:var(--text3)">${u.onTimeProjs}/${u.totalProjs}</div>
-              </div>
-            </td>
-            <td>
-              <div style="display:flex;align-items:center;gap:8px">
-                <div style="font-size:12px;font-family:var(--mono);color:${scoreColor(u.taskOnTimePct)}">${u.taskOnTimePct}%</div>
-                <div style="flex:1;min-width:60px"><div class="rep-bar-wrap"><div class="rep-bar" style="width:${u.taskOnTimePct}%;background:${barColor(u.taskOnTimePct)}"></div></div></div>
-                <div style="font-size:11px;color:var(--text3)">${u.onTimeTasks}/${u.totalTasks}</div>
-              </div>
-            </td>
-            <td>
-              <div style="font-size:18px;font-weight:700;font-family:var(--mono);color:${scoreColor(u.score)}">${u.score}%</div>
-            </td>
-            <td>
-              <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:${u.score>=80?'rgba(52,201,126,0.12)':u.score>=60?'rgba(245,166,35,0.12)':'rgba(255,95,95,0.12)'};color:${scoreColor(u.score)}">
-                ${u.score>=80?'✓ Em dia':u.score>=60?'⚠ Atenção':'✗ Crítico'}
-              </span>
-            </td>
+            <td><div style="display:flex;align-items:center;gap:10px"><div class="avatar-sm" style="background:${av(u.name).bg};color:${av(u.name).text};width:28px;height:28px;font-size:10px">${initials(u.name)}</div><div><div style="font-weight:600;font-size:13px">${u.name}</div><div style="font-size:11px;color:var(--text3)">${u.dept}</div></div></div></td>
+            <td><div style="display:flex;align-items:center;gap:8px"><div style="font-size:12px;font-family:var(--mono);color:${scoreColor(u.projOnTimePct)}">${u.projOnTimePct}%</div><div style="flex:1;min-width:60px"><div class="rep-bar-wrap"><div class="rep-bar" style="width:${u.projOnTimePct}%;background:${barColor(u.projOnTimePct)}"></div></div></div><div style="font-size:11px;color:var(--text3)">${u.onTimeProjs}/${u.totalProjs}</div></div></td>
+            <td><div style="display:flex;align-items:center;gap:8px"><div style="font-size:12px;font-family:var(--mono);color:${scoreColor(u.taskOnTimePct)}">${u.taskOnTimePct}%</div><div style="flex:1;min-width:60px"><div class="rep-bar-wrap"><div class="rep-bar" style="width:${u.taskOnTimePct}%;background:${barColor(u.taskOnTimePct)}"></div></div></div><div style="font-size:11px;color:var(--text3)">${u.onTimeTasks}/${u.totalTasks}</div></div></td>
+            <td><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:${scoreColor(u.score)}">${u.score}%</div></td>
+            <td><span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:${u.score>=80?'rgba(52,201,126,0.12)':u.score>=60?'rgba(245,166,35,0.12)':'rgba(255,95,95,0.12)'};color:${scoreColor(u.score)}">${u.score>=80?'✓ Em dia':u.score>=60?'⚠ Atenção':'✗ Crítico'}</span></td>
           </tr>`).join('')}
         </tbody>
       </table>
     </div>
   </div>
 
-  <!-- Cards por responsável -->
   <div class="rep-section">
     <div class="rep-section-title">Detalhamento por responsável</div>
     <div class="rep-users">
@@ -1288,28 +1287,16 @@ function renderReports(){
         <div class="rep-user-card">
           <div class="rep-user-head">
             <div class="rep-user-avatar" style="background:${av(u.name).bg};color:${av(u.name).text}">${initials(u.name)}</div>
-            <div>
-              <div class="rep-user-name">${u.name}</div>
-              <div class="rep-user-dept">${u.dept} · ${u.totalProjs} projeto${u.totalProjs!==1?'s':''} · ${u.totalTasks} tarefa${u.totalTasks!==1?'s':''}</div>
-            </div>
-            <div class="rep-user-score">
-              <div class="rep-score-num" style="color:${scoreColor(u.score)}">${u.score}%</div>
-              <div class="rep-score-label">score</div>
-            </div>
+            <div><div class="rep-user-name">${u.name}</div><div class="rep-user-dept">${u.dept} · ${u.totalProjs} projeto${u.totalProjs!==1?'s':''} · ${u.totalTasks} tarefa${u.totalTasks!==1?'s':''}</div></div>
+            <div class="rep-user-score"><div class="rep-score-num" style="color:${scoreColor(u.score)}">${u.score}%</div><div class="rep-score-label">score</div></div>
           </div>
           <div class="rep-user-body">
             <div class="rep-metric">
-              <div class="rep-metric-row">
-                <span class="rep-metric-label">📁 Projetos no prazo</span>
-                <span class="rep-metric-value" style="color:${scoreColor(u.projOnTimePct)}">${u.onTimeProjs}/${u.totalProjs} — ${u.projOnTimePct}%</span>
-              </div>
+              <div class="rep-metric-row"><span class="rep-metric-label">📁 Projetos no prazo</span><span class="rep-metric-value" style="color:${scoreColor(u.projOnTimePct)}">${u.onTimeProjs}/${u.totalProjs} — ${u.projOnTimePct}%</span></div>
               <div class="rep-bar-wrap"><div class="rep-bar" style="width:${u.projOnTimePct}%;background:${barColor(u.projOnTimePct)}"></div></div>
             </div>
             <div class="rep-metric">
-              <div class="rep-metric-row">
-                <span class="rep-metric-label">✅ Tarefas no prazo</span>
-                <span class="rep-metric-value" style="color:${scoreColor(u.taskOnTimePct)}">${u.onTimeTasks}/${u.totalTasks} — ${u.taskOnTimePct}%</span>
-              </div>
+              <div class="rep-metric-row"><span class="rep-metric-label">✅ Tarefas no prazo</span><span class="rep-metric-value" style="color:${scoreColor(u.taskOnTimePct)}">${u.onTimeTasks}/${u.totalTasks} — ${u.taskOnTimePct}%</span></div>
               <div class="rep-bar-wrap"><div class="rep-bar" style="width:${u.taskOnTimePct}%;background:${barColor(u.taskOnTimePct)}"></div></div>
             </div>
             ${u.lateProjs>0?`<div style="font-size:11px;color:var(--red);background:var(--red-bg);padding:6px 10px;border-radius:var(--r)">⚠ ${u.lateProjs} projeto${u.lateProjs>1?'s':''} com prazo ultrapassado</div>`:''}
@@ -1322,7 +1309,7 @@ function renderReports(){
           <div class="rep-user-tasks">
             ${recentTasks.map(t=>{
               const done=t.status==='done';
-              const late=isOverdue(t.due,done);
+              const late=!t.concludedFromWaiting&&isOverdue(t.due,done);
               const col=done?'var(--green)':late?'var(--red)':t.status==='waiting'?'#f5a623':t.status==='in_progress'?'#60a5fa':'#60a5fa';
               const statusLabel=done?'Concluída':late?'Atrasada':t.status==='waiting'?'⏸ Aguardando':t.status==='in_progress'?'🔄 Em andamento':'Pendente';
               const statusBg=done?'rgba(52,201,126,0.12)':late?'rgba(255,95,95,0.12)':t.status==='waiting'?'rgba(245,166,35,0.12)':'rgba(37,99,235,0.12)';
@@ -1344,7 +1331,6 @@ function renderReports(){
   </div>`;
 
   document.getElementById('reports-container').innerHTML = html;
-  // Render costs section (admin only)
   if(window.currentUserRole==='admin'){
     const costsDiv = document.createElement('div');
     costsDiv.id = 'rep-costs-section';
@@ -1352,6 +1338,7 @@ function renderReports(){
     renderReportsCosts();
   }
 }
+
 
 function renderReportsCosts(){
   if(window.currentUserRole !== 'admin') return;
