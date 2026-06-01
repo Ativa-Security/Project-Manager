@@ -308,6 +308,8 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
 .task-check.late { border-color: var(--red); }
 .task-check.waiting { border-color: var(--amber); background: rgba(245,166,35,0.1); }
 .task-check.waiting::after { content: '⏸'; font-size: 9px; }
+.task-check.in_progress { border-color: #60a5fa; background: rgba(37,99,235,0.12); }
+.task-check.in_progress::after { content: '↻'; font-size: 12px; color: #60a5fa; font-weight: 700; }
 .task-name { font-size: 13px; font-weight: 400; cursor: pointer; transition: color .15s; }
 .task-name.done-text { text-decoration: line-through; color: var(--text3); }
 .task-assignee { font-size: 11px; color: var(--text3); white-space: nowrap; }
@@ -948,6 +950,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
           <label class="form-label">Status</label>
           <select class="form-select" id="tm-status" onchange="onTaskStatusChange(this.value)">
             <option value="pending">Pendente</option>
+            <option value="in_progress">🔄 Em andamento</option>
             <option value="waiting">⏸ Aguardando</option>
             <option value="done">Concluída</option>
           </select>
@@ -1139,21 +1142,23 @@ function renderReports(){
     const lateProjs  = u.projs.filter(p=>isOverdue(p.end, p.status==='done')).length;
     const projOnTimePct = totalProjs>0 ? Math.round(onTimeProjs/totalProjs*100) : 100;
 
-    // Tasks — waiting tasks with reason are NOT counted as late (external blocker)
+    // Tasks — waiting tasks are excluded entirely from score (external blocker)
     const totalTasks = u.tasks.length;
     const doneTasks  = u.tasks.filter(t=>t.status==='done').length;
-    const waitingTasks = u.tasks.filter(t=>t.status==='waiting'&&t.waitingReason).length;
-    const lateTasks  = u.tasks.filter(t=>{
+    const waitingTasks = u.tasks.filter(t=>t.status==='waiting').length;
+    // Only count tasks that are not in waiting status
+    const scorableTasks = u.tasks.filter(t=>t.status!=='waiting');
+    const lateTasks = scorableTasks.filter(t=>{
       if(t.status==='done'){
+        if(t.concludedFromWaiting) return false; // was waiting → always on time
         if(!t.due) return false;
         const concludedDate = t.concluded || todayStr();
         return concludedDate > t.due;
       }
-      if(t.status==='waiting' && t.waitingReason) return false; // external blocker, not counted
       return isOverdue(t.due, false);
     }).length;
-    const onTimeTasks= totalTasks>0 ? totalTasks - lateTasks - waitingTasks : 0;
-    const taskOnTimePct = totalTasks>0 ? Math.round(onTimeTasks/totalTasks*100) : 100;
+    const onTimeTasks = scorableTasks.length - lateTasks;
+    const taskOnTimePct = scorableTasks.length>0 ? Math.round(onTimeTasks/scorableTasks.length*100) : 100;
 
     // Overall score (weighted)
     const score = totalProjs===0&&totalTasks===0 ? 0 :
@@ -1318,8 +1323,8 @@ function renderReports(){
             ${recentTasks.map(t=>{
               const done=t.status==='done';
               const late=isOverdue(t.due,done);
-              const col=done?'var(--green)':late?'var(--red)':t.status==='waiting'?'#f5a623':'#60a5fa';
-              const statusLabel=done?'Concluída':late?'Atrasada':t.status==='waiting'?'⏸ Aguardando':'Pendente';
+              const col=done?'var(--green)':late?'var(--red)':t.status==='waiting'?'#f5a623':t.status==='in_progress'?'#60a5fa':'#60a5fa';
+              const statusLabel=done?'Concluída':late?'Atrasada':t.status==='waiting'?'⏸ Aguardando':t.status==='in_progress'?'🔄 Em andamento':'Pendente';
               const statusBg=done?'rgba(52,201,126,0.12)':late?'rgba(255,95,95,0.12)':t.status==='waiting'?'rgba(245,166,35,0.12)':'rgba(37,99,235,0.12)';
               return `<div class="rep-task-mini" onclick="openProjFromReport(${t.projId},${t.id})" style="cursor:pointer;border-radius:var(--r);padding:6px 8px;margin:0 -8px;transition:background .15s" onmouseenter="this.style.background='var(--bg4)'" onmouseleave="this.style.background='transparent'">
                 <div class="rep-task-dot" style="background:${col}"></div>
@@ -1722,6 +1727,7 @@ function renderKanban(){
         const prog=getProg(p); const av=avColor(p.owner);
         const doneCnt=p.tasks?.filter(t=>t.status==='done').length||0;
         const waitCnt=p.tasks?.filter(t=>t.status==='waiting').length||0;
+        const inProgCnt=p.tasks?.filter(t=>t.status==='in_progress').length||0;
         const total=p.tasks?.length||0;
         const lateTasks=p.tasks?.filter(t=>isOverdue(t.due,t.status==='done'))||[];
         const projLate=isOverdue(p.end, p.status==='done');
@@ -1738,7 +1744,7 @@ function renderKanban(){
           <div class="progress-wrap"><div class="progress-fill" style="width:${prog}%;background:${STATUS[status].barColor}"></div></div>
           <div class="card-footer">
             <div class="card-date">Prazo final: ${p.end?new Date(p.end+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}):'—'}${projLate?' <span class="overdue-tag">Atrasado</span>':''}</div>
-            <div class="task-count">${doneCnt}/${total} tarefas${waitCnt>0?` · <span style="color:var(--amber)">⏸${waitCnt}</span>`:''}</div>
+            <div class="task-count">${doneCnt}/${total} tarefas${inProgCnt>0?` · <span style="color:#60a5fa">🔄${inProgCnt}</span>`:''}${waitCnt>0?` · <span style="color:var(--amber)">⏸${waitCnt}</span>`:''}</div>
           </div>
           ${(()=>{
             const hPrev = parseFloat(p.hoursPlanned)||0;
@@ -1869,14 +1875,16 @@ function renderTasks(){
     sorted.map(t=>{
       const done=t.status==='done';
       const waiting=t.status==='waiting';
+      const inProgress=t.status==='in_progress';
       const late=isOverdue(t.due,done||waiting);
       const soon=isSoon(t.due,done||waiting);
       const av=avColor(t.owner||'?');
       return `<div class="task-item" id="task-row-${t.id}">
-        <div class="task-check ${done?'done':waiting?'waiting':late?'late':''}" onclick="toggleTask(${t.id})" title="${done?'Marcar pendente':waiting?'Marcar concluída':'Marcar concluída'}"></div>
+        <div class="task-check ${done?'done':waiting?'waiting':inProgress?'in_progress':late?'late':''}" onclick="toggleTask(${t.id})" title="${done?'Marcar pendente':waiting?'Marcar concluída':inProgress?'Marcar concluída':'Marcar concluída'}"></div>
         <div>
           <div class="task-name ${done?'done-text':''}" onclick="openEditTaskModal(${t.id})" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
             ${late&&!done&&!waiting?lateTriangle('Tarefa atrasada'):''}
+            ${inProgress?`<span style="font-size:10px;font-weight:600;color:#60a5fa;background:rgba(37,99,235,0.12);padding:1px 6px;border-radius:10px">🔄 Em andamento</span>`:''}
             ${waiting?`<span style="font-size:10px;font-weight:600;color:var(--amber);background:rgba(245,166,35,0.12);padding:1px 6px;border-radius:10px">⏸ Aguardando</span>`:''}
             <span>${t.name}</span>
             ${t.waitingReason&&waiting?`<span style="font-size:10px;color:var(--amber);font-style:italic;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px" title="${t.waitingReason.replace(/"/g,'&quot;')}">${t.waitingReason.slice(0,32)}${t.waitingReason.length>32?'…':''}</span>`:''}
@@ -1896,9 +1904,17 @@ function renderTasks(){
 function toggleTask(id){
   const p=getProj(); if(!p) return;
   const t=p.tasks.find(x=>x.id===id); if(!t) return;
-  if(t.status==='done'){ t.status='pending'; t.concluded=''; }
-  else if(t.status==='waiting'){ t.status='done'; if(!t.concluded) t.concluded=todayStr(); }
-  else { t.status='done'; if(!t.concluded) t.concluded=todayStr(); }
+  if(t.status==='done'){
+    t.status='pending'; t.concluded=''; t.concludedFromWaiting=false;
+  } else if(t.status==='waiting'){
+    t.status='done';
+    t.concluded=todayStr();
+    t.concludedFromWaiting=true; // flag: was waiting → always on time
+  } else {
+    t.status='done';
+    if(!t.concluded) t.concluded=todayStr();
+    t.concludedFromWaiting=false;
+  }
   p.prog=getProg(p);
   if(window.saveProjectToFirebase) saveProjectToFirebase(p);
   renderDetail();
@@ -2020,9 +2036,9 @@ function openCalPopup(dateStr, anchorEl) {
     html += tasks.map(t => {
       const done = t.status==='done';
       const late = isOverdue(t.due, done);
-      const col = done ? '#34c97e' : t.status==='waiting' ? '#f5a623' : late ? '#ff5f5f' : '#60a5fa';
-      const statusLabel = done ? 'Concluída' : t.status==='waiting' ? '⏸ Aguardando' : late ? 'Atrasada' : 'Pendente';
-      const statusBg = done ? 'rgba(52,201,126,0.12)' : t.status==='waiting' ? 'rgba(245,166,35,0.12)' : late ? 'rgba(255,95,95,0.12)' : 'rgba(37,99,235,0.12)';
+      const col = done ? '#34c97e' : t.status==='waiting' ? '#f5a623' : t.status==='in_progress' ? '#60a5fa' : late ? '#ff5f5f' : '#60a5fa';
+      const statusLabel = done ? 'Concluída' : t.status==='waiting' ? '⏸ Aguardando' : t.status==='in_progress' ? '🔄 Em andamento' : late ? 'Atrasada' : 'Pendente';
+      const statusBg = done ? 'rgba(52,201,126,0.12)' : t.status==='waiting' ? 'rgba(245,166,35,0.12)' : t.status==='in_progress' ? 'rgba(37,99,235,0.12)' : late ? 'rgba(255,95,95,0.12)' : 'rgba(37,99,235,0.08)';
       return `<div class="cal-popup-item" onclick="closeCalPopup();scrollToTask(${t.id})" title="Ir para tarefa">
         <div class="cal-popup-dot" style="background:${col}"></div>
         <div class="cal-popup-name">${t.name}${t.obs?`<div style="font-size:10px;color:var(--text3);font-weight:400;margin-top:1px">${t.obs.slice(0,50)}${t.obs.length>50?'…':''}</div>`:''}</div>
@@ -2214,6 +2230,7 @@ function onTaskStatusChange(val){
     waitWrap.style.display = 'block';
     inp.value = '';
   } else {
+    // pending or in_progress
     wrap.style.display = 'none';
     waitWrap.style.display = 'none';
     inp.value = '';
