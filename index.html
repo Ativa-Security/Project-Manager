@@ -1175,8 +1175,27 @@ function loadSectorsIntoSelect(){
   if(!sel) return;
   const current = sel.value;
   sel.innerHTML = '<option value="">Selecione...</option>' +
-    getAllSectors().map(s=>`<option value="${s}">${s}</option>`).join('');
-  if(current) sel.value = current;
+    getAllSectors().map(s=>`<option value="${s}">${s}</option>`).join('') +
+    '<option value="__add_new__" style="color:var(--accent2);font-weight:600">+ Adicionar novo setor...</option>';
+  if(current && current !== '__add_new__') sel.value = current;
+
+  // Handle "add new" option selection
+  sel.onchange = function(){
+    if(this.value === '__add_new__'){
+      const name = prompt('Nome do novo setor:');
+      if(name && name.trim()){
+        const trimmed = name.trim();
+        if(!getAllSectors().map(s=>s.toLowerCase()).includes(trimmed.toLowerCase())){
+          customSectors.push(trimmed);
+          saveCustomSectors();
+        }
+        loadSectorsIntoSelect();
+        document.getElementById('pm-dept').value = trimmed;
+      } else {
+        this.value = current || '';
+      }
+    }
+  };
 }
 
 function saveCustomSectors(){
