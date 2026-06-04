@@ -2706,7 +2706,7 @@ function repPerformance(){
     </div>
     <div class="panel" style="padding:16px">
       <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px">Tarefas concluídas por pessoa</div>
-      ${svgHBar(users.map(u=>({label:u.name,value:u.dt,color:'#34c97e',label2:u.dt+'/'+u.tt})),{barH:22,gap:8,labelW:130})}
+      ${svgHBar(users.map(u=>({label:u.name,value:u.tt>0?Math.round(u.dt/u.tt*100):0,color:'#34c97e',label2:u.dt+'/'+u.tt})),{barH:22,gap:8,labelW:130,maxVal:100})}
     </div>
   </div>
 
