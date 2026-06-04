@@ -443,6 +443,7 @@ input,select,textarea{font-family:var(--font)}
           <option value="progress">Em andamento</option>
           <option value="review">Em revisão</option>
           <option value="done">Concluído</option>
+          <option value="done_caveat">⚠ Com ressalvas</option>
         </select>
         <select class="form-select" id="proj-filter-client" style="width:auto;padding:7px 12px;font-size:12px" onchange="renderProjects()">
           <option value="">Todos os clientes</option>
@@ -473,6 +474,7 @@ input,select,textarea{font-family:var(--font)}
       <div class="section-header"><div class="section-title">Relatórios</div></div>
       <div class="rep-tabs" id="rep-tabs">
         <div class="rep-tab active" onclick="switchReport('overview',this)">📊 Visão Geral</div>
+        <div class="rep-tab" onclick="switchReport('projects',this)">📋 Projetos</div>
         <div class="rep-tab" onclick="switchReport('financial',this)">💰 Financeiro — Projetos</div>
         <div class="rep-tab" onclick="switchReport('mrr',this)">📈 MRR</div>
         <div class="rep-tab" onclick="switchReport('performance',this)">🏆 Desempenho</div>
@@ -514,6 +516,17 @@ input,select,textarea{font-family:var(--font)}
         <div class="form-group"><label class="form-label">Responsável comercial</label><select class="form-select" id="c-owner"></select></div>
         <div class="form-group"><label class="form-label">E-mail de contato</label><input class="form-input" id="c-email" type="email" placeholder="contato@empresa.com"></div>
         <div class="form-group"><label class="form-label">Telefone</label><input class="form-input" id="c-phone" placeholder="(11) 99999-9999"></div>
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Contato no cliente</label><input class="form-input" id="c-contact" placeholder="Nome e cargo do contato (ex: João Silva — TI)"></div>
+        <div class="form-group"><label class="form-label">Índice de reajuste anual</label>
+          <select class="form-select" id="c-index">
+            <option value="">Não definido</option>
+            <option value="IGPM">IGPM</option>
+            <option value="IPCA">IPCA</option>
+            <option value="INPC">INPC</option>
+            <option value="Fixo">Percentual fixo</option>
+          </select>
+        </div>
+        <div class="form-group" id="c-index-fixed-wrap" style="display:none"><label class="form-label">Percentual fixo anual (%)</label><input class="form-input" id="c-index-fixed" type="number" min="0" step="0.1" placeholder="Ex: 5"></div>
       </div>
       <div class="form-group"><label class="form-label">Observações</label><textarea class="form-textarea" id="c-notes" rows="2" placeholder="Informações adicionais..."></textarea></div>
     </div>
@@ -535,19 +548,21 @@ input,select,textarea{font-family:var(--font)}
       <div class="form-grid">
         <div class="form-group" style="grid-column:1/-1"><label class="form-label">Nome do projeto *</label><input class="form-input" id="p-name" placeholder="Nome do projeto"></div>
         <div class="form-group"><label class="form-label">Cliente</label><select class="form-select" id="p-client"><option value="">Sem cliente vinculado</option></select></div>
-        <div class="form-group"><label class="form-label">Responsável</label><input class="form-input" id="p-owner" placeholder="Nome do responsável"></div>
+        <div class="form-group"><label class="form-label">Sponsor</label><input class="form-input" id="p-owner" placeholder="Nome do Sponsor"></div>
         <div class="form-group"><label class="form-label">Setor</label><select class="form-select" id="p-sector"><option value="">Selecione...</option></select></div>
         <div class="form-group"><label class="form-label">Status</label>
           <select class="form-select" id="p-status">
-            <option value="todo">A fazer</option><option value="progress">Em andamento</option><option value="review">Em revisão</option><option value="done">Concluído</option>
+            <option value="todo">A fazer</option><option value="progress">Em andamento</option><option value="review">Em revisão</option><option value="done">Concluído</option><option value="done_caveat">⚠ Concluído com ressalvas</option>
           </select>
         </div>
         <div class="form-group"><label class="form-label">Início</label><input class="form-input" id="p-start" type="date"></div>
         <div class="form-group"><label class="form-label">Prazo</label><input class="form-input" id="p-end" type="date"></div>
+        <div class="form-group" id="p-concluded-wrap" style="display:none"><label class="form-label">Data de conclusão</label><input class="form-input" id="p-concluded" type="date"></div>
+        <div class="form-group" id="p-caveat-wrap" style="display:none;grid-column:1/-1"><label class="form-label">Ressalvas / observações de conclusão</label><textarea class="form-textarea" id="p-caveat" rows="2" placeholder="Descreva as ressalvas ao finalizar o projeto..."></textarea></div>
         <div class="form-group admin-only"><label class="form-label">Valor proposta (R$)</label><input class="form-input" id="p-proposal" type="number" placeholder="0,00"></div>
-        <div class="form-group admin-only"><label class="form-label">Valor cotação (R$)</label><input class="form-input" id="p-quote" type="number" placeholder="0,00"></div>
+        <div class="form-group admin-only"><label class="form-label">Custo de horas estipuladas (R$)</label><input class="form-input" id="p-quote" type="number" placeholder="0,00"></div>
         <div class="form-group admin-only"><label class="form-label">Horas previstas</label><input class="form-input" id="p-hours" type="number" placeholder="0"></div>
-        <div class="form-group admin-only"><label class="form-label">Valor hora (R$)</label><input class="form-input" id="p-hourrate" type="number" placeholder="0,00"></div>
+        <div class="form-group admin-only"><label class="form-label">Custo hora (R$/h)</label><input class="form-input" id="p-hourrate" type="number" placeholder="0,00"></div>
         <div class="form-group admin-only" style="grid-column:1/-1;display:flex;align-items:center;gap:10px">
           <input type="checkbox" id="p-monthly" style="width:16px;height:16px">
           <label for="p-monthly" style="font-size:13px;cursor:pointer">Pagamento mensalizado</label>
@@ -595,6 +610,9 @@ input,select,textarea{font-family:var(--font)}
             <div class="form-group admin-only"><label class="form-label">Valor mensal — cliente paga (R$)</label><input class="form-input" id="l-monthly-proposal" type="number" placeholder="0,00"></div>
             <div class="form-group admin-only"><label class="form-label">Valor mensal — nosso custo (R$)</label><input class="form-input" id="l-monthly-quote" type="number" placeholder="0,00"></div>
             <div class="form-group"><label class="form-label">Horas de suporte incluídas/mês</label><input class="form-input" id="l-support-hours" type="number" placeholder="0"></div>
+            <div class="form-group admin-only"><label class="form-label">Proposta hora de suporte (R$)</label><input class="form-input" id="l-support-rate-client" type="number" placeholder="0,00" title="Valor que o cliente paga por hora excedente"></div>
+            <div class="form-group admin-only"><label class="form-label">Custo hora de suporte (R$)</label><input class="form-input" id="l-support-rate-cost" type="number" placeholder="0,00" title="Nosso custo por hora de suporte"></div>
+            <div class="form-group"><label class="form-label">Horas de suporte despendidas (acumulado)</label><input class="form-input" id="l-support-used" type="number" placeholder="0" step="0.5" title="Total de horas de suporte já utilizadas"></div>
           </div>
         </div>
         <div class="form-group admin-only"><label class="form-label">Vendedor</label><input class="form-input" id="l-seller" placeholder="Nome do vendedor"></div>
@@ -627,10 +645,11 @@ input,select,textarea{font-family:var(--font)}
           </select>
         </div>
         <div class="form-group"><label class="form-label">Prazo</label><input class="form-input" id="t-due" type="date"></div>
-        <div class="form-group"><label class="form-label">Horas previstas</label><input class="form-input" id="t-est" type="number" placeholder="0"></div>
+        <div class="form-group"><label class="form-label">Horas previstas — Tarefas</label><input class="form-input" id="t-est" type="number" placeholder="0"></div>
         <div class="form-group"><label class="form-label">Horas executadas</label><input class="form-input" id="t-done-h" type="number" placeholder="0"></div>
       </div>
       <div class="form-group" id="t-waiting-wrap" style="display:none"><label class="form-label">Motivo do aguardo</label><input class="form-input" id="t-waiting-reason" placeholder="Ex: Aguardando acesso do cliente"></div>
+      <div class="form-group" id="t-concluded-wrap" style="display:none"><label class="form-label">Data de conclusão</label><input class="form-input" id="t-concluded" type="date"></div>
       <div class="form-group" style="display:flex;align-items:center;gap:10px"><input type="checkbox" id="t-na" style="width:16px;height:16px"><label for="t-na" style="font-size:13px;cursor:pointer">Horas N/A (tarefa gerencial/comercial)</label></div>
     </div>
     <div class="modal-footer">
@@ -654,6 +673,66 @@ input,select,textarea{font-family:var(--font)}
 <!-- LICENSE DETAIL -->
 <div class="detail-overlay" id="lic-detail-overlay" onclick="if(event.target===this)closeDetail('lic-detail-overlay')">
   <div class="detail-panel" id="lic-detail-panel"></div>
+</div>
+
+<!-- RENEWAL MODAL -->
+<div class="modal-overlay" id="renewal-modal-overlay" onclick="if(event.target===this)closeModal('renewal-modal-overlay')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🔄 Renovar licenciamento</div>
+      <button class="modal-close" onclick="closeModal('renewal-modal-overlay')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:rgba(37,99,235,0.06);border:1px solid rgba(37,99,235,0.15);border-radius:var(--r);padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--text2)">
+        🔄 Será criado um <strong>novo licenciamento</strong> vinculado a este, mantendo histórico de renovações. Confirme as novas datas abaixo.
+      </div>
+      <div id="renewal-summary" style="background:var(--bg3);border-radius:var(--r);padding:12px 14px;margin-bottom:16px;font-size:13px"></div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label" style="color:var(--red)">Data de início * (obrigatório)</label>
+          <input class="form-input" id="ren-start" type="date" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="color:var(--red)">Data de vencimento * (obrigatório)</label>
+          <input class="form-input" id="ren-end" type="date" required>
+        </div>
+      </div>
+      <div class="form-group admin-only">
+        <label class="form-label">Atualizar valor proposta (R$) — deixe em branco para manter</label>
+        <input class="form-input" id="ren-proposal" type="number" placeholder="Mantém o valor atual">
+      </div>
+      <div class="form-group admin-only">
+        <label class="form-label">Atualizar valor cotação (R$) — deixe em branco para manter</label>
+        <input class="form-input" id="ren-quote" type="number" placeholder="Mantém o valor atual">
+      </div>
+      <div id="ren-monthly-fields" class="admin-only">
+        <div class="form-row" style="gap:12px">
+          <div class="form-group" style="flex:1"><label class="form-label">Novo MRR — cliente paga (R$)</label><input class="form-input" id="ren-monthly-proposal" type="number" placeholder="Mantém o atual"></div>
+          <div class="form-group" style="flex:1"><label class="form-label">Novo MRR — nosso custo (R$)</label><input class="form-input" id="ren-monthly-quote" type="number" placeholder="Mantém o atual"></div>
+        </div>
+      </div>
+      <div id="ren-error" style="font-size:12px;color:var(--red);display:none;margin-top:8px">Preencha as datas de início e vencimento.</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('renewal-modal-overlay')">Cancelar</button>
+      <button class="btn btn-accent" onclick="confirmRenewal()">🔄 Confirmar renovação</button>
+    </div>
+  </div>
+</div>
+
+<!-- STATUS REPORT MODAL -->
+<div class="modal-overlay" id="status-report-overlay" onclick="if(event.target===this)closeModal('status-report-overlay')">
+  <div class="modal" style="max-width:780px">
+    <div class="modal-header">
+      <div class="modal-title">📋 Status Report</div>
+      <button class="modal-close" onclick="closeModal('status-report-overlay')">✕</button>
+    </div>
+    <div class="modal-body" id="status-report-body" style="padding:0"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('status-report-overlay')">Fechar</button>
+      <button class="btn btn-accent" onclick="printStatusReport()">🖨 Imprimir / PDF</button>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -704,6 +783,7 @@ function fmtCurShort(v){ if(!v) return 'R$ 0'; const n=Number(v); if(n>=1000) re
 function todayStr(){ return new Date().toISOString().split('T')[0]; }
 function daysUntil(d){ if(!d) return null; return Math.ceil((new Date(d+'T12:00:00')-new Date())/(1000*3600*24)); }
 function isOverdue(d, isDone){ if(!d) return false; if(isDone) return false; return d < todayStr(); }
+function isDoneStatus(s){ return s==='done'||s==='done_caveat'; }
 
 function initials(n){ if(!n) return '?'; return n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2); }
 const AV_COLORS=[
@@ -714,7 +794,7 @@ const AV_COLORS=[
 function avColor(n){ if(!n) return AV_COLORS[0]; let h=0; for(let c of n) h=(h*31+c.charCodeAt(0))%AV_COLORS.length; return AV_COLORS[Math.abs(h)]; }
 
 function getProjStatusInfo(s){
-  return {todo:{label:'A fazer',color:'var(--gray)',bar:'#64748b'},progress:{label:'Em andamento',color:'var(--accent2)',bar:'#2563eb'},review:{label:'Em revisão',color:'var(--amber)',bar:'#f5a623'},done:{label:'Concluído',color:'var(--green)',bar:'#34c97e'}}[s]||{label:s,color:'var(--gray)',bar:'#64748b'};
+  return {todo:{label:'A fazer',color:'var(--gray)',bar:'#64748b'},progress:{label:'Em andamento',color:'var(--accent2)',bar:'#2563eb'},review:{label:'Em revisão',color:'var(--amber)',bar:'#f5a623'},done:{label:'Concluído',color:'var(--green)',bar:'#34c97e'},done_caveat:{label:'⚠ Com ressalvas',color:'var(--amber)',bar:'#f5a623',caveat:true}}[s]||{label:s,color:'var(--gray)',bar:'#64748b'};
 }
 function getLicStatus(l){
   const d = daysUntil(l.end);
@@ -912,8 +992,8 @@ function projectName(id){ const p=projects.find(x=>String(x.id)===String(id)); r
 // ══════════════════════════════════
 function renderDashboard(){
   const totalClients  = clients.length;
-  const activeProjs   = projects.filter(p=>p.status!=='done').length;
-  const doneProjs     = projects.filter(p=>p.status==='done').length;
+  const activeProjs   = projects.filter(p=>!isDoneStatus(p.status)).length;
+  const doneProjs     = projects.filter(p=>isDoneStatus(p.status)).length;
   const { critical, warning, expired } = getExpiryAlerts();
   const criticalCount = critical.length + expired.length;
   const allTasks      = projects.flatMap(p=>p.tasks||[]);
@@ -951,11 +1031,11 @@ function renderDashboard(){
   const recentProjs = [...projects].sort((a,b)=>(b.updatedAt||b.id)-(a.updatedAt||a.id)).slice(0,5);
   html+=`<div class="rep-section"><div class="rep-section-title">📋 Projetos recentes</div>
   <div class="panel" style="overflow:hidden"><table class="data-table">
-    <thead><tr><th>Projeto</th><th>Cliente</th><th>Responsável</th><th>Prazo</th><th>Status</th></tr></thead><tbody>
+    <thead><tr><th>Projeto</th><th>Cliente</th><th>Sponsor</th><th>Prazo</th><th>Status</th></tr></thead><tbody>
     ${recentProjs.length===0?`<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">Nenhum projeto cadastrado</td></tr>`:''}
     ${recentProjs.map(p=>{
       const st=getProjStatusInfo(p.status);
-      const late=isOverdue(p.end,p.status==='done');
+      const late=isOverdue(p.end,isDoneStatus(p.status));
       return `<tr onclick="openProjDetail(${p.id})" style="cursor:pointer">
         <td style="font-weight:600">${p.name}</td>
         <td style="color:var(--text2)">${clientName(p.clientId)}</td>
@@ -1004,8 +1084,8 @@ function renderClients(){
         <span class="badge badge-gray">📋 ${cProjs} projeto${cProjs!==1?'s':''}</span>
       </div>
       <div class="client-meta" style="margin-top:10px">
-        <div><div class="client-meta-item">Contato</div><div class="client-meta-val">${c.email||'—'}</div></div>
-        <div><div class="client-meta-item">Responsável</div><div class="client-meta-val">${c.owner||'—'}</div></div>
+        <div><div class="client-meta-item">Contato no cliente</div><div class="client-meta-val">${c.contact||c.email||'—'}</div></div>
+        <div><div class="client-meta-item">Responsável comercial</div><div class="client-meta-val">${c.owner||'—'}</div></div>
       </div>
     </div>`;
   }).join('');
@@ -1016,7 +1096,11 @@ function openClientModal(id=null){
   editingClientId = id;
   document.getElementById('client-modal-title').textContent = id?'Editar Cliente':'Novo Cliente';
   const c = id ? clients.find(x=>x.id===id) : null;
-  ['name','cnpj','email','phone','notes'].forEach(f=>{ document.getElementById('c-'+f).value=c?c[f]||'':''; });
+  ['name','cnpj','email','phone','contact','notes'].forEach(f=>{ document.getElementById('c-'+f).value=c?c[f]||'':''; });
+  document.getElementById('c-index').value=c?c.reajusteIndex||'':'';
+  document.getElementById('c-index-fixed').value=c?c.reajusteFixed||'':'';
+  document.getElementById('c-index-fixed-wrap').style.display=(c&&c.reajusteIndex==='Fixo')?'block':'none';
+  document.getElementById('c-index').onchange=function(){ document.getElementById('c-index-fixed-wrap').style.display=this.value==='Fixo'?'block':'none'; };
   loadClientModalSelects(c?c.segment||'':'', c?c.owner||'':'');
   openModal('client-modal-overlay');
 }
@@ -1030,6 +1114,9 @@ function saveClient(){
     owner:document.getElementById('c-owner').value.trim(),
     email:document.getElementById('c-email').value.trim(),
     phone:document.getElementById('c-phone').value.trim(),
+    contact:document.getElementById('c-contact').value.trim(),
+    reajusteIndex:document.getElementById('c-index').value,
+    reajusteFixed:parseFloat(document.getElementById('c-index-fixed').value)||0,
     notes:document.getElementById('c-notes').value.trim(),
     createdAt: editingClientId?(clients.find(x=>x.id===editingClientId)||{}).createdAt||Date.now():Date.now(),
   };
@@ -1045,7 +1132,14 @@ function openClientDetail(id){
   const cLics = licenses.filter(l=>String(l.clientId)===String(id));
   const cProjs= projects.filter(p=>String(p.clientId)===String(id));
   const av=avColor(c.name);
-  const mrrClient = cLics.filter(l=>l.monthly).reduce((s,l)=>s+(Number(l.monthlyProposal)||0),0);
+
+  // MRR calculation based on oldest license start
+  const monthlyLics = cLics.filter(l=>l.monthly&&l.start);
+  const mrrClient   = monthlyLics.reduce((s,l)=>s+(Number(l.monthlyProposal)||0),0);
+  const mrrCost     = monthlyLics.reduce((s,l)=>s+(Number(l.monthlyQuote)||0),0);
+  const oldestStart = monthlyLics.reduce((m,l)=>(!m||l.start<m)?l.start:m, null);
+  const monthsPaid  = oldestStart ? Math.max(1,Math.round((new Date()-new Date(oldestStart+'T12:00:00'))/(1000*3600*24*30))) : 0;
+  const totalRecurring = mrrClient * monthsPaid;
 
   let html=`<div class="detail-header">
     <div class="avatar" style="background:${av.bg};color:${av.text};width:44px;height:44px;font-size:15px">${initials(c.name)}</div>
@@ -1054,13 +1148,19 @@ function openClientDetail(id){
     <button onclick="closeDetail('client-detail-overlay')" style="color:var(--text3);font-size:20px;padding:4px 8px">✕</button>
   </div>
   <div class="detail-body">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
       <div><div class="form-label">Responsável comercial</div><div style="font-size:13px">${c.owner||'—'}</div></div>
+      <div><div class="form-label">Contato no cliente</div><div style="font-size:13px;font-weight:600">${c.contact||'—'}</div></div>
       <div><div class="form-label">E-mail</div><div style="font-size:13px">${c.email||'—'}</div></div>
       <div><div class="form-label">Telefone</div><div style="font-size:13px">${c.phone||'—'}</div></div>
-      ${isAdmin()?`<div><div class="form-label">MRR do cliente</div><div style="font-size:15px;font-weight:700;color:var(--green)">${fmtCur(mrrClient)}/mês</div></div>`:''}
+      ${c.reajusteIndex?`<div><div class="form-label">Índice de reajuste</div><div style="font-size:13px">${c.reajusteIndex}${c.reajusteFixed?' · '+c.reajusteFixed+'% a.a.':''}</div></div>`:''}
     </div>
-    ${c.notes?`<div style="background:var(--bg3);border-radius:var(--r);padding:12px;font-size:13px;color:var(--text2);margin-bottom:20px">${c.notes}</div>`:''}
+    ${isAdmin()&&mrrClient>0?`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+      <div class="stat-card" style="padding:12px"><div style="font-size:11px;color:var(--text3)">MRR do cliente</div><div style="font-size:17px;font-weight:700;color:var(--green)">${fmtCur(mrrClient)}/mês</div></div>
+      <div class="stat-card" style="padding:12px"><div style="font-size:11px;color:var(--text3)">Meses pagos</div><div style="font-size:17px;font-weight:700;color:var(--accent2)">${monthsPaid}m</div><div style="font-size:10px;color:var(--text3)">desde ${fmtDate(oldestStart)}</div></div>
+      <div class="stat-card" style="padding:12px"><div style="font-size:11px;color:var(--text3)">Receita recorrente total</div><div style="font-size:17px;font-weight:700;color:var(--green)">${fmtCur(totalRecurring)}</div></div>
+    </div>`:''}
+    ${c.notes?`<div style="background:var(--bg3);border-radius:var(--r);padding:12px;font-size:13px;color:var(--text2);margin-bottom:16px">${c.notes}</div>`:''}
 
     <div class="tabs">
       <div class="tab active" onclick="switchClientDetailTab('lics',this,${id})">🔑 Licenciamentos (${cLics.length})</div>
@@ -1140,7 +1240,7 @@ function renderProjects(){
   else el.innerHTML = renderProjList(filtered);
 }
 
-const STATUS_COLS = [{key:'todo',label:'A fazer'},{key:'progress',label:'Em andamento'},{key:'review',label:'Em revisão'},{key:'done',label:'Concluído'}];
+const STATUS_COLS = [{key:'todo',label:'A fazer'},{key:'progress',label:'Em andamento'},{key:'review',label:'Em revisão'},{key:'done',label:'Concluído'},{key:'done_caveat',label:'⚠ Com ressalvas'}];
 
 function renderKanban(projs){
   return `<div class="kanban">${STATUS_COLS.map(col=>{
@@ -1152,9 +1252,10 @@ function renderKanban(projs){
       ${colProjs.map(p=>{
         const tasks=p.tasks||[]; const done=tasks.filter(t=>t.status==='done').length;
         const pct=tasks.length?Math.round(done/tasks.length*100):0;
-        const late=isOverdue(p.end,p.status==='done');
+        const late=isOverdue(p.end,isDoneStatus(p.status));
         const av=avColor(p.owner||'');
-        return `<div class="kanban-card" onclick="openProjDetail(${p.id})">
+        const isCaveat=p.status==='done_caveat';
+        return `<div class="kanban-card" onclick="openProjDetail(${p.id})" style="${isCaveat?'border:2px solid var(--amber);background:rgba(245,166,35,0.06)':''}">
           <div style="font-weight:600;font-size:13px;margin-bottom:6px">${p.name}</div>
           ${p.clientId?`<div style="font-size:11px;color:var(--accent2);margin-bottom:6px">🏢 ${clientName(p.clientId)}</div>`:''}
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
@@ -1167,6 +1268,8 @@ function renderKanban(projs){
             <span style="font-size:11px;font-family:var(--mono);color:${late?'var(--red)':'var(--text3)'}">${fmtDate(p.end)}</span>
             ${late?`<span class="badge badge-red" style="font-size:10px">Atrasado</span>`:''}
           </div>
+          ${isCaveat?`<div style="margin-top:6px;padding:4px 8px;background:rgba(245,166,35,0.12);border:1px solid rgba(245,166,35,0.35);border-radius:6px;font-size:10px;font-weight:700;color:var(--amber);display:flex;align-items:center;gap:4px">⚠️ Concluído com ressalvas</div>`:''}
+          ${isDoneStatus(p.status)&&p.concludedDate?`<div style="font-size:10px;color:var(--text3);margin-top:4px">✓ Concluído em ${fmtDate(p.concludedDate)}</div>`:''}
         </div>`;
       }).join('')}
     </div>`;
@@ -1176,17 +1279,19 @@ function renderKanban(projs){
 function renderProjList(projs){
   if(projs.length===0) return `<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">Nenhum projeto encontrado</div></div>`;
   return `<div class="panel" style="overflow:hidden"><table class="data-table">
-    <thead><tr><th>Projeto</th><th>Cliente</th><th>Responsável</th><th>Início</th><th>Prazo</th><th>Tarefas</th><th>Status</th></tr></thead>
+    <thead><tr><th>Projeto</th><th>Cliente</th><th>Sponsor</th><th>Início</th><th>Prazo</th><th>Conclusão</th><th>Tarefas</th><th>Status</th></tr></thead>
     <tbody>${projs.map(p=>{
       const st=getProjStatusInfo(p.status);
       const tasks=p.tasks||[]; const done=tasks.filter(t=>t.status==='done').length;
-      const late=isOverdue(p.end,p.status==='done');
-      return `<tr onclick="openProjDetail(${p.id})" style="cursor:pointer">
+      const late=isOverdue(p.end,isDoneStatus(p.status));
+      const isCaveat=p.status==='done_caveat';
+      return `<tr onclick="openProjDetail(${p.id})" style="cursor:pointer${isCaveat?';background:rgba(245,166,35,0.05)':''}">
         <td style="font-weight:600">${p.name}</td>
         <td style="color:var(--text2)">${clientName(p.clientId)}</td>
         <td style="color:var(--text2)">${p.owner||'—'}</td>
         <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${fmtDate(p.start)}</td>
         <td style="font-family:var(--mono);font-size:11px;color:${late?'var(--red)':'var(--text2)'}">${fmtDate(p.end)}</td>
+        <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${p.concludedDate?fmtDate(p.concludedDate):'—'}</td>
         <td style="font-size:12px">${done}/${tasks.length}</td>
         <td><span class="badge" style="background:${st.bar}20;color:${st.color}">${st.label}</span></td>
       </tr>`;
@@ -1270,7 +1375,18 @@ function openProjectModal(id=null){
   ['name','owner','desc'].forEach(f=>document.getElementById('p-'+f).value=p?p[f]||'':'');
   document.getElementById('p-start').value=p?p.start||'':'';
   document.getElementById('p-end').value=p?p.end||'':'';
-  document.getElementById('p-status').value=p?p.status||'todo':'todo';
+  document.getElementById('p-concluded').value=p?p.concludedDate||'':'';
+  document.getElementById('p-caveat').value=p?p.caveat||'':'';
+  const pStatus = p?p.status||'todo':'todo';
+  document.getElementById('p-status').value = pStatus;
+  // Show/hide conclusion date and caveat based on status
+  function toggleProjStatusFields(s){
+    const isDone = s==='done'||s==='done_caveat';
+    document.getElementById('p-concluded-wrap').style.display = isDone?'block':'none';
+    document.getElementById('p-caveat-wrap').style.display    = s==='done_caveat'?'block':'none';
+  }
+  toggleProjStatusFields(pStatus);
+  document.getElementById('p-status').onchange = function(){ toggleProjStatusFields(this.value); };
   if(isAdmin()){
     ['proposal','quote','hours','hourrate'].forEach(f=>document.getElementById('p-'+f).value=p?p[f]||'':'');
     const m=p?p.monthly||false:false;
@@ -1297,6 +1413,8 @@ function saveProject(){
     start:document.getElementById('p-start').value,
     end:document.getElementById('p-end').value,
     status:document.getElementById('p-status').value,
+    concludedDate:['done','done_caveat'].includes(document.getElementById('p-status').value)?document.getElementById('p-concluded').value||todayStr():'',
+    caveat:document.getElementById('p-caveat').value.trim(),
     clientId:document.getElementById('p-client').value||null,
     sector:document.getElementById('p-sector').value,
     monthly,
@@ -1343,7 +1461,9 @@ function renderProjDetail(){
   const pct=tasks.length?Math.round(done/tasks.length*100):0;
   const totalEst=tasks.filter(t=>!t.na).reduce((s,t)=>s+(Number(t.estimated)||0),0);
   const totalDone=tasks.filter(t=>!t.na).reduce((s,t)=>s+(Number(t.doneHours)||0),0);
-  const late=isOverdue(p.end,p.status==='done');
+  const late=isOverdue(p.end,isDoneStatus(p.status));
+  const isCaveat=p.status==='done_caveat';
+  const isDone=isDoneStatus(p.status);
   const proposal=Number(p.proposal)||0;
   const quote=Number(p.quote)||0;
   const margin=proposal-quote;
@@ -1358,14 +1478,23 @@ function renderProjDetail(){
         <span class="badge" style="background:${st.bar}20;color:${st.color}">${st.label}</span>
         ${p.clientId?`<span class="badge badge-blue">🏢 ${clientName(p.clientId)}</span>`:''}
         ${late?`<span class="badge badge-red">⚠ Atrasado</span>`:''}
+        ${isDone&&p.concludedDate?`<span class="badge badge-gray">✓ Concluído em ${fmtDate(p.concludedDate)}</span>`:''}
       </div>
     </div>
     <button class="btn btn-ghost btn-sm" onclick="openProjectModal(${p.id})">✏️ Editar</button>
+    <button class="btn btn-ghost btn-sm" onclick="openStatusReport(${p.id})">📋 Status Report</button>
     <button onclick="closeDetail('proj-detail-overlay')" style="color:var(--text3);font-size:20px;padding:4px 8px">✕</button>
   </div>
+  ${isCaveat?`<div style="margin:0 24px 16px;padding:10px 14px;background:rgba(245,166,35,0.1);border:2px solid rgba(245,166,35,0.5);border-radius:var(--r2);display:flex;align-items:flex-start;gap:10px">
+    <span style="font-size:20px">⚠️</span>
+    <div>
+      <div style="font-size:13px;font-weight:700;color:var(--amber)">Concluído com ressalvas</div>
+      ${p.caveat?`<div style="font-size:12px;color:var(--text2);margin-top:4px">${p.caveat}</div>`:''}
+    </div>
+  </div>`:''}
   <div class="detail-body">
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px">
-      <div class="stat-card" style="padding:12px"><div style="font-size:11px;color:var(--text3)">Responsável</div><div style="font-size:13px;font-weight:600;margin-top:2px">${p.owner||'—'}</div></div>
+      <div class="stat-card" style="padding:12px"><div style="font-size:11px;color:var(--text3)">Sponsor</div><div style="font-size:13px;font-weight:600;margin-top:2px">${p.owner||'—'}</div></div>
       <div class="stat-card" style="padding:12px"><div style="font-size:11px;color:var(--text3)">Prazo</div><div style="font-size:13px;font-weight:600;margin-top:2px;color:${late?'var(--red)':'var(--text)'}">${fmtDate(p.end)}</div></div>
       <div class="stat-card" style="padding:12px"><div style="font-size:11px;color:var(--text3)">Progresso</div><div style="font-size:13px;font-weight:600;margin-top:2px">${pct}% (${done}/${tasks.length})</div></div>
     </div>`;
@@ -1402,7 +1531,7 @@ function renderProjDetail(){
           <div class="task-dot" style="background:${tLate?'var(--red)':grp.color}"></div>
           <div style="flex:1;min-width:0">
             <div style="font-size:13px;font-weight:500;${t.status==='done'?'text-decoration:line-through;color:var(--text3)':''}">${t.name}</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:2px">${t.owner?'👤 '+t.owner+' · ':''} ${t.due?'📅 '+fmtDate(t.due):''}${t.waitingReason?' · ⏸ '+t.waitingReason:''}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">${t.owner?'👤 '+t.owner+' · ':''} ${t.due?'📅 '+fmtDate(t.due):''}${t.waitingReason?' · ⏸ '+t.waitingReason:''}${t.status==='done'&&t.concludedDate?' · ✓ '+fmtDate(t.concludedDate):''}</div>
           </div>
           ${!t.na&&(t.estimated||t.doneHours)?`<div style="font-size:11px;font-family:var(--mono);color:var(--text3)">${t.doneHours||0}/${t.estimated||0}h</div>`:''}
           ${tLate?`<span class="badge badge-red" style="font-size:10px">Atrasado</span>`:''}
@@ -1413,34 +1542,126 @@ function renderProjDetail(){
   }
 
   if(detailTab==='costs' && isAdmin()){
-    const monthly=p.monthly;
-    html+=`<div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
+    const hrsProject  = Number(p.hours)||0;
+    const hrsTasksEst = tasks.filter(t=>!t.na).reduce((s,t)=>s+(Number(t.estimated)||0),0);
+    const hrsDone     = tasks.filter(t=>!t.na).reduce((s,t)=>s+(Number(t.doneHours)||0),0);
+    const hr          = Number(p.hourrate)||0;
+    const custoPrevisto = Number(p.quote)||0;
+    const custoHoras  = hr * hrsDone;
+    const extras      = (p.extras||[]).reduce((s,e)=>s+(Number(e.value)||0),0);
+    const custoTotal  = custoHoras + extras;
+    const margem      = proposal - custoPrevisto;
+    const margemPct   = proposal>0?Math.round((margem/proposal)*100):0;
+    const margemReal  = proposal - custoTotal;
+    const overHours   = hrsDone > hrsProject && hrsProject > 0;
+    const monthly     = p.monthly;
+
+    html+=`
+    <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Valores fixos do projeto</div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px">
       <div class="kpi-card"><div class="kpi-n" style="color:var(--green)">${fmtCur(proposal)}</div><div class="kpi-l">Proposta (cliente paga)</div></div>
-      <div class="kpi-card"><div class="kpi-n" style="color:var(--amber)">${fmtCur(quote)}</div><div class="kpi-l">Cotação (nosso custo)</div></div>
-      <div class="kpi-card"><div class="kpi-n" style="color:${margin>=0?'var(--green)':'var(--red)'}">${fmtCur(margin)}</div><div class="kpi-l">Margem bruta · ${marginPct}%</div></div>
+      <div class="kpi-card"><div class="kpi-n" style="color:var(--amber)">${fmtCur(custoPrevisto)}</div><div class="kpi-l">Custo Previsto</div></div>
+      <div class="kpi-card"><div class="kpi-n" style="color:${margem>=0?'var(--green)':'var(--red)'}">${fmtCur(margem)} <span style="font-size:13px">(${margemPct}%)</span></div><div class="kpi-l">Margem Bruta</div></div>
+      <div class="kpi-card"><div class="kpi-n" style="color:${overHours?'var(--red)':'var(--text2)'}">${hrsProject}h</div><div class="kpi-l">Horas previstas — Projeto</div></div>
     </div>
-    <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-top:12px">
-      <div class="kpi-card"><div class="kpi-n" style="color:var(--text2)">${totalEst}h</div><div class="kpi-l">Horas previstas</div></div>
-      <div class="kpi-card"><div class="kpi-n" style="color:var(--text2)">${totalDone}h</div><div class="kpi-l">Horas executadas</div></div>
-      <div class="kpi-card"><div class="kpi-n" style="color:var(--amber)">${fmtCur(hourCost)}</div><div class="kpi-l">Custo de horas (${fmtCur(p.hourrate)}/h)</div></div>
+
+    <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Valores variáveis (execução)</div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px">
+      <div class="kpi-card"><div class="kpi-n" style="color:var(--text2)">${hrsTasksEst}h</div><div class="kpi-l">Horas previstas — Tarefas</div></div>
+      <div class="kpi-card">
+        <div class="kpi-n" style="color:${overHours?'var(--red)':'var(--text2)'}">${hrsDone}h</div>
+        <div class="kpi-l">Horas executadas</div>
+        ${hrsProject>0?`<div class="kpi-sub" style="color:${overHours?'var(--red)':'var(--green)'}">
+          ${overHours?`▲ +${hrsDone-hrsProject}h acima`:`▾ ${hrsProject-hrsDone}h restantes`}
+        </div>`:''}
+      </div>
+      <div class="kpi-card"><div class="kpi-n" style="color:var(--amber)">${fmtCur(custoHoras)}</div><div class="kpi-l">Custo de horas ${hr?`(${fmtCur(hr)}/h)`:''}</div></div>
+      <div class="kpi-card"><div class="kpi-n" style="color:${margemReal>=0?'var(--green)':'var(--red)'}">${fmtCur(margemReal)}</div><div class="kpi-l">Margem real</div></div>
     </div>
-    <div class="kpi-grid" style="grid-template-columns:1fr 1fr;margin-top:12px">
-      <div class="kpi-card"><div class="kpi-n" style="color:var(--red)">${fmtCur(totalCost)}</div><div class="kpi-l">Custo total (cotação + horas)</div></div>
-      <div class="kpi-card"><div class="kpi-n" style="color:${proposal-totalCost>=0?'var(--green)':'var(--red)'}">${fmtCur(proposal-totalCost)}</div><div class="kpi-l">Margem real</div></div>
-    </div>
-    ${monthly?`<div class="panel" style="padding:14px;margin-top:16px">
+
+    ${hrsProject>0?`<div style="margin-bottom:18px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:5px">
+        <span>⏱ Consumo de horas</span>
+        <span style="font-family:var(--mono)">${hrsDone}h / ${hrsProject}h (${Math.min(200,hrsProject>0?Math.round(hrsDone/hrsProject*100):0)}%)</span>
+      </div>
+      <div class="progress-bar" style="height:10px">
+        <div class="progress-fill" style="width:${Math.min(100,hrsProject>0?Math.round(hrsDone/hrsProject*100):0)}%;background:${overHours?'var(--red)':hrsDone/hrsProject>.8?'var(--amber)':'var(--green)'}"></div>
+      </div>
+    </div>`:''}
+
+    ${monthly?`<div class="panel" style="padding:14px;margin-bottom:18px">
       <div style="font-size:12px;font-weight:600;color:var(--accent2);margin-bottom:8px">📅 Pagamento Mensalizado</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
         <div><div style="font-size:11px;color:var(--text3)">Mensalidade (cliente)</div><div style="font-size:14px;font-weight:700;color:var(--green)">${fmtCur(p.monthlyProposal)}</div></div>
         <div><div style="font-size:11px;color:var(--text3)">Horas suporte/mês</div><div style="font-size:14px;font-weight:700">${p.supportHours||0}h</div></div>
         <div><div style="font-size:11px;color:var(--text3)">Receita anual</div><div style="font-size:14px;font-weight:700;color:var(--green)">${fmtCur((Number(p.monthlyProposal)||0)*12)}</div></div>
       </div>
-    </div>`:''} `;
+    </div>`:''}
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="font-size:13px;font-weight:600">📦 Custos adicionais</div>
+      <button class="btn btn-ghost btn-sm" onclick="addExtra(${p.id})">+ Adicionar</button>
+    </div>
+    <div class="panel" style="overflow:hidden;margin-bottom:18px">
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr>
+          <th style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;padding:8px 14px;text-align:left;border-bottom:1px solid var(--border)">Descrição</th>
+          <th style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;padding:8px 14px;text-align:left;border-bottom:1px solid var(--border)">Categoria</th>
+          <th style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;padding:8px 14px;text-align:right;border-bottom:1px solid var(--border)">Valor</th>
+          <th style="border-bottom:1px solid var(--border);width:40px"></th>
+        </tr></thead>
+        <tbody id="extras-tbody-${p.id}">
+          ${(p.extras||[]).length===0
+            ?`<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:16px;font-size:12px">Nenhum custo adicional</td></tr>`
+            :(p.extras||[]).map((e,i)=>`<tr>
+              <td style="padding:8px 14px;border-bottom:1px solid var(--border)"><input class="form-input" style="padding:4px 8px;font-size:12px" value="${e.desc||''}" placeholder="Descrição..." onchange="updateExtra(${p.id},${i},'desc',this.value)"></td>
+              <td style="padding:8px 14px;border-bottom:1px solid var(--border)">
+                <select class="form-select" style="padding:4px 8px;font-size:12px;width:auto" onchange="updateExtra(${p.id},${i},'cat',this.value)">
+                  ${['Km','Pedágio','Hospedagem','Alimentação','Licença/Software','Infraestrutura','Outros'].map(c=>`<option value="${c}" ${e.cat===c?'selected':''}>${c}</option>`).join('')}
+                </select>
+              </td>
+              <td style="padding:8px 14px;border-bottom:1px solid var(--border)"><input class="form-input" type="number" style="padding:4px 8px;font-size:12px;text-align:right;width:120px" value="${e.value||''}" placeholder="0,00" onchange="updateExtra(${p.id},${i},'value',this.value)"></td>
+              <td style="padding:6px;border-bottom:1px solid var(--border)"><button class="btn btn-danger btn-sm" onclick="removeExtra(${p.id},${i})" style="padding:3px 8px">✕</button></td>
+            </tr>`).join('')}
+        </tbody>
+        <tfoot><tr>
+          <td colspan="2" style="padding:8px 14px;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;border-top:2px solid var(--border2)">Total adicional</td>
+          <td style="padding:8px 14px;font-family:var(--mono);font-size:13px;font-weight:700;color:var(--amber);text-align:right;border-top:2px solid var(--border2)">${fmtCur(extras)}</td>
+          <td style="border-top:2px solid var(--border2)"></td>
+        </tr></tfoot>
+      </table>
+    </div>
+
+    <div style="background:rgba(37,99,235,0.06);border:1px solid rgba(37,99,235,0.15);border-radius:var(--r2);padding:14px 18px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+      <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;font-weight:600">Custo de horas</div><div style="font-size:18px;font-weight:700;color:var(--amber);font-family:var(--mono)">${fmtCur(custoHoras)}</div></div>
+      <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;font-weight:600">Custos adicionais</div><div style="font-size:18px;font-weight:700;color:var(--amber);font-family:var(--mono)">${fmtCur(extras)}</div></div>
+      <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;font-weight:600">Custo total executado</div><div style="font-size:18px;font-weight:700;color:${custoTotal>proposal?'var(--red)':'var(--green)'};font-family:var(--mono)">${fmtCur(custoTotal)}</div></div>
+    </div>`;
   }
 
   html+=`</div>`;
   document.getElementById('proj-detail-panel').innerHTML=html;
 }
+
+// ── Extra costs helpers ──
+window.addExtra=function(projId){
+  const p=projects.find(x=>x.id===projId); if(!p) return;
+  if(!p.extras) p.extras=[];
+  p.extras.push({desc:'',cat:'Outros',value:0});
+  if(window.saveToFirebase) saveToFirebase('projects',String(p.id),p);
+  renderProjDetail();
+};
+window.updateExtra=function(projId,idx,field,val){
+  const p=projects.find(x=>x.id===projId); if(!p||!p.extras?.[idx]) return;
+  p.extras[idx][field]=field==='value'?Number(val)||0:val;
+  if(window.saveToFirebase) saveToFirebase('projects',String(p.id),p);
+};
+window.removeExtra=function(projId,idx){
+  const p=projects.find(x=>x.id===projId); if(!p) return;
+  p.extras.splice(idx,1);
+  if(window.saveToFirebase) saveToFirebase('projects',String(p.id),p);
+  renderProjDetail();
+};
 
 // TASKS
 let editingTaskProjId=null, editingTaskId=null;
@@ -1457,8 +1678,14 @@ function openTaskModal(projId, taskId){
   document.getElementById('t-done-h').value=t?t.doneHours||'':'';
   document.getElementById('t-na').checked=t?t.na||false:false;
   document.getElementById('t-waiting-reason').value=t?t.waitingReason||'':'';
+  document.getElementById('t-concluded').value=t?t.concludedDate||'':'';
+  document.getElementById('t-concluded-wrap').style.display=(t&&t.status==='done')?'block':'none';
   document.getElementById('t-waiting-wrap').style.display=(t&&t.status==='waiting')?'block':'none';
-  document.getElementById('t-status').onchange=function(){ document.getElementById('t-waiting-wrap').style.display=this.value==='waiting'?'block':'none'; };
+  document.getElementById('t-status').onchange=function(){
+    document.getElementById('t-waiting-wrap').style.display=this.value==='waiting'?'block':'none';
+    document.getElementById('t-concluded-wrap').style.display=this.value==='done'?'block':'none';
+    if(this.value==='done'&&!document.getElementById('t-concluded').value) document.getElementById('t-concluded').value=todayStr();
+  };
   openModal('task-modal-overlay');
 }
 
@@ -1477,6 +1704,7 @@ function saveTask(){
     na:document.getElementById('t-na').checked,
     waitingReason:status==='waiting'?document.getElementById('t-waiting-reason').value.trim():'',
     concludedFromWaiting:editingTaskId?((p.tasks.find(x=>x.id===editingTaskId)||{}).status==='waiting'&&status==='done'):false,
+    concludedDate:status==='done'?document.getElementById('t-concluded').value||todayStr():'',
   };
   if(editingTaskId){ const i=p.tasks.findIndex(x=>x.id===editingTaskId); p.tasks[i]=data; }
   else p.tasks.push(data);
@@ -1541,7 +1769,9 @@ function renderLicCard(l, compact){
     <div style="font-size:12px;color:var(--accent2);margin-bottom:8px">🏢 ${clientName(l.clientId)}</div>
     <div style="display:flex;gap:12px;font-size:11px;color:var(--text3);margin-bottom:8px;flex-wrap:wrap">
       <span>📅 ${fmtDate(l.start)} → ${fmtDate(l.end)}</span>
-      ${l.monthly&&isAdmin()?`<span style="color:var(--green)">💰 ${fmtCur(l.monthlyProposal)}/mês</span>`:''}
+      ${l.parentId?`<span style="font-size:10px;font-weight:600;color:var(--accent2);background:rgba(37,99,235,0.1);padding:2px 7px;border-radius:10px">🔄 Renovação</span>`:''}
+    ${licenses.some(x=>x.parentId===l.id)?`<span style="font-size:10px;font-weight:600;color:var(--green);background:var(--green-bg);padding:2px 7px;border-radius:10px">✓ Renovado</span>`:''}
+    ${l.monthly&&isAdmin()?`<span style="color:var(--green)">💰 ${fmtCur(l.monthlyProposal)}/mês</span>`:''}
       ${l.supportHours?`<span>🛠 ${l.supportHours}h/mês</span>`:''}
     </div>
     <div class="lic-progress-bar"><div style="height:100%;border-radius:3px;width:${prog}%;background:${progColor};transition:width .3s"></div></div>
@@ -1562,6 +1792,11 @@ function openLicenseModal(id=null){
     ['proposal','quote'].forEach(f=>document.getElementById('l-'+f).value=l?l[f]||'':'');
     ['monthly-proposal','monthly-quote'].forEach(f=>document.getElementById('l-'+f).value=l?l[f.replace('-','')]||'':'');
     document.getElementById('l-support-hours').value=l?l.supportHours||'':'';
+  if(isAdmin()){
+    document.getElementById('l-support-rate-client').value=l?l.supportRateClient||'':'';
+    document.getElementById('l-support-rate-cost').value=l?l.supportRateCost||'':'';
+  }
+  document.getElementById('l-support-used').value=l?l.supportUsed||'':'';
   }
   const m=l?l.monthly||false:false;
   document.getElementById('l-monthly').checked=m;
@@ -1588,7 +1823,10 @@ function saveLicense(){
     seller:document.getElementById('l-seller').value.trim(),
     notes:document.getElementById('l-notes').value.trim(),
     monthly,
-    supportHours:document.getElementById('l-support-hours').value,
+    supportHours:parseFloat(document.getElementById('l-support-hours').value)||0,
+    supportRateClient:parseFloat(document.getElementById('l-support-rate-client').value)||0,
+    supportRateCost:parseFloat(document.getElementById('l-support-rate-cost').value)||0,
+    supportUsed:parseFloat(document.getElementById('l-support-used').value)||0,
     ...(isAdmin()?{
       proposal:document.getElementById('l-proposal').value,
       quote:document.getElementById('l-quote').value,
@@ -1658,6 +1896,7 @@ function openLicDetail(id){
       </div>
     </div>
     <button class="btn btn-ghost btn-sm" onclick="openLicenseModal(${l.id})">✏️ Editar</button>
+    <button class="btn btn-accent btn-sm" onclick="openRenewalModal(${l.id})">🔄 Renovar</button>
     <button onclick="closeDetail('lic-detail-overlay')" style="color:var(--text3);font-size:20px;padding:4px 8px">✕</button>
   </div>
   <div class="detail-body">
@@ -1672,13 +1911,28 @@ function openLicDetail(id){
       <div class="progress-bar" style="height:8px"><div style="height:100%;border-radius:4px;width:${prog}%;background:${progColor}"></div></div>
     </div>
     ${l.seller?`<div style="font-size:12px;color:var(--text3);margin-bottom:16px">🧑‍💼 Vendedor: <strong style="color:var(--text2)">${l.seller}</strong></div>`:''}
-    ${l.supportHours?`<div style="font-size:12px;color:var(--text3);margin-bottom:16px">🛠 Suporte incluso: <strong style="color:var(--text2)">${l.supportHours}h/mês</strong></div>`:''}`;
+    ${l.supportHours||l.supportRateClient||l.supportUsed?`
+    <div class="rep-section"><div class="rep-section-title">🛠 Suporte técnico</div>
+      <div class="kpi-grid" style="grid-template-columns:repeat(${isAdmin()?4:2},1fr)">
+        <div class="kpi-card"><div class="kpi-n" style="color:var(--accent2)">${l.supportHours||0}h</div><div class="kpi-l">Incluídas/mês</div></div>
+        <div class="kpi-card"><div class="kpi-n" style="color:${(l.supportUsed||0)>(l.supportHours||0)?'var(--red)':'var(--green)'}">${l.supportUsed||0}h</div><div class="kpi-l">Horas despendidas</div><div class="kpi-sub">${l.supportHours?`${Math.max(0,(l.supportHours||0)-(l.supportUsed||0))}h disponíveis`:'—'}</div></div>
+        ${isAdmin()?`
+        <div class="kpi-card"><div class="kpi-n" style="color:var(--green)">${fmtCur(l.supportRateClient)}/h</div><div class="kpi-l">Proposta hora suporte</div><div class="kpi-sub">(cliente paga)</div></div>
+        <div class="kpi-card"><div class="kpi-n" style="color:var(--amber)">${fmtCur(l.supportRateCost)}/h</div><div class="kpi-l">Custo hora suporte</div><div class="kpi-sub">(nosso custo)</div></div>
+        `:''}
+      </div>
+      ${isAdmin()&&l.supportUsed>0?`<div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-top:10px">
+        <div class="kpi-card"><div class="kpi-n" style="color:var(--green)">${fmtCur((l.supportRateClient||0)*l.supportUsed)}</div><div class="kpi-l">Receita horas suporte</div></div>
+        <div class="kpi-card"><div class="kpi-n" style="color:var(--amber)">${fmtCur((l.supportRateCost||0)*l.supportUsed)}</div><div class="kpi-l">Custo horas suporte</div></div>
+        <div class="kpi-card"><div class="kpi-n" style="color:${((l.supportRateClient||0)-(l.supportRateCost||0))>=0?'var(--green)':'var(--red)'}">${fmtCur(((l.supportRateClient||0)-(l.supportRateCost||0))*l.supportUsed)}</div><div class="kpi-l">Margem suporte</div></div>
+      </div>`:''}
+    </div>`:''}`;
 
   if(isAdmin()){
     html+=`<div class="rep-section"><div class="rep-section-title">💰 Financeiro</div>
     <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
       <div class="kpi-card"><div class="kpi-n" style="color:var(--green)">${fmtCur(proposal)}</div><div class="kpi-l">Proposta (cliente paga)</div></div>
-      <div class="kpi-card"><div class="kpi-n" style="color:var(--amber)">${fmtCur(quote)}</div><div class="kpi-l">Cotação (nosso custo)</div></div>
+      <div class="kpi-card"><div class="kpi-n" style="color:var(--amber)">${fmtCur(quote)}</div><div class="kpi-l">Custo Previsto</div></div>
       <div class="kpi-card"><div class="kpi-n" style="color:${margin>=0?'var(--green)':'var(--red)'}">${fmtCur(margin)} · ${marginPct}%</div><div class="kpi-l">Margem</div></div>
     </div>
     ${l.monthly?`<div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-top:12px">
@@ -1703,7 +1957,35 @@ function openLicDetail(id){
     </div></div>`;
   }
 
-  if(l.notes) html+=`<div class="panel" style="padding:14px;font-size:13px;color:var(--text2)">${l.notes}</div>`;
+  if(l.notes) html+=`<div class="panel" style="padding:14px;font-size:13px;color:var(--text2);margin-top:16px">${l.notes}</div>`;
+
+  // Renewal chain — parent
+  if(l.parentId){
+    const parent=licenses.find(x=>x.id===l.parentId);
+    if(parent) html+=`<div style="margin-top:16px"><div class="rep-section-title">🔗 Licenciamento anterior</div>
+    <div class="panel" style="padding:12px 16px;cursor:pointer;display:flex;align-items:center;gap:12px" onclick="openLicDetail(${parent.id})">
+      <span style="font-size:18px">📋</span>
+      <div style="flex:1"><div style="font-weight:600;font-size:13px">${parent.product}</div>
+      <div style="font-size:11px;color:var(--text3)">📅 ${fmtDate(parent.start)} → ${fmtDate(parent.end)}</div></div>
+      <span class="badge badge-gray">Ver →</span>
+    </div></div>`;
+  }
+
+  // Renewals — children
+  const renewals=licenses.filter(x=>x.parentId===l.id).sort((a,b)=>(a.start||'').localeCompare(b.start||''));
+  if(renewals.length>0) html+=`<div style="margin-top:16px"><div class="rep-section-title">🔄 Renovações (${renewals.length})</div>
+  ${renewals.map((r,i)=>{
+    const rst=getLicStatus(r);
+    return `<div class="panel" style="padding:12px 16px;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;gap:12px${r===renewals[renewals.length-1]?';border-color:var(--accent2)':''}" onclick="openLicDetail(${r.id})">
+      <div style="font-size:14px;font-weight:700;color:var(--text3)">#${i+1}</div>
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:13px">${r.product}</div>
+        <div style="font-size:11px;color:var(--text3)">📅 ${fmtDate(r.start)} → ${fmtDate(r.end)}</div>
+      </div>
+      <span class="badge ${rst.cls}">${rst.label}</span>
+    </div>`;
+  }).join('')}</div>`;
+
   html+=`</div>`;
   document.getElementById('lic-detail-panel').innerHTML=html;
   document.getElementById('lic-detail-overlay').classList.add('open');
@@ -1726,6 +2008,7 @@ function renderReport(tab){
   currentReport=tab;
   const el=document.getElementById('reports-content'); if(!el) return;
   if(tab==='overview')     el.innerHTML=repOverview();
+  else if(tab==='projects') el.innerHTML=repByProject();
   else if(tab==='financial')  el.innerHTML=repFinancial();
   else if(tab==='mrr')     el.innerHTML=repMRR();
   else if(tab==='performance') el.innerHTML=repPerformance();
@@ -1760,8 +2043,9 @@ function periodBar(){
 
 function repOverview(){
   const projs=filterByPeriod(projects);
-  const total=projs.length, done=projs.filter(p=>p.status==='done').length;
-  const late=projs.filter(p=>isOverdue(p.end,p.status==='done')).length;
+  const total=projs.length, done=projs.filter(p=>isDoneStatus(p.status)).length;
+  const caveatCount=projs.filter(p=>p.status==='done_caveat').length;
+  const late=projs.filter(p=>isOverdue(p.end,isDoneStatus(p.status))).length;
   const allTasks=projs.flatMap(p=>p.tasks||[]);
   const doneTasks=allTasks.filter(t=>t.status==='done').length;
   const lateTasks=allTasks.filter(t=>t.status!=='done'&&t.status!=='waiting'&&isOverdue(t.due,false)).length;
@@ -1770,7 +2054,7 @@ function repOverview(){
   let html=periodBar()+`
   <div class="rep-section"><div class="rep-section-title">Visão Geral</div>
   <div class="kpi-grid">
-    <div class="kpi-card"><div class="kpi-n" style="color:var(--accent2)">${total}</div><div class="kpi-l">Projetos</div><div class="kpi-sub">${done} concluídos</div></div>
+    <div class="kpi-card"><div class="kpi-n" style="color:var(--accent2)">${total}</div><div class="kpi-l">Projetos</div><div class="kpi-sub">${done} concluídos${caveatCount>0?` · ${caveatCount} com ressalvas`:''}</div></div>
     <div class="kpi-card"><div class="kpi-n" style="color:var(--green)">${total-late}</div><div class="kpi-l">No prazo</div><div class="kpi-sub">${total?Math.round((total-late)/total*100):0}%</div></div>
     <div class="kpi-card"><div class="kpi-n" style="color:${late>0?'var(--red)':'var(--green)'}">${late}</div><div class="kpi-l">Atrasados</div></div>
     <div class="kpi-card"><div class="kpi-n" style="color:var(--green)">${doneTasks}</div><div class="kpi-l">Tarefas concluídas</div><div class="kpi-sub">${allTasks.length} total</div></div>
@@ -1778,20 +2062,22 @@ function repOverview(){
     <div class="kpi-card"><div class="kpi-n" style="color:${critLics>0?'var(--red)':'var(--green)'}">${critLics}</div><div class="kpi-l">Licenças críticas</div></div>
   </div></div>`;
 
-  const doneProjs=projs.filter(p=>p.status==='done').sort((a,b)=>(b.end||'').localeCompare(a.end||''));
+  const doneProjs=projs.filter(p=>isDoneStatus(p.status)).sort((a,b)=>(b.concludedDate||b.end||'').localeCompare(a.concludedDate||a.end||''));
   if(doneProjs.length>0) html+=`<div class="rep-section"><div class="rep-section-title">✅ Projetos concluídos (${doneProjs.length})</div>
   <div class="panel" style="overflow:hidden"><table class="data-table">
-    <thead><tr><th>Projeto</th><th>Cliente</th><th>Responsável</th><th>Prazo</th><th>Tarefas</th><th>Status prazo</th></tr></thead>
+    <thead><tr><th>Projeto</th><th>Cliente</th><th>Sponsor</th><th>Prazo</th><th>Conclusão</th><th>Tarefas</th><th>Status</th></tr></thead>
     <tbody>${doneProjs.map(p=>{
       const tasks=p.tasks||[]; const d=tasks.filter(t=>t.status==='done').length;
       const late=isOverdue(p.end,true);
-      return `<tr onclick="openProjDetail(${p.id})" style="cursor:pointer">
-        <td style="font-weight:600">● ${p.name}</td>
+      const isCaveat=p.status==='done_caveat';
+      return `<tr onclick="openProjDetail(${p.id})" style="cursor:pointer${isCaveat?';background:rgba(245,166,35,0.05)':''}">
+        <td style="font-weight:600">${isCaveat?'⚠️ ':' ● '}${p.name}</td>
         <td style="color:var(--text2)">${clientName(p.clientId)}</td>
         <td style="color:var(--text2)">${p.owner||'—'}</td>
         <td style="font-family:var(--mono);font-size:11px">${fmtDate(p.end)}</td>
+        <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${p.concludedDate?fmtDate(p.concludedDate):'—'}</td>
         <td style="font-family:var(--mono);font-size:11px">${d}/${tasks.length}</td>
-        <td><span class="badge ${late?'badge-red':'badge-green'}">${late?'⚠ Atrasado':'✓ No prazo'}</span></td>
+        <td>${isCaveat?`<span class="badge badge-amber">⚠ Com ressalvas</span>`:`<span class="badge ${late?'badge-red':'badge-green'}">${late?'⚠ Atrasado':'✓ No prazo'}</span>`}</td>
       </tr>`;
     }).join('')}</tbody></table></div></div>`;
 
@@ -1814,7 +2100,7 @@ function repFinancial(){
   <div class="rep-section"><div class="rep-section-title">💰 Financeiro — Projetos</div>
   <div class="kpi-grid">
     <div class="kpi-card"><div class="kpi-n" style="color:var(--green)">${fmtCur(totalProposal)}</div><div class="kpi-l">Receita total (proposta)</div></div>
-    <div class="kpi-card"><div class="kpi-n" style="color:var(--amber)">${fmtCur(totalQuote)}</div><div class="kpi-l">Custo total (cotação)</div></div>
+    <div class="kpi-card"><div class="kpi-n" style="color:var(--amber)">${fmtCur(totalQuote)}</div><div class="kpi-l">Custo Previsto</div></div>
     <div class="kpi-card"><div class="kpi-n" style="color:${totalMargin>=0?'var(--green)':'var(--red)'}">${fmtCur(totalMargin)}</div><div class="kpi-l">Margem bruta</div><div class="kpi-sub">${totalProposal>0?Math.round(totalMargin/totalProposal*100):0}%</div></div>
     <div class="kpi-card"><div class="kpi-n" style="color:var(--amber)">${fmtCur(totalHourCost)}</div><div class="kpi-l">Custo de horas técnicas</div></div>
     <div class="kpi-card"><div class="kpi-n" style="color:${totalReal>=0?'var(--green)':'var(--red)'}">${fmtCur(totalReal)}</div><div class="kpi-l">Margem real</div></div>
@@ -1822,7 +2108,7 @@ function repFinancial(){
   </div></div>
   <div class="rep-section"><div class="rep-section-title">Por projeto</div>
   <div class="panel" style="overflow:hidden"><table class="data-table">
-    <thead><tr><th>Projeto</th><th>Cliente</th><th>Proposta</th><th>Cotação</th><th>Horas</th><th>Margem real</th><th>%</th></tr></thead>
+    <thead><tr><th>Projeto</th><th>Cliente</th><th>Proposta</th><th>Custo Previsto</th><th>Horas Exec.</th><th>Margem real</th><th>%</th></tr></thead>
     <tbody>${projs.filter(p=>p.proposal||p.quote).map(p=>{
       const h=p.tasks?p.tasks.filter(t=>!t.na).reduce((a,t)=>a+(Number(t.doneHours)||0),0):0;
       const prop=Number(p.proposal)||0, quot=Number(p.quote)||0, hc=(Number(p.hourrate)||0)*h;
@@ -1930,11 +2216,11 @@ function repPerformance(){
     (p.tasks||[]).forEach(t=>{ const to=t.owner||o; if(!userMap[to]) userMap[to]={name:to,projs:[],tasks:[]}; userMap[to].tasks.push({...t,projId:p.id,projName:p.name}); });
   });
   const users=Object.values(userMap).map(u=>{
-    const tp=u.projs.length, dp=u.projs.filter(p=>p.status==='done').length;
-    const onTimeP=u.projs.filter(p=>!isOverdue(p.end,p.status==='done')).length;
+    const tp=u.projs.length, dp=u.projs.filter(p=>isDoneStatus(p.status)).length;
+    const onTimeP=u.projs.filter(p=>!isOverdue(p.end,isDoneStatus(p.status))).length;
     const lateP=tp-onTimeP; const ppct=tp>0?Math.round(onTimeP/tp*100):100;
     const scorable=u.tasks.filter(t=>t.status!=='waiting');
-    const lateT=scorable.filter(t=>{ if(t.status==='done') return !t.concludedFromWaiting&&t.due&&(t.concluded||todayStr())>t.due; return isOverdue(t.due,false); }).length;
+    const lateT=scorable.filter(t=>{ if(t.status==='done') return !t.concludedFromWaiting&&t.due&&t.concludedDate&&t.concludedDate>t.due; return isOverdue(t.due,false); }).length;
     const onTimeT=scorable.length-lateT; const tpct=scorable.length>0?Math.round(onTimeT/scorable.length*100):100;
     const score=Math.round((ppct*0.5+tpct*0.5));
     const wait=u.tasks.filter(t=>t.status==='waiting').length;
@@ -1948,7 +2234,7 @@ function repPerformance(){
   <div class="kpi-grid">
     <div class="kpi-card"><div class="kpi-n" style="color:${sCol(avg)}">${avg}%</div><div class="kpi-l">Score médio</div></div>
     <div class="kpi-card"><div class="kpi-n" style="color:var(--accent2)">${users.length}</div><div class="kpi-l">Responsáveis</div></div>
-    <div class="kpi-card"><div class="kpi-n" style="color:var(--green)">${projs.filter(p=>p.status==='done').length}</div><div class="kpi-l">Projetos concluídos</div></div>
+    <div class="kpi-card"><div class="kpi-n" style="color:var(--green)">${projs.filter(p=>isDoneStatus(p.status)).length}</div><div class="kpi-l">Projetos concluídos</div></div>
   </div>
   <div class="panel" style="overflow:hidden"><table class="data-table">
     <thead><tr><th>#</th><th>Responsável</th><th>Projetos no prazo</th><th>Tarefas no prazo</th><th>Score</th></tr></thead>
@@ -1970,26 +2256,52 @@ function repLicenses(){
   const sorted=[...licenses].sort((a,b)=>(daysUntil(a.end)||999)-(daysUntil(b.end)||999));
   const critical=sorted.filter(l=>{ const d=daysUntil(l.end); return d!==null&&d>=0&&d<=75; });
   const warning=sorted.filter(l=>{ const d=daysUntil(l.end); return d!==null&&d>75&&d<=150; });
-  const active=sorted.filter(l=>{ const d=daysUntil(l.end); return d!==null&&d>90; });
+  const active=sorted.filter(l=>{ const d=daysUntil(l.end); return d!==null&&d>150; });
   const expired=sorted.filter(l=>{ const d=daysUntil(l.end); return d!==null&&d<0; });
   const totalMRR=licenses.filter(l=>l.monthly).reduce((s,l)=>s+(Number(l.monthlyProposal)||0),0);
   const totalProp=licenses.reduce((s,l)=>s+(Number(l.proposal)||0),0);
+  const totalSupportUsed=licenses.reduce((s,l)=>s+(Number(l.supportUsed)||0),0);
+  const totalSupportRevenue=licenses.reduce((s,l)=>s+(Number(l.supportRateClient)||0)*(Number(l.supportUsed)||0),0);
+
+  // MRR by license with months paid
+  function monthsPaid(l){
+    if(!l.start) return 0;
+    return Math.max(1,Math.round((new Date()-new Date(l.start+'T12:00:00'))/(1000*3600*24*30)));
+  }
+  const totalRecurring=licenses.filter(l=>l.monthly).reduce((s,l)=>s+(Number(l.monthlyProposal)||0)*monthsPaid(l),0);
 
   function licTable(lics){
-    return `<div class="panel" style="overflow:hidden"><table class="data-table">
-      <thead><tr><th>Produto</th><th>Cliente</th><th>Fabricante</th><th>Vencimento</th><th>Dias restantes</th>${isAdmin()?'<th>MRR</th>':''}<th>Status</th></tr></thead>
+    return `<div class="panel" style="overflow:hidden"><div style="overflow-x:auto"><table class="data-table">
+      <thead><tr>
+        <th>Produto</th><th>Cliente</th><th>Fabricante</th><th>Vencimento</th><th>Dias</th>
+        ${isAdmin()?'<th>MRR</th><th>Meses pagos</th><th>Receita acum.</th>':''}
+        <th>Suporte incl.</th><th>H. usadas</th>
+        ${isAdmin()?'<th>Receita suporte</th>':''}
+        <th>Status</th>
+      </tr></thead>
       <tbody>${lics.map(l=>{
         const st=getLicStatus(l); const d=daysUntil(l.end);
+        const mp=monthsPaid(l);
+        const recAcum=(Number(l.monthlyProposal)||0)*mp;
+        const recSuport=(Number(l.supportRateClient)||0)*(Number(l.supportUsed)||0);
+        const sOver=(l.supportUsed||0)>(l.supportHours||0)&&(l.supportHours||0)>0;
         return `<tr onclick="openLicDetail(${l.id})" style="cursor:pointer">
           <td style="font-weight:600">${l.product}</td>
           <td style="color:var(--text2)">${clientName(l.clientId)}</td>
-          <td style="color:var(--text3)">${l.vendor||'—'}</td>
-          <td style="font-family:var(--mono);font-size:12px">${fmtDate(l.end)}</td>
-          <td style="font-family:var(--mono);font-size:12px;color:${d!==null&&d<=75?'var(--red)':d!==null&&d<=150?'var(--amber)':'var(--text2)'}">${d!==null?d+'d':'—'}</td>
-          ${isAdmin()?`<td style="color:var(--green);font-size:12px">${l.monthly?fmtCur(l.monthlyProposal)+'/mês':'—'}</td>`:''}
+          <td style="color:var(--text3);font-size:11px">${l.vendor||'—'}</td>
+          <td style="font-family:var(--mono);font-size:11px">${fmtDate(l.end)}</td>
+          <td style="font-family:var(--mono);font-size:11px;color:${d!==null&&d<=75?'var(--red)':d!==null&&d<=150?'var(--amber)':'var(--text2)'}">${d!==null?d+'d':'—'}</td>
+          ${isAdmin()?`
+          <td style="color:var(--green);font-size:11px;font-family:var(--mono)">${l.monthly?fmtCur(l.monthlyProposal)+'/m':'—'}</td>
+          <td style="font-family:var(--mono);font-size:11px">${l.monthly?mp+'m':'—'}</td>
+          <td style="color:var(--green);font-family:var(--mono);font-size:11px;font-weight:600">${l.monthly?fmtCur(recAcum):'—'}</td>
+          `:''}
+          <td style="font-size:11px">${l.supportHours?l.supportHours+'h/m':'—'}</td>
+          <td style="font-size:11px;color:${sOver?'var(--red)':'var(--text2)'};font-weight:${sOver?700:400}">${l.supportUsed?l.supportUsed+'h':'—'}${sOver?' ⚠':''}</td>
+          ${isAdmin()?`<td style="color:var(--green);font-size:11px;font-family:var(--mono)">${recSuport>0?fmtCur(recSuport):'—'}</td>`:''}
           <td><span class="badge ${st.cls}">${st.label}</span></td>
         </tr>`;
-      }).join('')}</tbody></table></div>`;
+      }).join('')}</tbody></table></div></div>`;
   }
 
   let html=`<div class="rep-section"><div class="rep-section-title">Resumo</div>
@@ -1998,8 +2310,12 @@ function repLicenses(){
     <div class="kpi-card"><div class="kpi-n" style="color:var(--red)">${critical.length}</div><div class="kpi-l">🔴 Críticas (≤75d)</div></div>
     <div class="kpi-card"><div class="kpi-n" style="color:var(--amber)">${warning.length}</div><div class="kpi-l">🟡 Atenção (≤150d)</div></div>
     <div class="kpi-card"><div class="kpi-n" style="color:var(--green)">${active.length}</div><div class="kpi-l">✅ Ativas</div></div>
-    ${isAdmin()?`<div class="kpi-card"><div class="kpi-n" style="color:var(--green)">${fmtCur(totalMRR)}</div><div class="kpi-l">MRR licenças</div></div>
-    <div class="kpi-card"><div class="kpi-n" style="color:var(--accent2)">${fmtCur(totalProp)}</div><div class="kpi-l">Receita total</div></div>`:''}
+    ${isAdmin()?`
+    <div class="kpi-card"><div class="kpi-n" style="color:var(--green)">${fmtCur(totalMRR)}</div><div class="kpi-l">MRR licenças</div></div>
+    <div class="kpi-card"><div class="kpi-n" style="color:var(--green)">${fmtCur(totalRecurring)}</div><div class="kpi-l">Receita recorrente total</div></div>
+    <div class="kpi-card"><div class="kpi-n" style="color:var(--amber)">${totalSupportUsed}h</div><div class="kpi-l">Horas suporte despendidas</div></div>
+    <div class="kpi-card"><div class="kpi-n" style="color:var(--green)">${fmtCur(totalSupportRevenue)}</div><div class="kpi-l">Receita total suporte</div></div>
+    `:''}
   </div></div>`;
 
   if(critical.length>0) html+=`<div class="rep-section"><div class="rep-section-title" style="color:var(--red)">🔴 Críticos — vencendo em até 75 dias</div>${licTable(critical)}</div>`;
@@ -2101,8 +2417,274 @@ function renderSettingsTheme(panel){
 
 
 // ══════════════════════════════════
-//   MFA
+//   RENEWAL
 // ══════════════════════════════════
+let _renewingLicId = null;
+
+window.openRenewalModal = function(licId){
+  _renewingLicId = licId;
+  const l = licenses.find(x=>x.id===licId); if(!l) return;
+  // Pre-fill start = day after current end
+  let nextStart = '';
+  if(l.end){
+    const d=new Date(l.end+'T12:00:00'); d.setDate(d.getDate()+1);
+    nextStart = d.toISOString().split('T')[0];
+  }
+  document.getElementById('ren-start').value = nextStart;
+  document.getElementById('ren-end').value = '';
+  document.getElementById('ren-proposal').value = '';
+  document.getElementById('ren-quote').value = '';
+  document.getElementById('ren-monthly-proposal').value = '';
+  document.getElementById('ren-monthly-quote').value = '';
+  document.getElementById('ren-error').style.display='none';
+  document.getElementById('ren-monthly-fields').style.display = l.monthly&&isAdmin()?'block':'none';
+  document.getElementById('renewal-summary').innerHTML = `
+    <div style="font-weight:600;margin-bottom:6px">📋 ${l.product}</div>
+    <div style="font-size:12px;color:var(--text3);display:flex;gap:16px;flex-wrap:wrap">
+      <span>🏢 ${clientName(l.clientId)}</span>
+      <span>📅 Período atual: ${fmtDate(l.start)} → ${fmtDate(l.end)}</span>
+      ${isAdmin()&&l.monthly?`<span>💰 MRR atual: ${fmtCur(l.monthlyProposal)}/mês</span>`:''}
+    </div>`;
+  openModal('renewal-modal-overlay');
+  setTimeout(()=>document.getElementById('ren-end').focus(),200);
+};
+
+window.confirmRenewal = function(){
+  const start = document.getElementById('ren-start').value;
+  const end   = document.getElementById('ren-end').value;
+  const err   = document.getElementById('ren-error');
+  if(!start||!end){ err.style.display='block'; return; }
+  err.style.display='none';
+
+  const l = licenses.find(x=>x.id===_renewingLicId); if(!l) return;
+  // Clone license with new dates and link
+  const newLic = {
+    ...JSON.parse(JSON.stringify(l)),
+    id: nextLicId++,
+    start, end,
+    parentId: l.id,
+    supportUsed: 0,  // reset used hours for new period
+    createdAt: Date.now(),
+  };
+  // Override values if provided
+  const np=document.getElementById('ren-proposal').value;
+  const nq=document.getElementById('ren-quote').value;
+  const nmp=document.getElementById('ren-monthly-proposal').value;
+  const nmq=document.getElementById('ren-monthly-quote').value;
+  if(np) newLic.proposal = parseFloat(np);
+  if(nq) newLic.quote    = parseFloat(nq);
+  if(nmp) newLic.monthlyProposal = parseFloat(nmp);
+  if(nmq) newLic.monthlyQuote    = parseFloat(nmq);
+
+  licenses.push(newLic);
+  if(window.saveToFirebase) saveToFirebase('licenses',String(newLic.id),newLic);
+  closeModal('renewal-modal-overlay');
+  closeDetail('lic-detail-overlay');
+  renderLicenses(); updateLicBadge();
+  // Open the new license
+  setTimeout(()=>openLicDetail(newLic.id),200);
+};
+
+// ══════════════════════════════════
+//   CHARTS (SVG-based, no library)
+// ══════════════════════════════════
+function svgBarChart(data, opts={}){
+  const {width=400,height=180,barColor='#2563eb',label='',showValues=true}=opts;
+  if(!data.length) return '<div style="color:var(--text3);text-align:center;padding:20px;font-size:12px">Sem dados</div>';
+  const max=Math.max(...data.map(d=>d.value),1);
+  const barW=Math.floor((width-40)/data.length)-6;
+  const scale=(height-50)/max;
+  let svg=`<svg viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;font-family:'DM Sans',sans-serif">`;
+  data.forEach((d,i)=>{
+    const bh=Math.max(2,d.value*scale);
+    const x=40+i*(barW+6), y=height-30-bh;
+    const col=d.color||barColor;
+    svg+=`<rect x="${x}" y="${y}" width="${barW}" height="${bh}" rx="3" fill="${col}" opacity=".85"/>`;
+    if(showValues&&d.value>0) svg+=`<text x="${x+barW/2}" y="${y-4}" text-anchor="middle" fill="var(--text2)" font-size="9">${d.label2||d.value}</text>`;
+    const lbl=(d.label||'').slice(0,8);
+    svg+=`<text x="${x+barW/2}" y="${height-14}" text-anchor="middle" fill="var(--text3)" font-size="9">${lbl}</text>`;
+  });
+  svg+=`</svg>`;
+  return svg;
+}
+
+function svgDonut(slices, opts={}){
+  const {size=120,cx=60,cy=60,r=42,inner=26}=opts;
+  if(!slices.length||slices.every(s=>s.value===0)) return '<div style="color:var(--text3);text-align:center;padding:20px;font-size:12px">Sem dados</div>';
+  const total=slices.reduce((s,x)=>s+x.value,0); if(total===0) return '';
+  let angle=-Math.PI/2;
+  let paths='';
+  slices.forEach(sl=>{
+    const a=(sl.value/total)*2*Math.PI;
+    const x1=cx+r*Math.cos(angle), y1=cy+r*Math.sin(angle);
+    angle+=a;
+    const x2=cx+r*Math.cos(angle), y2=cy+r*Math.sin(angle);
+    const xi1=cx+inner*Math.cos(angle-a), yi1=cy+inner*Math.sin(angle-a);
+    const xi2=cx+inner*Math.cos(angle), yi2=cy+inner*Math.sin(angle);
+    const lg=a>Math.PI?1:0;
+    paths+=`<path d="M${x1},${y1} A${r},${r} 0 ${lg} 1 ${x2},${y2} L${xi2},${yi2} A${inner},${inner} 0 ${lg} 0 ${xi1},${yi1} Z" fill="${sl.color}" opacity=".85"><title>${sl.label}: ${sl.value}</title></path>`;
+  });
+  const svgSize=size||120;
+  return `<svg viewBox="0 0 ${svgSize} ${svgSize}" xmlns="http://www.w3.org/2000/svg" style="width:${svgSize}px;height:${svgSize}px">${paths}</svg>`;
+}
+
+// ══════════════════════════════════
+//   REPORT: PER PROJECT + TOTAL
+// ══════════════════════════════════
+function repByProject(){
+  const projs=filterByPeriod(projects);
+  if(!projs.length) return '<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">Nenhum projeto no período</div></div>';
+
+  // Overview chart data
+  const statusCount={todo:0,progress:0,review:0,done:0,done_caveat:0};
+  projs.forEach(p=>{ if(statusCount[p.status]!==undefined) statusCount[p.status]++; });
+  const donutSlices=[
+    {label:'A fazer',value:statusCount.todo,color:'#64748b'},
+    {label:'Em andamento',value:statusCount.progress,color:'#2563eb'},
+    {label:'Em revisão',value:statusCount.review,color:'#f5a623'},
+    {label:'Concluído',value:statusCount.done,color:'#34c97e'},
+    {label:'Com ressalvas',value:statusCount.done_caveat,color:'#f5a623'},
+  ].filter(s=>s.value>0);
+
+  const taskBarData=projs.slice(0,8).map(p=>{
+    const tasks=p.tasks||[];
+    const done=tasks.filter(t=>t.status==='done').length;
+    return {label:p.name.slice(0,10),value:tasks.length,label2:done+'/'+tasks.length,color:done===tasks.length&&tasks.length>0?'#34c97e':'#2563eb'};
+  });
+
+  let html=periodBar()+`
+  <div style="display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:center;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:16px;margin-bottom:20px">
+    <div style="text-align:center">
+      ${svgDonut(donutSlices,{size:120,cx:60,cy:60,r:42,inner:22})}
+    </div>
+    <div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px">Status dos projetos</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        ${donutSlices.map(s=>`<span style="display:flex;align-items:center;gap:5px;font-size:11px"><span style="width:10px;height:10px;border-radius:50%;background:${s.color};flex-shrink:0;display:inline-block"></span>${s.label}: <strong>${s.value}</strong></span>`).join('')}
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" style="padding:16px;margin-bottom:20px">
+    <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px">Tarefas por projeto (top 8)</div>
+    ${svgBarChart(taskBarData,{width:600,height:160})}
+  </div>
+
+  <div class="rep-section"><div class="rep-section-title">Todos os projetos</div>
+  <div class="panel" style="overflow:hidden"><table class="data-table">
+    <thead><tr><th>Projeto</th><th>Cliente</th><th>Sponsor</th><th>Tarefas</th><th>Horas est.</th><th>Horas exec.</th><th>Prazo</th><th>Status</th></tr></thead>
+    <tbody>${projs.map(p=>{
+      const tasks=p.tasks||[];
+      const doneT=tasks.filter(t=>t.status==='done').length;
+      const hEst=tasks.filter(t=>!t.na).reduce((s,t)=>s+(Number(t.estimated)||0),0);
+      const hExec=tasks.filter(t=>!t.na).reduce((s,t)=>s+(Number(t.doneHours)||0),0);
+      const st=getProjStatusInfo(p.status);
+      const late=isOverdue(p.end,isDoneStatus(p.status));
+      return `<tr onclick="openProjDetail(${p.id})" style="cursor:pointer">
+        <td style="font-weight:600">${p.name}</td>
+        <td style="color:var(--text2)">${clientName(p.clientId)}</td>
+        <td style="color:var(--text2)">${p.owner||'—'}</td>
+        <td style="font-family:var(--mono);font-size:12px">${doneT}/${tasks.length}</td>
+        <td style="font-family:var(--mono);font-size:12px">${hEst}h</td>
+        <td style="font-family:var(--mono);font-size:12px;color:${hExec>hEst&&hEst>0?'var(--red)':'inherit'}">${hExec}h</td>
+        <td style="font-family:var(--mono);font-size:11px;color:${late?'var(--red)':'var(--text3)'}">${fmtDate(p.end)}</td>
+        <td><span class="badge" style="background:${st.bar}20;color:${st.color}">${st.label}</span></td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div></div>`;
+  return html;
+}
+
+// ══════════════════════════════════
+//   STATUS REPORT
+// ══════════════════════════════════
+window.openStatusReport = function(projId){
+  const p=projects.find(x=>x.id===projId); if(!p) return;
+  const tasks=p.tasks||[];
+  const client=clients.find(c=>String(c.id)===String(p.clientId));
+  const now=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+  const done=tasks.filter(t=>t.status==='done');
+  const pending=tasks.filter(t=>t.status!=='done'&&t.status!=='waiting');
+  const waiting=tasks.filter(t=>t.status==='waiting');
+  const st=getProjStatusInfo(p.status);
+  const pct=tasks.length?Math.round(done.length/tasks.length*100):0;
+
+  const statusLabel={todo:'Pendente',in_progress:'Em andamento',waiting:'Aguardando',done:'Concluída'};
+  const taskRow=(t,bg='')=>`<tr style="${bg}">
+    <td style="padding:6px 12px;font-size:12px;border-bottom:1px solid #eee">${t.name}</td>
+    <td style="padding:6px 12px;font-size:12px;border-bottom:1px solid #eee;color:#555">${t.owner||'—'}</td>
+    <td style="padding:6px 12px;font-size:12px;border-bottom:1px solid #eee;color:#555">${t.due?fmtDate(t.due):'—'}</td>
+    <td style="padding:6px 12px;font-size:12px;border-bottom:1px solid #eee;color:#555">${t.concludedDate?fmtDate(t.concludedDate):'—'}</td>
+    <td style="padding:6px 12px;font-size:12px;border-bottom:1px solid #eee"><span style="padding:2px 8px;border-radius:10px;font-weight:600;font-size:11px;background:${t.status==='done'?'#e6f9f0':t.status==='waiting'?'#fff7e6':'#e6f0ff'};color:${t.status==='done'?'#1a7a4a':t.status==='waiting'?'#b45309':'#1a4fb5'}">${statusLabel[t.status]||t.status}</span></td>
+    <td style="padding:6px 12px;font-size:12px;border-bottom:1px solid #eee;color:#555">${t.waitingReason||''}</td>
+  </tr>`;
+
+  const body=`<div id="status-report-print" style="padding:24px 28px;font-family:'DM Sans',sans-serif;color:#1a1a2e">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid #2563eb">
+      <div>
+        <div style="font-size:22px;font-weight:700;color:#2563eb">Status Report</div>
+        <div style="font-size:14px;color:#555;margin-top:4px">${p.name}</div>
+        ${client?`<div style="font-size:12px;color:#888">Cliente: ${client.name}</div>`:''}
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:12px;color:#888">Data: ${now}</div>
+        <div style="font-size:12px;color:#888">Sponsor: ${p.owner||'—'}</div>
+        <div style="margin-top:6px"><span style="padding:3px 10px;border-radius:10px;font-size:11px;font-weight:700;background:${st.bar}20;color:${st.color}">${st.label}</span></div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+      <div style="background:#f0f7ff;border-radius:8px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:700;color:#2563eb">${tasks.length}</div><div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.05em">Total tarefas</div></div>
+      <div style="background:#e6f9f0;border-radius:8px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:700;color:#1a7a4a">${done.length}</div><div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.05em">Concluídas</div></div>
+      <div style="background:#fff7e6;border-radius:8px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:700;color:#b45309">${waiting.length}</div><div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.05em">Aguardando</div></div>
+      <div style="background:#f0f7ff;border-radius:8px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:700;color:#2563eb">${pct}%</div><div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.05em">Progresso</div></div>
+    </div>
+
+    <div style="background:#f7f9fc;border-radius:8px;padding:10px 14px;margin-bottom:20px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:12px;color:#555">📅 Prazo: <strong>${fmtDate(p.end)}</strong></span>
+      ${p.concludedDate?`<span style="font-size:12px;color:#555"> · Conclusão: <strong>${fmtDate(p.concludedDate)}</strong></span>`:''}
+    </div>
+
+    <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+      <thead><tr style="background:#f0f4ff">
+        <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#3a4a70;border-bottom:2px solid #2563eb">Tarefa</th>
+        <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#3a4a70;border-bottom:2px solid #2563eb">Responsável</th>
+        <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#3a4a70;border-bottom:2px solid #2563eb">Prazo</th>
+        <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#3a4a70;border-bottom:2px solid #2563eb">Concluída em</th>
+        <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#3a4a70;border-bottom:2px solid #2563eb">Status</th>
+        <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#3a4a70;border-bottom:2px solid #2563eb">Observação</th>
+      </tr></thead>
+      <tbody>
+        ${done.map(t=>taskRow(t,'background:#fafffe')).join('')}
+        ${pending.map(t=>taskRow(t,'')).join('')}
+        ${waiting.map(t=>taskRow(t,'background:#fffcf5')).join('')}
+      </tbody>
+    </table>
+
+    ${p.status==='done_caveat'&&p.caveat?`<div style="background:#fffbeb;border:1px solid #f5a623;border-radius:8px;padding:12px 16px;margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;color:#b45309;margin-bottom:4px">⚠ Ressalvas de conclusão</div>
+      <div style="font-size:13px;color:#555">${p.caveat}</div>
+    </div>`:''}
+
+    <div style="margin-top:32px;border-top:1px solid #ddd;padding-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:40px">
+      <div><div style="font-size:11px;color:#888;margin-bottom:24px">Aprovado por (cliente)</div><div style="border-bottom:1px solid #333;padding-bottom:4px"></div><div style="font-size:11px;color:#888;margin-top:6px">Assinatura e data</div></div>
+      <div><div style="font-size:11px;color:#888;margin-bottom:24px">Responsável Ativa Security</div><div style="border-bottom:1px solid #333;padding-bottom:4px"></div><div style="font-size:11px;color:#888;margin-top:6px">${p.owner||''} — Data</div></div>
+    </div>
+  </div>`;
+
+  document.getElementById('status-report-body').innerHTML=body;
+  openModal('status-report-overlay');
+};
+
+window.printStatusReport=function(){
+  const c=document.getElementById('status-report-print')?.innerHTML||'';
+  const w=window.open('','_blank');
+  w.document.write(`<html><head><title>Status Report</title><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet"><style>body{margin:0;padding:0;font-family:'DM Sans',sans-serif}@media print{@page{margin:15mm}}</style></head><body>${c}</body></html>`);
+  w.document.close();
+  setTimeout(()=>w.print(),500);
+};
+
+
 let _mfaUser=null, _mfaSecret=null, _mfaTotp=null;
 
 function buildDigitInputs(cid, onComplete){
