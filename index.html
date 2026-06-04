@@ -560,7 +560,7 @@ input,select,textarea{font-family:var(--font)}
         <div class="form-group" id="p-concluded-wrap" style="display:none"><label class="form-label">Data de conclusão</label><input class="form-input" id="p-concluded" type="date"></div>
         <div class="form-group" id="p-caveat-wrap" style="display:none;grid-column:1/-1"><label class="form-label">Ressalvas / observações de conclusão</label><textarea class="form-textarea" id="p-caveat" rows="2" placeholder="Descreva as ressalvas ao finalizar o projeto..."></textarea></div>
         <div class="form-group admin-only"><label class="form-label">Valor proposta (R$)</label><input class="form-input" id="p-proposal" type="number" placeholder="0,00"></div>
-        <div class="form-group admin-only"><label class="form-label">Custo de horas estipuladas (R$)</label><input class="form-input" id="p-quote" type="number" placeholder="0,00"></div>
+        <div class="form-group admin-only"><label class="form-label">Custo de horas previstas (R$)</label><input class="form-input" id="p-quote" type="number" placeholder="0,00"></div>
         <div class="form-group admin-only"><label class="form-label">Horas previstas</label><input class="form-input" id="p-hours" type="number" placeholder="0"></div>
         <div class="form-group admin-only"><label class="form-label">Custo hora (R$/h)</label><input class="form-input" id="p-hourrate" type="number" placeholder="0,00"></div>
         <div class="form-group admin-only" style="grid-column:1/-1;display:flex;align-items:center;gap:10px">
@@ -600,21 +600,37 @@ input,select,textarea{font-family:var(--font)}
         <div class="form-group"><label class="form-label">Data de início</label><input class="form-input" id="l-start" type="date"></div>
         <div class="form-group"><label class="form-label">Data de vencimento *</label><input class="form-input" id="l-end" type="date"></div>
         <div class="form-group admin-only"><label class="form-label">Valor proposta — cliente paga (R$)</label><input class="form-input" id="l-proposal" type="number" placeholder="0,00"></div>
-        <div class="form-group admin-only"><label class="form-label">Valor cotação — nos paga (R$)</label><input class="form-input" id="l-quote" type="number" placeholder="0,00"></div>
-        <div class="form-group admin-only" style="grid-column:1/-1;display:flex;align-items:center;gap:10px">
-          <input type="checkbox" id="l-monthly" onchange="toggleLicMonthly(this.checked)" style="width:16px;height:16px">
-          <label for="l-monthly" style="font-size:13px;cursor:pointer">Pagamento mensalizado (MRR)</label>
-        </div>
-        <div id="l-monthly-wrap" style="display:none;grid-column:1/-1">
-          <div class="form-grid">
-            <div class="form-group admin-only"><label class="form-label">Valor mensal — cliente paga (R$)</label><input class="form-input" id="l-monthly-proposal" type="number" placeholder="0,00"></div>
-            <div class="form-group admin-only"><label class="form-label">Valor mensal — nosso custo (R$)</label><input class="form-input" id="l-monthly-quote" type="number" placeholder="0,00"></div>
-            <div class="form-group"><label class="form-label">Horas de suporte incluídas/mês</label><input class="form-input" id="l-support-hours" type="number" placeholder="0"></div>
-            <div class="form-group admin-only"><label class="form-label">Proposta hora de suporte (R$)</label><input class="form-input" id="l-support-rate-client" type="number" placeholder="0,00" title="Valor que o cliente paga por hora excedente"></div>
-            <div class="form-group admin-only"><label class="form-label">Custo hora de suporte (R$)</label><input class="form-input" id="l-support-rate-cost" type="number" placeholder="0,00" title="Nosso custo por hora de suporte"></div>
-            <div class="form-group"><label class="form-label">Horas de suporte despendidas (acumulado)</label><input class="form-input" id="l-support-used" type="number" placeholder="0" step="0.5" title="Total de horas de suporte já utilizadas"></div>
+        <div class="form-group admin-only"><label class="form-label">Valor cotação — nosso custo (R$)</label><input class="form-input" id="l-quote" type="number" placeholder="0,00"></div>
+
+        <!-- ── PAGAMENTO MENSALIZADO (MRR) ── -->
+        <div class="form-group admin-only" style="grid-column:1/-1">
+          <div style="background:rgba(37,99,235,0.06);border:1px solid rgba(37,99,235,0.15);border-radius:var(--r);padding:12px 14px">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:0" id="l-monthly-label">
+              <input type="checkbox" id="l-monthly" onchange="toggleLicMonthly(this.checked)" style="width:16px;height:16px;accent-color:var(--accent)">
+              <span style="font-size:13px;font-weight:600">📅 Pagamento mensalizado (MRR)</span>
+            </label>
+            <div id="l-monthly-wrap" style="display:none;margin-top:12px">
+              <div class="form-grid">
+                <div class="form-group" style="margin:0"><label class="form-label">Valor mensal — cliente paga (R$)</label><input class="form-input" id="l-monthly-proposal" type="number" placeholder="0,00" step="0.01"></div>
+                <div class="form-group" style="margin:0"><label class="form-label">Valor mensal — nosso custo (R$)</label><input class="form-input" id="l-monthly-quote" type="number" placeholder="0,00" step="0.01"></div>
+              </div>
+            </div>
           </div>
         </div>
+
+        <!-- ── SUPORTE TÉCNICO (independente do MRR) ── -->
+        <div style="grid-column:1/-1">
+          <div style="background:rgba(52,201,126,0.05);border:1px solid rgba(52,201,126,0.2);border-radius:var(--r);padding:12px 14px">
+            <div style="font-size:12px;font-weight:600;color:var(--green);margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em">🛠 Suporte técnico</div>
+            <div class="form-grid">
+              <div class="form-group" style="margin:0"><label class="form-label">Horas de suporte incluídas/mês</label><input class="form-input" id="l-support-hours" type="number" placeholder="0" step="0.5"></div>
+              <div class="form-group" style="margin:0"><label class="form-label">Horas despendidas (acumulado)</label><input class="form-input" id="l-support-used" type="number" placeholder="0" step="0.5"></div>
+              <div class="form-group admin-only" style="margin:0"><label class="form-label">Proposta hora de suporte — cliente paga (R$)</label><input class="form-input" id="l-support-rate-client" type="number" placeholder="0,00" step="0.01"></div>
+              <div class="form-group admin-only" style="margin:0"><label class="form-label">Custo hora de suporte — nosso custo (R$)</label><input class="form-input" id="l-support-rate-cost" type="number" placeholder="0,00" step="0.01"></div>
+            </div>
+          </div>
+        </div>
+
         <div class="form-group admin-only"><label class="form-label">Vendedor</label><input class="form-input" id="l-seller" placeholder="Nome do vendedor"></div>
         <div class="form-group"><label class="form-label">Projeto vinculado</label><select class="form-select" id="l-project"><option value="">Nenhum</option></select></div>
       </div>
@@ -1784,23 +1800,30 @@ function openLicenseModal(id=null){
   document.getElementById('lic-modal-title').textContent=id?'Editar Licenciamento':'Novo Licenciamento';
   document.getElementById('l-delete-btn').style.display=id?'':'none';
   const l=id?licenses.find(x=>x.id===id):null;
-  ['vendor','dist','seller','notes'].forEach(f=>document.getElementById('l-'+f).value=l?l[f]||'':'');
+
+  // Basic fields (all roles)
+  ['vendor','dist','seller','notes'].forEach(f=>{ const el=document.getElementById('l-'+f); if(el) el.value=l?l[f]||'':''; });
   loadLicenseProductSelect(l?l.product||'':'');
-  document.getElementById('l-start').value=l?l.start||'':'';
-  document.getElementById('l-end').value=l?l.end||'':'';
+  document.getElementById('l-start').value        = l?l.start||'':'';
+  document.getElementById('l-end').value          = l?l.end||'':'';
+  document.getElementById('l-support-hours').value= l?l.supportHours||'':'';
+  document.getElementById('l-support-used').value = l?l.supportUsed||'':'';
+
+  // Admin-only fields
   if(isAdmin()){
-    ['proposal','quote'].forEach(f=>document.getElementById('l-'+f).value=l?l[f]||'':'');
-    ['monthly-proposal','monthly-quote'].forEach(f=>document.getElementById('l-'+f).value=l?l[f.replace('-','')]||'':'');
-    document.getElementById('l-support-hours').value=l?l.supportHours||'':'';
-  if(isAdmin()){
-    document.getElementById('l-support-rate-client').value=l?l.supportRateClient||'':'';
-    document.getElementById('l-support-rate-cost').value=l?l.supportRateCost||'':'';
+    document.getElementById('l-proposal').value            = l?l.proposal||'':'';
+    document.getElementById('l-quote').value               = l?l.quote||'':'';
+    document.getElementById('l-monthly-proposal').value    = l?l.monthlyProposal||'':'';
+    document.getElementById('l-monthly-quote').value       = l?l.monthlyQuote||'':'';
+    document.getElementById('l-support-rate-client').value = l?l.supportRateClient||'':'';
+    document.getElementById('l-support-rate-cost').value   = l?l.supportRateCost||'':'';
   }
-  document.getElementById('l-support-used').value=l?l.supportUsed||'':'';
-  }
+
+  // Monthly checkbox + wrap visibility
   const m=l?l.monthly||false:false;
   document.getElementById('l-monthly').checked=m;
   document.getElementById('l-monthly-wrap').style.display=m?'grid':'none';
+
   populateClientSelect('l-client',l?l.clientId:'',false);
   populateProjectSelect('l-project',l?l.projectId:'');
   openModal('lic-modal-overlay');
@@ -1813,33 +1836,42 @@ function saveLicense(){
   const clientId=document.getElementById('l-client').value;
   if(!clientId){alert('Selecione um cliente');return;}
   const monthly=document.getElementById('l-monthly').checked;
+
   const data={
     id:editingLicId||nextLicId++,
-    product, vendor:document.getElementById('l-vendor').value.trim(),
-    dist:document.getElementById('l-dist').value.trim(),
-    clientId, projectId:document.getElementById('l-project').value||null,
-    start:document.getElementById('l-start').value,
-    end:document.getElementById('l-end').value,
-    seller:document.getElementById('l-seller').value.trim(),
-    notes:document.getElementById('l-notes').value.trim(),
+    product,
+    vendor:   document.getElementById('l-vendor').value.trim(),
+    dist:     document.getElementById('l-dist').value.trim(),
+    clientId,
+    projectId:document.getElementById('l-project').value||null,
+    start:    document.getElementById('l-start').value,
+    end:      document.getElementById('l-end').value,
+    seller:   document.getElementById('l-seller').value.trim(),
+    notes:    document.getElementById('l-notes').value.trim(),
     monthly,
-    supportHours:parseFloat(document.getElementById('l-support-hours').value)||0,
-    supportRateClient:parseFloat(document.getElementById('l-support-rate-client').value)||0,
-    supportRateCost:parseFloat(document.getElementById('l-support-rate-cost').value)||0,
-    supportUsed:parseFloat(document.getElementById('l-support-used').value)||0,
-    ...(isAdmin()?{
-      proposal:document.getElementById('l-proposal').value,
-      quote:document.getElementById('l-quote').value,
-      monthlyProposal:monthly?document.getElementById('l-monthly-proposal').value:'',
-      monthlyQuote:monthly?document.getElementById('l-monthly-quote').value:'',
-    }:{}),
+    // Support fields — always saved, independent of monthly
+    supportHours:      parseFloat(document.getElementById('l-support-hours').value)||0,
+    supportUsed:       parseFloat(document.getElementById('l-support-used').value)||0,
+    supportRateClient: isAdmin()?parseFloat(document.getElementById('l-support-rate-client').value)||0:0,
+    supportRateCost:   isAdmin()?parseFloat(document.getElementById('l-support-rate-cost').value)||0:0,
+    // Admin financial fields
+    proposal:          isAdmin()?parseFloat(document.getElementById('l-proposal').value)||0:0,
+    quote:             isAdmin()?parseFloat(document.getElementById('l-quote').value)||0:0,
+    // MRR — only when monthly is checked
+    monthlyProposal:   isAdmin()&&monthly?parseFloat(document.getElementById('l-monthly-proposal').value)||0:0,
+    monthlyQuote:      isAdmin()&&monthly?parseFloat(document.getElementById('l-monthly-quote').value)||0:0,
     createdAt:editingLicId?(licenses.find(x=>x.id===editingLicId)||{}).createdAt||Date.now():Date.now(),
   };
+
   if(editingLicId){ const i=licenses.findIndex(x=>x.id===editingLicId); licenses[i]=data; }
   else licenses.push(data);
   saveToFirebase('licenses',String(data.id),data);
   closeModal('lic-modal-overlay');
   renderLicenses(); updateLicBadge();
+  // Refresh detail panel if open
+  if(document.getElementById('lic-detail-overlay').classList.contains('open') && editingLicId){
+    openLicDetail(data.id);
+  }
 }
 
 function deleteLicense(){
