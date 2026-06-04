@@ -34,7 +34,10 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 button{font-family:var(--font);cursor:pointer;border:none;background:none}
 input,select,textarea{font-family:var(--font)}
 
-/* ── SCROLLBAR ── */
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.7;transform:scale(1.15)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.lic-critical-pulse{animation:pulse 1.5s ease-in-out infinite}
+
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
@@ -470,7 +473,7 @@ input,select,textarea{font-family:var(--font)}
       <div class="section-header"><div class="section-title">Relatórios</div></div>
       <div class="rep-tabs" id="rep-tabs">
         <div class="rep-tab active" onclick="switchReport('overview',this)">📊 Visão Geral</div>
-        <div class="rep-tab" onclick="switchReport('financial',this)">💰 Financeiro</div>
+        <div class="rep-tab" onclick="switchReport('financial',this)">💰 Financeiro — Projetos</div>
         <div class="rep-tab" onclick="switchReport('mrr',this)">📈 MRR</div>
         <div class="rep-tab" onclick="switchReport('performance',this)">🏆 Desempenho</div>
         <div class="rep-tab" onclick="switchReport('licenses',this)">🔑 Licenciamentos</div>
@@ -507,8 +510,8 @@ input,select,textarea{font-family:var(--font)}
       <div class="form-grid">
         <div class="form-group"><label class="form-label">Nome da empresa *</label><input class="form-input" id="c-name" placeholder="Ex: Toray do Brasil"></div>
         <div class="form-group"><label class="form-label">CNPJ</label><input class="form-input" id="c-cnpj" placeholder="00.000.000/0001-00"></div>
-        <div class="form-group"><label class="form-label">Segmento</label><input class="form-input" id="c-segment" placeholder="Ex: Indústria, Saúde..."></div>
-        <div class="form-group"><label class="form-label">Responsável comercial</label><input class="form-input" id="c-owner" placeholder="Nome do responsável"></div>
+        <div class="form-group"><label class="form-label">Segmento</label><select class="form-select" id="c-segment"></select></div>
+        <div class="form-group"><label class="form-label">Responsável comercial</label><select class="form-select" id="c-owner"></select></div>
         <div class="form-group"><label class="form-label">E-mail de contato</label><input class="form-input" id="c-email" type="email" placeholder="contato@empresa.com"></div>
         <div class="form-group"><label class="form-label">Telefone</label><input class="form-input" id="c-phone" placeholder="(11) 99999-9999"></div>
       </div>
@@ -575,7 +578,7 @@ input,select,textarea{font-family:var(--font)}
     </div>
     <div class="modal-body">
       <div class="form-grid">
-        <div class="form-group"><label class="form-label">Produto / Solução *</label><input class="form-input" id="l-product" placeholder="Ex: Kaspersky Endpoint Security"></div>
+        <div class="form-group"><label class="form-label">Produto / Solução *</label><select class="form-select" id="l-product"></select></div>
         <div class="form-group"><label class="form-label">Fabricante</label><input class="form-input" id="l-vendor" placeholder="Ex: Kaspersky"></div>
         <div class="form-group"><label class="form-label">Distribuidora</label><input class="form-input" id="l-dist" placeholder="Ex: Ingram Micro"></div>
         <div class="form-group"><label class="form-label">Cliente *</label><select class="form-select" id="l-client"><option value="">Selecione o cliente...</option></select></div>
@@ -717,8 +720,8 @@ function getLicStatus(l){
   const d = daysUntil(l.end);
   if(d===null) return {label:'Indefinido',cls:'badge-gray',level:'unknown'};
   if(d<0)      return {label:'Vencido',cls:'badge-red',level:'expired'};
-  if(d<=30)    return {label:`Vence em ${d}d`,cls:'badge-red',level:'critical'};
-  if(d<=90)    return {label:`Vence em ${d}d`,cls:'badge-amber',level:'warning'};
+  if(d<=75)    return {label:`Vence em ${d}d`,cls:'badge-red',level:'critical'};
+  if(d<=150)    return {label:`Vence em ${d}d`,cls:'badge-amber',level:'warning'};
   return {label:'Ativo',cls:'badge-green',level:'active'};
 }
 function licProgress(l){
@@ -757,8 +760,118 @@ function navTo(page, el){
 }
 
 // ══════════════════════════════════
-//   SECTOR SELECT HELPER
+//   DYNAMIC LISTS (segments, owners, products)
 // ══════════════════════════════════
+const DEFAULT_SEGMENTS   = ['Indústria','Varejo','Saúde','Financeiro','Educação','Tecnologia','Governo','Logística','Agronegócio'];
+const DEFAULT_PRODUCTS   = ['Kaspersky Endpoint Security','Fortinet FortiGate','Cisco Umbrella','Microsoft 365','Sophos XG Firewall','Check Point','Trend Micro','CrowdStrike Falcon','Palo Alto Networks','Veeam Backup'];
+let customSegments  = []; try{ customSegments  = JSON.parse(localStorage.getItem('a360_segments') ||'[]'); }catch(e){}
+let customOwners    = []; try{ customOwners    = JSON.parse(localStorage.getItem('a360_owners')   ||'[]'); }catch(e){}
+let customProducts  = []; try{ customProducts  = JSON.parse(localStorage.getItem('a360_products') ||'[]'); }catch(e){}
+
+function getAllSegments(){ return [...DEFAULT_SEGMENTS,...customSegments.filter(s=>!DEFAULT_SEGMENTS.includes(s))]; }
+function getAllOwners(){
+  const fromProjects=[...new Set(projects.map(p=>p.owner).filter(Boolean))];
+  const fromClients =[...new Set(clients.map(c=>c.owner).filter(Boolean))];
+  const all=[...new Set([...fromProjects,...fromClients,...customOwners])].sort();
+  return all;
+}
+function getAllProducts(){ return [...DEFAULT_PRODUCTS,...customProducts.filter(p=>!DEFAULT_PRODUCTS.includes(p))]; }
+
+function saveCustomList(key, arr){ try{ localStorage.setItem('a360_'+key, JSON.stringify(arr)); }catch(e){} }
+
+function populateDynSelect(selId, items, currentVal, placeholder, onAddNew){
+  const sel = document.getElementById(selId); if(!sel) return;
+  sel.innerHTML = `<option value="">${placeholder}</option>` +
+    items.map(s=>`<option value="${s}">${s}</option>`).join('') +
+    `<option value="__add__" style="color:var(--accent2);font-weight:600">+ Adicionar novo...</option>`;
+  if(currentVal) sel.value = currentVal;
+  sel.onchange = function(){
+    if(this.value === '__add__'){
+      const name = prompt('Digite o novo item:');
+      if(name && name.trim()){
+        onAddNew(name.trim());
+        populateDynSelect(selId, items.includes(name.trim())?items:[...items,name.trim()], name.trim(), placeholder, onAddNew);
+      } else { this.value = currentVal||''; }
+    } else { currentVal = this.value; }
+  };
+}
+
+function loadClientModalSelects(currentSeg, currentOwner){
+  populateDynSelect('c-segment', getAllSegments(), currentSeg, 'Selecione o segmento...', (v)=>{ if(!customSegments.includes(v)){customSegments.push(v); saveCustomList('segments',customSegments);} });
+  populateDynSelect('c-owner',   getAllOwners(),   currentOwner, 'Selecione o responsável...', (v)=>{ if(!customOwners.includes(v)){customOwners.push(v); saveCustomList('owners',customOwners);} });
+}
+
+function loadLicenseProductSelect(currentVal){
+  populateDynSelect('l-product', getAllProducts(), currentVal, 'Selecione o produto...', (v)=>{ if(!customProducts.includes(v)){customProducts.push(v); saveCustomList('products',customProducts);} });
+}
+
+// ══════════════════════════════════
+//   LICENSE EXPIRY ALERTS
+// ══════════════════════════════════
+function getExpiryAlerts(){
+  const critical = licenses.filter(l=>{ const d=daysUntil(l.end); return d!==null && d>=0 && d<=75; });
+  const warning  = licenses.filter(l=>{ const d=daysUntil(l.end); return d!==null && d>75 && d<=150; });
+  const expired  = licenses.filter(l=>{ const d=daysUntil(l.end); return d!==null && d<0; });
+  return { critical, warning, expired };
+}
+
+function renderExpiryAlertBanner(){
+  const { critical, warning, expired } = getExpiryAlerts();
+  const totalUrgent = critical.length + expired.length;
+  if(totalUrgent === 0 && warning.length === 0) return '';
+
+  let html = '';
+
+  // CRITICAL / EXPIRED banner — very prominent
+  if(totalUrgent > 0){
+    const items = [...expired, ...critical];
+    html += `<div style="background:rgba(255,95,95,0.12);border:2px solid var(--red);border-radius:var(--r2);padding:14px 18px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="font-size:26px;animation:pulse 1.5s infinite">🚨</span>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--red)">⚠️ ATENÇÃO — ${totalUrgent} licença${totalUrgent>1?'s':''} crítica${totalUrgent>1?'s':''}!</div>
+          <div style="font-size:12px;color:var(--text2)">Renovação urgente necessária</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${items.map(l=>{
+          const d=daysUntil(l.end);
+          const isExp=d<0;
+          return `<div onclick="openLicDetail(${l.id})" style="display:flex;align-items:center;gap:10px;background:rgba(255,95,95,0.1);border:1px solid rgba(255,95,95,0.3);border-radius:var(--r);padding:8px 12px;cursor:pointer;transition:background .15s" onmouseenter="this.style.background='rgba(255,95,95,0.2)'" onmouseleave="this.style.background='rgba(255,95,95,0.1)'">
+            <span style="font-size:20px">${isExp?'🔴':'🟠'}</span>
+            <div style="flex:1">
+              <div style="font-weight:600;font-size:13px">${l.product}</div>
+              <div style="font-size:11px;color:var(--text3)">🏢 ${clientName(l.clientId)}${l.vendor?' · '+l.vendor:''}</div>
+            </div>
+            <span style="font-size:12px;font-weight:700;color:var(--red);font-family:var(--mono);white-space:nowrap">${isExp?`Vencida há ${Math.abs(d)}d`:`Vence em ${d}d`}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+
+  // WARNING banner
+  if(warning.length > 0){
+    html += `<div style="background:var(--amber-bg);border:1px solid rgba(245,166,35,0.35);border-radius:var(--r2);padding:12px 16px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:20px">⚠️</span>
+        <div style="font-size:13px;font-weight:600;color:var(--amber)">${warning.length} licença${warning.length>1?'s':''} vencendo em até 150 dias</div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${warning.map(l=>{
+          const d=daysUntil(l.end);
+          return `<div onclick="openLicDetail(${l.id})" style="display:flex;align-items:center;gap:6px;background:rgba(245,166,35,0.12);border:1px solid rgba(245,166,35,0.3);border-radius:20px;padding:4px 12px;cursor:pointer;font-size:12px" title="${clientName(l.clientId)}">
+            <span>🟡</span><span style="font-weight:600">${l.product}</span><span style="color:var(--text3)">${d}d</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+
+  return html;
+}
+
+
 function populateSectorSelect(selId, currentVal){
   const sel = document.getElementById(selId); if(!sel) return;
   sel.innerHTML = '<option value="">Selecione...</option>' +
@@ -801,24 +914,23 @@ function renderDashboard(){
   const totalClients  = clients.length;
   const activeProjs   = projects.filter(p=>p.status!=='done').length;
   const doneProjs     = projects.filter(p=>p.status==='done').length;
-  const criticalLics  = licenses.filter(l=>{ const d=daysUntil(l.end); return d!==null&&d>=0&&d<=30; }).length;
-  const warningLics   = licenses.filter(l=>{ const d=daysUntil(l.end); return d!==null&&d>30&&d<=90; }).length;
+  const { critical, warning, expired } = getExpiryAlerts();
+  const criticalCount = critical.length + expired.length;
   const allTasks      = projects.flatMap(p=>p.tasks||[]);
   const overdueTasks  = allTasks.filter(t=>t.status!=='done'&&t.status!=='waiting'&&isOverdue(t.due,false)).length;
-
-  // MRR total
   const mrrTotal = licenses.filter(l=>l.monthly).reduce((s,l)=>s+(Number(l.monthlyProposal)||0),0);
 
-  let html = `<div class="stats-grid">
+  let html = renderExpiryAlertBanner();
+  html += `<div class="stats-grid">
     <div class="stat-card"><div class="stat-n" style="color:var(--accent2)">${totalClients}</div><div class="stat-l">Clientes ativos</div></div>
     <div class="stat-card"><div class="stat-n" style="color:var(--accent2)">${activeProjs}</div><div class="stat-l">Projetos em andamento</div><div class="stat-sub">${doneProjs} concluídos</div></div>
-    <div class="stat-card"><div class="stat-n" style="color:${criticalLics>0?'var(--red)':'var(--green)'}">${criticalLics}</div><div class="stat-l">Licenças críticas</div><div class="stat-sub" style="color:var(--amber)">${warningLics} em atenção</div></div>
+    <div class="stat-card"><div class="stat-n" style="color:${criticalCount>0?'var(--red)':'var(--green)'}">${criticalCount}</div><div class="stat-l">Licenças críticas</div><div class="stat-sub" style="color:var(--amber)">${warning.length} em atenção</div></div>
     <div class="stat-card"><div class="stat-n" style="color:var(--green)">${fmtCurShort(mrrTotal)}</div><div class="stat-l">MRR Total</div><div class="stat-sub">Receita mensal recorrente</div></div>
     <div class="stat-card"><div class="stat-n" style="color:${overdueTasks>0?'var(--red)':'var(--green)'}">${overdueTasks}</div><div class="stat-l">Tarefas em atraso</div></div>
   </div>`;
 
   // Licenses expiring soon
-  const expiring = licenses.filter(l=>{ const d=daysUntil(l.end); return d!==null&&d>=0&&d<=90; }).sort((a,b)=>daysUntil(a.end)-daysUntil(b.end));
+  const expiring = licenses.filter(l=>{ const d=daysUntil(l.end); return d!==null&&d>=0&&d<=150; }).sort((a,b)=>daysUntil(a.end)-daysUntil(b.end));
   if(expiring.length>0){
     html+=`<div class="rep-section"><div class="rep-section-title">⚠ Licenças próximas do vencimento</div>
     <div class="panel" style="overflow:hidden"><table class="data-table">
@@ -829,7 +941,7 @@ function renderDashboard(){
           <td style="font-weight:600">${l.product}</td>
           <td style="color:var(--text2)">${clientName(l.clientId)}</td>
           <td style="font-family:var(--mono);font-size:12px">${fmtDate(l.end)}</td>
-          <td><span class="badge ${st.cls}">${d<=30?'🔴 ':'🟡 '}${st.label}</span></td>
+          <td><span class="badge ${st.cls}">${d<=75?'🔴 ':'🟡 '}${st.label}</span></td>
         </tr>`;
       }).join('')}
       </tbody></table></div></div>`;
@@ -871,8 +983,8 @@ function renderClients(){
   }
   const licAlert = (cid)=>{
     const cl=licenses.filter(l=>String(l.clientId)===String(cid));
-    const crit=cl.filter(l=>{ const d=daysUntil(l.end); return d!==null&&d>=0&&d<=30; }).length;
-    const warn=cl.filter(l=>{ const d=daysUntil(l.end); return d!==null&&d>30&&d<=90; }).length;
+    const crit=cl.filter(l=>{ const d=daysUntil(l.end); return d!==null&&d>=0&&d<=75; }).length;
+    const warn=cl.filter(l=>{ const d=daysUntil(l.end); return d!==null&&d>75&&d<=150; }).length;
     if(crit>0) return `<span style="color:var(--red);font-size:16px;font-weight:700" title="${crit} licença(s) crítica(s)">❗</span>`;
     if(warn>0) return `<span style="color:var(--amber);font-size:14px" title="${warn} licença(s) em atenção">⚠️</span>`;
     return '';
@@ -904,7 +1016,8 @@ function openClientModal(id=null){
   editingClientId = id;
   document.getElementById('client-modal-title').textContent = id?'Editar Cliente':'Novo Cliente';
   const c = id ? clients.find(x=>x.id===id) : null;
-  ['name','cnpj','segment','owner','email','phone','notes'].forEach(f=>{ document.getElementById('c-'+f).value=c?c[f]||'':''; });
+  ['name','cnpj','email','phone','notes'].forEach(f=>{ document.getElementById('c-'+f).value=c?c[f]||'':''; });
+  loadClientModalSelects(c?c.segment||'':'', c?c.owner||'':'');
   openModal('client-modal-overlay');
 }
 function saveClient(){
@@ -958,9 +1071,6 @@ function openClientDetail(id){
   </div>`;
 
   document.getElementById('client-detail-panel').innerHTML = html;
-  openModal('client-detail-overlay');
-  document.getElementById('client-detail-overlay').classList.remove('open');
-  document.getElementById('client-detail-overlay').style.display='flex';
   document.getElementById('client-detail-overlay').classList.add('open');
 }
 
@@ -1419,7 +1529,7 @@ function renderLicCard(l, compact){
   const st=getLicStatus(l);
   const prog=licProgress(l);
   const d=daysUntil(l.end);
-  const progColor=d!==null&&d<=30?'var(--red)':d!==null&&d<=90?'var(--amber)':'var(--green)';
+  const progColor=d!==null&&d<=75?'var(--red)':d!==null&&d<=150?'var(--amber)':'var(--green)';
   return `<div class="lic-card ${st.level==='critical'?'critical':st.level==='warning'?'warning':''}" onclick="openLicDetail(${l.id})" style="${compact?'margin-bottom:10px':''}">
     <div style="display:flex;align-items:start;justify-content:space-between;margin-bottom:8px">
       <div>
@@ -1444,7 +1554,8 @@ function openLicenseModal(id=null){
   document.getElementById('lic-modal-title').textContent=id?'Editar Licenciamento':'Novo Licenciamento';
   document.getElementById('l-delete-btn').style.display=id?'':'none';
   const l=id?licenses.find(x=>x.id===id):null;
-  ['product','vendor','dist','seller','notes'].forEach(f=>document.getElementById('l-'+f).value=l?l[f]||'':'');
+  ['vendor','dist','seller','notes'].forEach(f=>document.getElementById('l-'+f).value=l?l[f]||'':'');
+  loadLicenseProductSelect(l?l.product||'':'');
   document.getElementById('l-start').value=l?l.start||'':'';
   document.getElementById('l-end').value=l?l.end||'':'';
   if(isAdmin()){
@@ -1465,7 +1576,6 @@ function toggleLicMonthly(v){ document.getElementById('l-monthly-wrap').style.di
 function saveLicense(){
   const product=document.getElementById('l-product').value.trim();
   const clientId=document.getElementById('l-client').value;
-  if(!product){alert('Produto é obrigatório');return;}
   if(!clientId){alert('Selecione um cliente');return;}
   const monthly=document.getElementById('l-monthly').checked;
   const data={
@@ -1503,9 +1613,24 @@ function deleteLicense(){
 }
 
 function updateLicBadge(){
-  const crit=licenses.filter(l=>{ const d=daysUntil(l.end); return d!==null&&d>=0&&d<=90; }).length;
+  const { critical, warning, expired } = getExpiryAlerts();
+  const urgent = critical.length + expired.length;
   const badge=document.getElementById('lic-alert-badge');
-  if(badge){ badge.style.display=crit>0?'':'none'; badge.textContent=crit; }
+  if(!badge) return;
+  if(urgent > 0){
+    badge.innerHTML = `⚠ ${urgent}`;
+    badge.style.display='';
+    badge.style.background='var(--red)';
+    badge.style.animation='pulse 1.5s ease-in-out infinite';
+  } else if(warning.length > 0){
+    badge.innerHTML = `! ${warning.length}`;
+    badge.style.display='';
+    badge.style.background='var(--amber)';
+    badge.style.animation='';
+  } else {
+    badge.style.display='none';
+    badge.style.animation='';
+  }
 }
 
 function openLicDetail(id){
@@ -1513,7 +1638,7 @@ function openLicDetail(id){
   const st=getLicStatus(l);
   const prog=licProgress(l);
   const d=daysUntil(l.end);
-  const progColor=d!==null&&d<=30?'var(--red)':d!==null&&d<=90?'var(--amber)':'var(--green)';
+  const progColor=d!==null&&d<=75?'var(--red)':d!==null&&d<=150?'var(--amber)':'var(--green)';
   const proposal=Number(l.proposal)||0;
   const quote=Number(l.quote)||0;
   const margin=proposal-quote;
@@ -1640,7 +1765,7 @@ function repOverview(){
   const allTasks=projs.flatMap(p=>p.tasks||[]);
   const doneTasks=allTasks.filter(t=>t.status==='done').length;
   const lateTasks=allTasks.filter(t=>t.status!=='done'&&t.status!=='waiting'&&isOverdue(t.due,false)).length;
-  const critLics=licenses.filter(l=>{ const d=daysUntil(l.end); return d!==null&&d>=0&&d<=30; }).length;
+  const critLics=licenses.filter(l=>{ const d=daysUntil(l.end); return d!==null&&d>=0&&d<=75; }).length;
 
   let html=periodBar()+`
   <div class="rep-section"><div class="rep-section-title">Visão Geral</div>
@@ -1843,8 +1968,8 @@ function repPerformance(){
 
 function repLicenses(){
   const sorted=[...licenses].sort((a,b)=>(daysUntil(a.end)||999)-(daysUntil(b.end)||999));
-  const critical=sorted.filter(l=>{ const d=daysUntil(l.end); return d!==null&&d>=0&&d<=30; });
-  const warning=sorted.filter(l=>{ const d=daysUntil(l.end); return d!==null&&d>30&&d<=90; });
+  const critical=sorted.filter(l=>{ const d=daysUntil(l.end); return d!==null&&d>=0&&d<=75; });
+  const warning=sorted.filter(l=>{ const d=daysUntil(l.end); return d!==null&&d>75&&d<=150; });
   const active=sorted.filter(l=>{ const d=daysUntil(l.end); return d!==null&&d>90; });
   const expired=sorted.filter(l=>{ const d=daysUntil(l.end); return d!==null&&d<0; });
   const totalMRR=licenses.filter(l=>l.monthly).reduce((s,l)=>s+(Number(l.monthlyProposal)||0),0);
@@ -1860,7 +1985,7 @@ function repLicenses(){
           <td style="color:var(--text2)">${clientName(l.clientId)}</td>
           <td style="color:var(--text3)">${l.vendor||'—'}</td>
           <td style="font-family:var(--mono);font-size:12px">${fmtDate(l.end)}</td>
-          <td style="font-family:var(--mono);font-size:12px;color:${d!==null&&d<=30?'var(--red)':d!==null&&d<=90?'var(--amber)':'var(--text2)'}">${d!==null?d+'d':'—'}</td>
+          <td style="font-family:var(--mono);font-size:12px;color:${d!==null&&d<=75?'var(--red)':d!==null&&d<=150?'var(--amber)':'var(--text2)'}">${d!==null?d+'d':'—'}</td>
           ${isAdmin()?`<td style="color:var(--green);font-size:12px">${l.monthly?fmtCur(l.monthlyProposal)+'/mês':'—'}</td>`:''}
           <td><span class="badge ${st.cls}">${st.label}</span></td>
         </tr>`;
@@ -1870,15 +1995,15 @@ function repLicenses(){
   let html=`<div class="rep-section"><div class="rep-section-title">Resumo</div>
   <div class="kpi-grid">
     <div class="kpi-card"><div class="kpi-n" style="color:var(--accent2)">${licenses.length}</div><div class="kpi-l">Total licenças</div></div>
-    <div class="kpi-card"><div class="kpi-n" style="color:var(--red)">${critical.length}</div><div class="kpi-l">🔴 Críticas (≤30d)</div></div>
-    <div class="kpi-card"><div class="kpi-n" style="color:var(--amber)">${warning.length}</div><div class="kpi-l">🟡 Atenção (≤90d)</div></div>
+    <div class="kpi-card"><div class="kpi-n" style="color:var(--red)">${critical.length}</div><div class="kpi-l">🔴 Críticas (≤75d)</div></div>
+    <div class="kpi-card"><div class="kpi-n" style="color:var(--amber)">${warning.length}</div><div class="kpi-l">🟡 Atenção (≤150d)</div></div>
     <div class="kpi-card"><div class="kpi-n" style="color:var(--green)">${active.length}</div><div class="kpi-l">✅ Ativas</div></div>
     ${isAdmin()?`<div class="kpi-card"><div class="kpi-n" style="color:var(--green)">${fmtCur(totalMRR)}</div><div class="kpi-l">MRR licenças</div></div>
     <div class="kpi-card"><div class="kpi-n" style="color:var(--accent2)">${fmtCur(totalProp)}</div><div class="kpi-l">Receita total</div></div>`:''}
   </div></div>`;
 
-  if(critical.length>0) html+=`<div class="rep-section"><div class="rep-section-title" style="color:var(--red)">🔴 Críticos — vencendo em até 30 dias</div>${licTable(critical)}</div>`;
-  if(warning.length>0)  html+=`<div class="rep-section"><div class="rep-section-title" style="color:var(--amber)">🟡 Atenção — vencendo em até 90 dias</div>${licTable(warning)}</div>`;
+  if(critical.length>0) html+=`<div class="rep-section"><div class="rep-section-title" style="color:var(--red)">🔴 Críticos — vencendo em até 75 dias</div>${licTable(critical)}</div>`;
+  if(warning.length>0)  html+=`<div class="rep-section"><div class="rep-section-title" style="color:var(--amber)">🟡 Atenção — vencendo em até 150 dias</div>${licTable(warning)}</div>`;
   if(active.length>0)   html+=`<div class="rep-section"><div class="rep-section-title">✅ Ativos</div>${licTable(active)}</div>`;
   if(expired.length>0)  html+=`<div class="rep-section"><div class="rep-section-title">⬛ Vencidos</div>${licTable(expired)}</div>`;
   return html;
