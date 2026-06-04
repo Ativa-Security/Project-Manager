@@ -493,7 +493,12 @@ input,select,textarea{font-family:var(--font)}
 
     <!-- ── REPORTS ── -->
     <div class="page" id="page-reports">
-      <div class="section-header"><div class="section-title">Relatórios</div></div>
+      <div class="section-header">
+        <div class="section-title">Relatórios</div>
+        <button class="btn btn-accent" onclick="exportFullReportPDF()" style="display:flex;align-items:center;gap:6px">
+          <span>⬇</span> Exportar PDF completo
+        </button>
+      </div>
       <div class="rep-tabs" id="rep-tabs">
         <div class="rep-tab active" onclick="switchReport('overview',this)">📊 Visão Geral</div>
         <div class="rep-tab" onclick="switchReport('projects',this)">📋 Projetos</div>
@@ -2109,6 +2114,184 @@ function reportLogoHeader(subtitle){
     + '</div>';
 }
 
+// ══════════════════════════════════
+//   FULL PDF EXPORT
+// ══════════════════════════════════
+window.exportFullReportPDF = function(){
+  const btn = document.querySelector('[onclick="exportFullReportPDF()"]');
+  if(btn){ btn.textContent='⏳ Gerando...'; btn.disabled=true; }
+
+  const now = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+  const LOGO_DATA_URI_EXPORT = LOGO_DATA_URI; // blue logo for print (white bg)
+
+  // Page break helper
+  const pageBreak = '<div style="page-break-after:always;height:0;margin:0;padding:0"></div>';
+
+  // Section divider
+  function sectionHeader(title, icon){
+    return `<div style="display:flex;align-items:center;gap:10px;margin:32px 0 16px;padding-bottom:10px;border-bottom:2px solid #2563eb">
+      <span style="font-size:20px">${icon}</span>
+      <span style="font-size:16px;font-weight:700;color:#1a2e5c">${title}</span>
+    </div>`;
+  }
+
+  // Build cover page
+  const cover = `
+    <div style="height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;page-break-after:always;background:linear-gradient(160deg,#070b14 0%,#0c1529 40%,#0d2260 100%);color:#fff;padding:40px">
+      <img src="${LOGO_DATA_URI_EXPORT}" style="height:120px;width:auto;margin-bottom:40px;filter:brightness(10)">
+      <div style="font-size:36px;font-weight:800;letter-spacing:-.02em;margin-bottom:8px">Relatório Completo</div>
+      <div style="font-size:16px;opacity:.7;margin-bottom:40px">Ativa Security · Ativa360</div>
+      <div style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:20px 40px;display:inline-block">
+        <div style="font-size:13px;opacity:.6;margin-bottom:4px">Gerado em</div>
+        <div style="font-size:18px;font-weight:600">${now}</div>
+      </div>
+      <div style="margin-top:40px;display:flex;gap:20px;flex-wrap:wrap;justify-content:center">
+        ${[
+          ['👥', clients.length, 'Clientes'],
+          ['📋', projects.length, 'Projetos'],
+          ['🔑', licenses.length, 'Licenciamentos'],
+        ].map(([icon,n,label])=>`
+          <div style="background:rgba(255,255,255,0.08);border-radius:10px;padding:16px 24px;text-align:center">
+            <div style="font-size:24px;margin-bottom:4px">${icon}</div>
+            <div style="font-size:28px;font-weight:700">${n}</div>
+            <div style="font-size:11px;opacity:.6;text-transform:uppercase;letter-spacing:.06em">${label}</div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+
+  // Temporarily switch to light mode for clean print rendering
+  const wasLight = document.body.classList.contains('light');
+  document.body.classList.add('light');
+
+  // Generate all sections (use a temp container to render SVGs)
+  const sections = [
+    { fn: repOverview,    title:'Visão Geral',           icon:'📊' },
+    { fn: repFinancial,   title:'Financeiro — Projetos', icon:'💰', adminOnly:true },
+    { fn: repMRR,         title:'MRR',                   icon:'📈', adminOnly:true },
+    { fn: repByProject,   title:'Por Projeto',           icon:'📋' },
+    { fn: repPerformance, title:'Desempenho',             icon:'🏆' },
+    { fn: repLicenses,    title:'Licenciamentos',         icon:'🔑' },
+  ];
+
+  let body = cover;
+
+  sections.forEach((s, idx) => {
+    if(s.adminOnly && !isAdmin()) return;
+    const content = s.fn();
+    body += `<div class="report-section">
+      ${sectionHeader(s.title, s.icon)}
+      <div class="report-section-body">${content}</div>
+    </div>`;
+    if(idx < sections.length - 1) body += pageBreak;
+  });
+
+  if(!wasLight) document.body.classList.remove('light');
+
+  // Build print window with self-contained styles
+  const w = window.open('','_blank','width=1200,height=900');
+  w.document.write(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Relatório Completo — Ativa Security — ${now}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#f8faff; --bg2:#ffffff; --bg3:#f0f4ff; --bg4:#e8edf8;
+    --border:rgba(37,99,235,0.12); --border2:rgba(37,99,235,0.25);
+    --text:#0f1628; --text2:#3a4a70; --text3:#6b7fa8;
+    --accent:#2563eb; --accent2:#1d4ed8;
+    --green:#16a34a; --green-bg:rgba(22,163,74,0.1);
+    --amber:#d97706; --amber-bg:rgba(217,119,6,0.1);
+    --red:#dc2626;   --red-bg:rgba(220,38,38,0.1);
+    --gray:#64748b;
+    --font:'DM Sans',sans-serif; --mono:'DM Mono',monospace;
+    --r:6px; --r2:10px;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--font);background:#fff;color:var(--text);font-size:13px;line-height:1.5}
+  .report-section{padding:20px 32px 0}
+  .report-section-body{padding-bottom:20px}
+
+  /* KPI / stat cards */
+  .kpi-grid,.stats-grid{display:grid;gap:10px;margin-bottom:16px}
+  .kpi-card,.stat-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:12px 14px}
+  .kpi-n{font-size:22px;font-weight:700;font-family:var(--mono);line-height:1}
+  .kpi-l{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-top:3px}
+  .kpi-sub{font-size:11px;color:var(--text2);margin-top:2px}
+  .stat-card{padding:12px}
+
+  /* Panel */
+  .panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden}
+
+  /* Table */
+  .data-table{width:100%;border-collapse:collapse}
+  .data-table th{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;padding:8px 12px;text-align:left;border-bottom:1.5px solid var(--border2);background:var(--bg3)}
+  .data-table td{padding:8px 12px;font-size:12px;border-bottom:1px solid var(--border);vertical-align:middle}
+  .data-table tr:last-child td{border-bottom:none}
+  .data-table tr:hover td{background:var(--bg3)}
+
+  /* Badge */
+  .badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:600}
+  .badge-green{background:var(--green-bg);color:var(--green)}
+  .badge-amber{background:var(--amber-bg);color:var(--amber)}
+  .badge-red{background:var(--red-bg);color:var(--red)}
+  .badge-blue{background:rgba(37,99,235,0.1);color:var(--accent)}
+  .badge-gray{background:rgba(100,116,139,0.12);color:var(--gray)}
+
+  /* Progress bars */
+  .progress-bar{height:6px;background:var(--bg4);border-radius:3px;overflow:hidden}
+  .progress-fill{height:100%;border-radius:3px}
+
+  /* Rep section */
+  .rep-section{margin-bottom:20px}
+  .rep-section-title{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+  .rep-section-title::after{content:'';flex:1;height:1px;background:var(--border2)}
+
+  /* Charts — keep SVGs */
+  svg{max-width:100%;height:auto}
+
+  /* User cards in performance */
+  .panel[style*="position:relative"]{break-inside:avoid}
+
+  /* Logo header in each section */
+  .report-logo-header{display:flex;align-items:center;justify-content:space-between;padding:12px 0 12px;border-bottom:2px solid rgba(37,99,235,0.2);margin-bottom:16px}
+
+  /* Period bar */
+  .panel.period-bar{padding:10px 14px;margin-bottom:16px;background:var(--bg3);display:flex;align-items:center;gap:10px}
+
+  /* Misc */
+  .form-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:3px}
+  .avatar-sm{width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0}
+  .empty-state{text-align:center;padding:40px;color:var(--text3)}
+
+  /* Print settings */
+  @media print {
+    @page { margin:14mm 12mm; size:A4; }
+    body { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .report-section { page-break-inside:avoid }
+    .no-print { display:none !important }
+  }
+</style>
+</head>
+<body>
+${body}
+<div class="no-print" style="position:fixed;bottom:20px;right:20px;display:flex;gap:10px;z-index:9999">
+  <button onclick="window.print()" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:12px 24px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;box-shadow:0 4px 16px rgba(37,99,235,0.4)">
+    🖨 Imprimir / Salvar PDF
+  </button>
+  <button onclick="window.close()" style="background:#f1f5f9;color:#374151;border:none;border-radius:8px;padding:12px 20px;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif">
+    ✕ Fechar
+  </button>
+</div>
+</body>
+</html>`);
+  w.document.close();
+  // Re-enable export button
+  if(btn){ setTimeout(()=>{ btn.innerHTML='<span>⬇</span> Exportar PDF completo'; btn.disabled=false; }, 1000); }
+};
+
 function repOverview(){
   const projs=filterByPeriod(projects);
   const total=projs.length;
@@ -2245,7 +2428,8 @@ function repFinancial(){
   const totalQuote=projs.reduce((s,p)=>s+(Number(p.quote)||0),0);
   const totalMargin=totalProposal-totalQuote;
   const totalHourCost=projs.reduce((s,p)=>{ const h=p.tasks?p.tasks.filter(t=>!t.na).reduce((a,t)=>a+(Number(t.doneHours)||0),0):0; return s+(Number(p.hourrate)||0)*h; },0);
-  const totalReal=totalProposal-totalQuote-totalHourCost;
+  // Margem real = Proposta - Custo de Horas (igual à aba Custos do projeto)
+  const totalReal=totalProposal-totalHourCost;
   const monthlyRev=projs.filter(p=>p.monthly).reduce((s,p)=>s+(Number(p.monthlyProposal)||0),0);
   const marginPct=totalProposal>0?Math.round(totalMargin/totalProposal*100):0;
   const realPct=totalProposal>0?Math.round(totalReal/totalProposal*100):0;
@@ -2292,8 +2476,8 @@ function repFinancial(){
     <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px">Top projetos por receita</div>
     ${svgHBar(chartProjs.map(p=>{
       const h=p.tasks?p.tasks.filter(t=>!t.na).reduce((a,t)=>a+(Number(t.doneHours)||0),0):0;
-      const prop=Number(p.proposal)||0, quot=Number(p.quote)||0, hc=(Number(p.hourrate)||0)*h;
-      const real=prop-quot-hc, pct=prop>0?Math.round(real/prop*100):0;
+      const prop=Number(p.proposal)||0, hc=(Number(p.hourrate)||0)*h;
+      const real=prop-hc, pct=prop>0?Math.round(real/prop*100):0;
       return {label:p.name,value:prop,color:pct>=20?'#34c97e':pct>=0?'#2563eb':'#ef4444',label2:fmtCurShort(prop)+' ('+pct+'%)'};
     }),{barH:22,gap:8,labelW:160})}
     ${legend([{label:'Margem ≥20%',color:'#34c97e'},{label:'Margem 0–20%',color:'#2563eb'},{label:'Margem negativa',color:'#ef4444'}])}
@@ -2313,7 +2497,7 @@ function repFinancial(){
     <tbody>${withFinancial.map(p=>{
       const h=p.tasks?p.tasks.filter(t=>!t.na).reduce((a,t)=>a+(Number(t.doneHours)||0),0):0;
       const prop=Number(p.proposal)||0, quot=Number(p.quote)||0, hc=(Number(p.hourrate)||0)*h;
-      const real=prop-quot-hc; const pct=prop>0?Math.round(real/prop*100):0;
+      const real=prop-hc; const pct=prop>0?Math.round(real/prop*100):0;
       return `<tr onclick="openProjDetail(${p.id})" style="cursor:pointer">
         <td style="font-weight:600">${p.name}</td>
         <td style="color:var(--text2);font-size:12px">${clientName(p.clientId)}</td>
