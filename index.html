@@ -402,6 +402,7 @@ input,select,textarea{font-family:var(--font)}
       <div class="nav-item" onclick="navTo('clients',this)" title="Clientes"><span class="nav-icon">👥</span><span class="nav-label">Clientes</span></div>
       <div class="nav-item" onclick="navTo('projects',this)" title="Projetos"><span class="nav-icon">📋</span><span class="nav-label">Projetos</span></div>
       <div class="nav-item" onclick="navTo('licenses',this)" title="Licenciamentos"><span class="nav-icon">🔑</span><span class="nav-label">Licenciamentos</span><span class="nav-badge" id="lic-alert-badge" style="display:none">!</span></div>
+      <div class="nav-item" onclick="navTo('commitments',this)" title="Commitment Acronis"><span class="nav-icon">💳</span><span class="nav-label">Commitment</span><span class="nav-badge" id="commit-alert-badge" style="display:none">!</span></div>
       <div class="nav-item" id="nav-reports" onclick="navTo('reports',this)" title="Relatórios"><span class="nav-icon">📊</span><span class="nav-label">Relatórios</span></div>
       <div class="nav-item" id="nav-settings" onclick="navTo('settings',this)" title="Configurações" style="display:none"><span class="nav-icon">⚙️</span><span class="nav-label">Configurações</span></div>
     </nav>
@@ -489,6 +490,16 @@ input,select,textarea{font-family:var(--font)}
         <div class="filter-chip" onclick="toggleLicFilter('expired',this)" id="lf-expired">⬛ Vencidos</div>
       </div>
       <div id="licenses-content"></div>
+    </div>
+
+    <!-- ── COMMITMENT ── -->
+    <div class="page" id="page-commitments">
+      <div class="section-header">
+        <div class="section-title">💳 Commitment Acronis</div>
+        <button class="btn btn-accent" id="btn-new-commit" onclick="openCommitModal()">+ Nova Commitment</button>
+      </div>
+      <div id="commit-alerts-banner"></div>
+      <div class="card-grid" id="commitments-grid"></div>
     </div>
 
     <!-- ── REPORTS ── -->
@@ -713,6 +724,11 @@ input,select,textarea{font-family:var(--font)}
   <div class="detail-panel" id="proj-detail-panel"></div>
 </div>
 
+<!-- COMMITMENT DETAIL -->
+<div class="detail-overlay" id="commit-detail-overlay" onclick="if(event.target===this)closeDetail('commit-detail-overlay')">
+  <div class="detail-panel" id="commit-detail-panel"></div>
+</div>
+
 <!-- LICENSE DETAIL -->
 <div class="detail-overlay" id="lic-detail-overlay" onclick="if(event.target===this)closeDetail('lic-detail-overlay')">
   <div class="detail-panel" id="lic-detail-panel"></div>
@@ -763,6 +779,65 @@ input,select,textarea{font-family:var(--font)}
   </div>
 </div>
 
+<!-- COMMITMENT MODAL -->
+<div class="modal-overlay" id="commit-modal-overlay" onclick="if(event.target===this)closeModal('commit-modal-overlay')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="commit-modal-title">Nova Commitment Acronis</div>
+      <button class="modal-close" onclick="closeModal('commit-modal-overlay')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Commitment contratada *</label>
+        <select class="form-select" id="cm-value">
+          <option value="">Selecione o valor...</option>
+          <option value="1500">R$ 1.500</option>
+          <option value="3000">R$ 3.000</option>
+          <option value="6000">R$ 6.000</option>
+          <option value="12000">R$ 12.000</option>
+          <option value="24000">R$ 24.000</option>
+        </select>
+      </div>
+      <div class="form-grid">
+        <div class="form-group"><label class="form-label">Descrição / Referência</label><input class="form-input" id="cm-desc" placeholder="Ex: Commitment Acronis Q1 2025"></div>
+        <div class="form-group"><label class="form-label">Data de contratação</label><input class="form-input" id="cm-date" type="date"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Licenciamento vinculado</label>
+        <select class="form-select" id="cm-license"><option value="">Nenhum</option></select>
+      </div>
+      <div class="form-group"><label class="form-label">Observações</label><textarea class="form-textarea" id="cm-notes" rows="2" placeholder="Observações adicionais..."></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger" id="cm-delete-btn" onclick="deleteCommitment()" style="margin-right:auto;display:none">Excluir</button>
+      <button class="btn btn-ghost" onclick="closeModal('commit-modal-overlay')">Cancelar</button>
+      <button class="btn btn-accent" onclick="saveCommitment()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- COMMIT USAGE MODAL -->
+<div class="modal-overlay" id="commit-usage-overlay" onclick="if(event.target===this)closeModal('commit-usage-overlay')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">➕ Adicionar uso de saldo</div>
+      <button class="modal-close" onclick="closeModal('commit-usage-overlay')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Cliente *</label>
+        <select class="form-select" id="cu-client"><option value="">Selecione...</option></select>
+      </div>
+      <div class="form-group"><label class="form-label">Solução / Produto *</label><input class="form-input" id="cu-product" placeholder="Ex: Acronis Cyber Protect Cloud"></div>
+      <div class="form-group admin-only"><label class="form-label">Custo (R$) — valor abatido do saldo *</label><input class="form-input" id="cu-cost" type="number" min="0" step="0.01" placeholder="0,00"></div>
+      <div class="form-group"><label class="form-label">Data</label><input class="form-input" id="cu-date" type="date"></div>
+      <div class="form-group"><label class="form-label">Observações</label><input class="form-input" id="cu-notes" placeholder="Detalhes..."></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('commit-usage-overlay')">Cancelar</button>
+      <button class="btn btn-accent" onclick="saveCommitUsage()">Adicionar</button>
+    </div>
+  </div>
+</div>
+
 <!-- STATUS REPORT MODAL -->
 <div class="modal-overlay" id="status-report-overlay" onclick="if(event.target===this)closeModal('status-report-overlay')">
   <div class="modal" style="max-width:780px">
@@ -790,6 +865,8 @@ let licenses  = [];
 let nextClientId  = 1;
 let nextProjectId = 1;
 let nextLicId     = 1;
+let commitments   = [];
+let nextCommitId  = 1;
 let nextTaskId    = 1000;
 
 let currentUser = null;
@@ -878,6 +955,7 @@ function navTo(page, el){
   if(page==='clients')   renderClients();
   if(page==='projects')  renderProjects();
   if(page==='licenses')  renderLicenses();
+  if(page==='commitments') renderCommitments();
   if(page==='reports')   renderReport('overview');
   if(page==='settings')  openSettings('users');
 }
@@ -2908,8 +2986,288 @@ function renderSettingsTheme(panel){
 
 
 // ══════════════════════════════════
-//   RENEWAL
+//   COMMITMENT MODULE
 // ══════════════════════════════════
+const COMMIT_TIERS = [1500,3000,6000,12000,24000];
+
+function commitBalance(cm){
+  const used=(cm.usages||[]).reduce((s,u)=>s+(Number(u.cost)||0),0);
+  const total=Number(cm.value)||0;
+  const remaining=total-used;
+  const pct=total>0?Math.round((remaining/total)*100):0;
+  return {used,total,remaining,pct};
+}
+
+function commitStatus(pct){
+  if(pct<=15) return {level:'critical',color:'var(--red)',  bg:'rgba(255,95,95,0.1)', icon:'🔴', label:'Saldo crítico!'};
+  if(pct<=25) return {level:'warning', color:'var(--amber)',bg:'rgba(245,166,35,0.1)',icon:'⚠️', label:'Saldo baixo'};
+  return       {level:'ok',      color:'var(--green)',bg:'var(--green-bg)',   icon:'✅', label:'Saldo OK'};
+}
+
+function updateCommitBadge(){
+  const badge=document.getElementById('commit-alert-badge'); if(!badge) return;
+  const alerts=commitments.filter(cm=>{ const {pct}=commitBalance(cm); return pct<=25; });
+  const critical=commitments.filter(cm=>{ const {pct}=commitBalance(cm); return pct<=15; });
+  if(critical.length>0){ badge.textContent='!'; badge.style.display=''; badge.style.background='var(--red)'; badge.style.animation='pulse 1.5s infinite'; }
+  else if(alerts.length>0){ badge.textContent='!'; badge.style.display=''; badge.style.background='var(--amber)'; badge.style.animation=''; }
+  else { badge.style.display='none'; badge.style.animation=''; }
+}
+
+function renderCommitments(){
+  const grid=document.getElementById('commitments-grid'); if(!grid) return;
+  const banner=document.getElementById('commit-alerts-banner'); if(banner) banner.innerHTML='';
+
+  // Alerts banner
+  const critical=commitments.filter(cm=>commitBalance(cm).pct<=15);
+  const warning =commitments.filter(cm=>{ const p=commitBalance(cm).pct; return p>15&&p<=25; });
+  let bannerHtml='';
+  if(critical.length>0) bannerHtml+=`<div class="alert-banner alert-banner-red" style="margin-bottom:12px">🔴 <strong>${critical.length} commitment${critical.length>1?'s':''}</strong> com saldo crítico (≤15% restante)!</div>`;
+  if(warning.length>0)  bannerHtml+=`<div class="alert-banner alert-banner-amber" style="margin-bottom:12px">⚠️ <strong>${warning.length} commitment${warning.length>1?'s':''}</strong> com saldo baixo (≤25% restante)</div>`;
+  if(banner) banner.innerHTML=bannerHtml;
+
+  if(!commitments.length){
+    grid.innerHTML=`<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">💳</div><div class="empty-state-text">Nenhuma commitment cadastrada</div><button class="btn btn-accent" onclick="openCommitModal()">+ Nova Commitment</button></div>`;
+    return;
+  }
+
+  grid.innerHTML=commitments.map(cm=>{
+    const {used,total,remaining,pct}=commitBalance(cm);
+    const st=commitStatus(pct);
+    const lic=licenses.find(l=>String(l.id)===String(cm.licenseId));
+    const barW=Math.max(0,Math.min(100,100-pct)); // consumed portion
+    return `<div class="card" style="cursor:pointer;border-color:${st.level!=='ok'?st.color.replace('var(--','').replace(')','')&&st.color:'var(--border)'};${st.level==='critical'?'border-width:2px':st.level==='warning'?'border-width:1.5px':''}" onclick="openCommitDetail(${cm.id})">
+      <!-- Top bar: consumed -->
+      <div style="height:4px;background:var(--bg4);border-radius:4px;overflow:hidden;margin-bottom:14px">
+        <div style="height:100%;border-radius:4px;background:${st.color};width:${barW}%;transition:width .4s"></div>
+      </div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
+        <div>
+          <div style="font-size:16px;font-weight:700">${cm.desc||'Commitment Acronis'}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px">${cm.date?fmtDate(cm.date):''}</div>
+        </div>
+        <span style="font-size:18px" title="${st.label}">${st.icon}</span>
+      </div>
+
+      <!-- Valor total -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+        <div style="background:var(--bg3);border-radius:var(--r);padding:8px;text-align:center">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:2px">Contratada</div>
+          <div style="font-size:14px;font-weight:700;font-family:var(--mono);color:var(--accent2)">${fmtCur(total)}</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:var(--r);padding:8px;text-align:center">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:2px">Utilizado</div>
+          <div style="font-size:14px;font-weight:700;font-family:var(--mono);color:var(--amber)">${fmtCur(used)}</div>
+        </div>
+        <div style="background:${st.bg};border:1px solid ${st.color}40;border-radius:var(--r);padding:8px;text-align:center">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:2px">Saldo</div>
+          <div style="font-size:14px;font-weight:700;font-family:var(--mono);color:${st.color}">${fmtCur(remaining)}</div>
+        </div>
+      </div>
+
+      <!-- Progress bar saldo restante -->
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:4px">
+          <span>Saldo restante</span>
+          <span style="font-weight:700;color:${st.color}">${pct}%</span>
+        </div>
+        <div style="height:8px;background:var(--bg4);border-radius:4px;overflow:hidden">
+          <div style="height:100%;border-radius:4px;background:${st.color};width:${pct}%;transition:width .4s"></div>
+        </div>
+      </div>
+
+      ${pct<=25?`<div style="margin-top:10px;padding:6px 10px;border-radius:var(--r);background:${st.bg};border:1px solid ${st.color}40;font-size:11px;font-weight:600;color:${st.color};display:flex;align-items:center;gap:6px">${st.icon} ${st.label} — ${pct}% restante</div>`:''}
+      ${lic?`<div style="margin-top:8px;font-size:11px;color:var(--purple)">🔑 ${lic.product}</div>`:''}
+      <div style="margin-top:8px;font-size:11px;color:var(--text3)">${(cm.usages||[]).length} uso${(cm.usages||[]).length!==1?'s':''} registrado${(cm.usages||[]).length!==1?'s':''}</div>
+    </div>`;
+  }).join('');
+  updateCommitBadge();
+}
+
+let editingCommitId=null;
+function openCommitModal(id=null){
+  editingCommitId=id;
+  document.getElementById('commit-modal-title').textContent=id?'Editar Commitment':'Nova Commitment Acronis';
+  document.getElementById('cm-delete-btn').style.display=id?'':'none';
+  const cm=id?commitments.find(x=>x.id===id):null;
+  document.getElementById('cm-value').value=cm?cm.value||'':'';
+  document.getElementById('cm-desc').value=cm?cm.desc||'':'';
+  document.getElementById('cm-date').value=cm?cm.date||todayStr():todayStr();
+  document.getElementById('cm-notes').value=cm?cm.notes||'':'';
+  // Populate license select
+  const ls=document.getElementById('cm-license');
+  ls.innerHTML='<option value="">Nenhum</option>'+licenses.map(l=>`<option value="${l.id}">${l.product}${l.clientId?' ('+clientName(l.clientId)+')':''}</option>`).join('');
+  ls.value=cm?cm.licenseId||'':'';
+  openModal('commit-modal-overlay');
+}
+
+function saveCommitment(){
+  const value=document.getElementById('cm-value').value;
+  if(!value){alert('Selecione o valor da commitment');return;}
+  const data={
+    id:editingCommitId||nextCommitId++,
+    value:Number(value),
+    desc:document.getElementById('cm-desc').value.trim(),
+    date:document.getElementById('cm-date').value,
+    licenseId:document.getElementById('cm-license').value||null,
+    notes:document.getElementById('cm-notes').value.trim(),
+    usages:editingCommitId?(commitments.find(x=>x.id===editingCommitId)||{}).usages||[]:[],
+    createdAt:Date.now(),
+  };
+  if(editingCommitId){ const i=commitments.findIndex(x=>x.id===editingCommitId); commitments[i]=data; }
+  else commitments.push(data);
+  if(window.saveToFirebase) saveToFirebase('commitments',String(data.id),data);
+  closeModal('commit-modal-overlay');
+  renderCommitments();
+  if(currentCommitId) openCommitDetail(data.id);
+}
+
+function deleteCommitment(){
+  if(!editingCommitId||!confirm('Excluir esta commitment?')) return;
+  commitments=commitments.filter(x=>x.id!==editingCommitId);
+  if(window.saveToFirebase) deleteFromFirebase&&deleteFromFirebase('commitments',String(editingCommitId));
+  closeModal('commit-modal-overlay');
+  renderCommitments();
+  closeDetail('commit-detail-overlay');
+}
+
+// ── COMMITMENT DETAIL ──
+let currentCommitId=null;
+let editingUsageIdx=null;
+
+function openCommitDetail(id){
+  currentCommitId=id;
+  renderCommitDetail();
+  document.getElementById('commit-detail-overlay').classList.add('open');
+}
+
+function renderCommitDetail(){
+  const cm=commitments.find(x=>x.id===currentCommitId); if(!cm) return;
+  const {used,total,remaining,pct}=commitBalance(cm);
+  const st=commitStatus(pct);
+  const lic=licenses.find(l=>String(l.id)===String(cm.licenseId));
+  const usages=cm.usages||[];
+
+  let html=`<div class="detail-header">
+    <div style="flex:1">
+      <div style="font-size:17px;font-weight:700">${cm.desc||'Commitment Acronis'}</div>
+      <div style="font-size:12px;color:var(--text3)">${cm.date?fmtDate(cm.date):''} · ${fmtCur(total)} contratados</div>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="openCommitModal(${cm.id})">✏️ Editar</button>
+    <button onclick="closeDetail('commit-detail-overlay')" style="color:var(--text3);font-size:20px;padding:4px 8px">✕</button>
+  </div>
+  <div class="detail-body">
+
+    <!-- Saldo visual -->
+    <div style="background:${st.bg};border:2px solid ${st.color}50;border-radius:var(--r2);padding:18px;margin-bottom:18px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <span style="font-size:24px">${st.icon}</span>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:${st.color}">${st.label}</div>
+          <div style="font-size:12px;color:var(--text2)">${pct}% do saldo restante</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">
+        <div style="text-align:center;background:var(--bg2);border-radius:var(--r);padding:12px">
+          <div style="font-size:11px;color:var(--text3)">Commitment</div>
+          <div style="font-size:20px;font-weight:700;color:var(--accent2);font-family:var(--mono)">${fmtCur(total)}</div>
+        </div>
+        <div style="text-align:center;background:var(--bg2);border-radius:var(--r);padding:12px">
+          <div style="font-size:11px;color:var(--text3)">Utilizado</div>
+          <div style="font-size:20px;font-weight:700;color:var(--amber);font-family:var(--mono)">${fmtCur(used)}</div>
+        </div>
+        <div style="text-align:center;background:var(--bg2);border-radius:var(--r);padding:12px;border:2px solid ${st.color}50">
+          <div style="font-size:11px;color:var(--text3)">Saldo</div>
+          <div style="font-size:20px;font-weight:700;color:${st.color};font-family:var(--mono)">${fmtCur(remaining)}</div>
+        </div>
+      </div>
+      <div style="height:10px;background:var(--bg4);border-radius:5px;overflow:hidden">
+        <div style="height:100%;border-radius:5px;background:${st.color};width:${pct}%;transition:width .5s"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-top:4px">
+        <span>0%</span><span style="color:${pct<=25?st.color:'var(--text3)'}">${pct}% restante</span><span>100%</span>
+      </div>
+      <!-- Threshold markers -->
+      <div style="position:relative;height:20px;margin-top:4px">
+        <div style="position:absolute;left:25%;transform:translateX(-50%);font-size:9px;color:var(--amber)">▲ 25%</div>
+        <div style="position:absolute;left:15%;transform:translateX(-50%);font-size:9px;color:var(--red)">▲ 15%</div>
+      </div>
+    </div>
+
+    ${lic?`<div class="panel" style="padding:12px 16px;margin-bottom:16px;cursor:pointer;display:flex;align-items:center;gap:10px" onclick="openLicDetail(${lic.id})">
+      <span style="font-size:18px">🔑</span>
+      <div style="flex:1"><div style="font-weight:600;font-size:13px">${lic.product}</div><div style="font-size:11px;color:var(--text3)">${clientName(lic.clientId)} · ${fmtDate(lic.end)}</div></div>
+      <span class="badge badge-blue">Ver licença →</span>
+    </div>`:''}
+
+    <!-- Usos do saldo -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:600">Usos do saldo (${usages.length})</div>
+      <button class="btn btn-accent btn-sm" onclick="openCommitUsageModal()">+ Adicionar uso</button>
+    </div>
+
+    ${usages.length===0?`<div class="empty-state" style="padding:24px"><div class="empty-state-icon">📋</div><div class="empty-state-text">Nenhum uso registrado</div></div>`:''}
+
+    ${usages.length>0?`<div class="panel" style="overflow:hidden"><table class="data-table">
+      <thead><tr><th>Cliente</th><th>Solução</th><th>Custo (abatido)</th><th>Data</th><th>Obs.</th><th></th></tr></thead>
+      <tbody>${usages.map((u,i)=>`<tr>
+        <td style="font-weight:600">${clientName(u.clientId)||u.clientId||'—'}</td>
+        <td style="color:var(--text2)">${u.product||'—'}</td>
+        <td style="font-family:var(--mono);color:var(--amber);font-weight:600">${fmtCur(u.cost)}</td>
+        <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${fmtDate(u.date)}</td>
+        <td style="font-size:11px;color:var(--text3)">${u.notes||'—'}</td>
+        <td><button class="icon-btn" onclick="removeCommitUsage(${i})" style="color:var(--red)" title="Remover">🗑</button></td>
+      </tr>`).join('')}
+      <tfoot><tr style="background:rgba(37,99,235,0.05)">
+        <td colspan="2" style="font-weight:700;padding:10px 14px">Total utilizado</td>
+        <td style="font-family:var(--mono);font-weight:700;color:var(--amber);padding:10px 14px">${fmtCur(used)}</td>
+        <td colspan="3"></td>
+      </tr></tfoot>
+      </tbody></table></div>`:''}
+
+    ${cm.notes?`<div class="panel" style="padding:12px 16px;margin-top:14px;font-size:13px;color:var(--text2)">${cm.notes}</div>`:''}
+  </div>`;
+
+  document.getElementById('commit-detail-panel').innerHTML=html;
+}
+
+let _usageCommitId=null;
+function openCommitUsageModal(){
+  _usageCommitId=currentCommitId;
+  // Populate client select
+  const cs=document.getElementById('cu-client');
+  cs.innerHTML='<option value="">Selecione...</option>'+clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  document.getElementById('cu-product').value='';
+  document.getElementById('cu-cost').value='';
+  document.getElementById('cu-date').value=todayStr();
+  document.getElementById('cu-notes').value='';
+  openModal('commit-usage-overlay');
+}
+
+function saveCommitUsage(){
+  const clientId=document.getElementById('cu-client').value;
+  const product=document.getElementById('cu-product').value.trim();
+  const cost=parseFloat(document.getElementById('cu-cost').value)||0;
+  if(!product){alert('Informe o produto/solução');return;}
+  if(!cost){alert('Informe o custo abatido do saldo');return;}
+  const cm=commitments.find(x=>x.id===_usageCommitId); if(!cm) return;
+  if(!cm.usages) cm.usages=[];
+  cm.usages.push({clientId,product,cost,date:document.getElementById('cu-date').value,notes:document.getElementById('cu-notes').value.trim()});
+  if(window.saveToFirebase) saveToFirebase('commitments',String(cm.id),cm);
+  closeModal('commit-usage-overlay');
+  renderCommitDetail();
+  renderCommitments();
+}
+
+function removeCommitUsage(idx){
+  if(!confirm('Remover este uso do saldo?')) return;
+  const cm=commitments.find(x=>x.id===currentCommitId); if(!cm) return;
+  cm.usages.splice(idx,1);
+  if(window.saveToFirebase) saveToFirebase('commitments',String(cm.id),cm);
+  renderCommitDetail();
+  renderCommitments();
+}
+
+
 let _renewingLicId = null;
 
 window.openRenewalModal = function(licId){
@@ -3453,7 +3811,7 @@ async function proceedAfterMfa(user){
   document.querySelectorAll('.admin-only').forEach(el=>{ el.style.display=admin?'':'none'; });
   document.getElementById('nav-settings').style.display=admin?'':'none';
   if(!admin){ document.getElementById('nav-reports').style.display='none'; }
-  renderDashboard(); updateLicBadge();
+  renderDashboard(); updateLicBadge(); updateCommitBadge();
 }
 
 document.addEventListener('DOMContentLoaded',()=>{
@@ -3530,17 +3888,20 @@ _auth.onAuthStateChanged(async user=>{
 
     // Load data
     try{
-      const [cSnap,pSnap,lSnap]=await Promise.all([
+      const [cSnap,pSnap,lSnap,cmSnap]=await Promise.all([
         _db.collection('clients').get(),
         _db.collection('projects').get(),
         _db.collection('licenses').get(),
+        _db.collection('commitments').get(),
       ]);
       clients=[]; cSnap.forEach(d=>clients.push(d.data()));
       projects=[]; pSnap.forEach(d=>projects.push(d.data()));
       licenses=[]; lSnap.forEach(d=>licenses.push(d.data()));
+      commitments=[]; cmSnap.forEach(d=>commitments.push(d.data()));
       if(clients.length) nextClientId=Math.max(...clients.map(x=>x.id||0))+1;
       if(projects.length) nextProjectId=Math.max(...projects.map(x=>x.id||0))+1;
       if(licenses.length) nextLicId=Math.max(...licenses.map(x=>x.id||0))+1;
+      if(commitments.length) nextCommitId=Math.max(...commitments.map(x=>x.id||0))+1;
       const tids=projects.flatMap(p=>(p.tasks||[]).map(t=>t.id||0));
       if(tids.length) nextTaskId=Math.max(...tids)+1;
     }catch(e){ console.error('Error loading data:',e); }
