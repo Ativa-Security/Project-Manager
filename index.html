@@ -802,9 +802,7 @@ input,select,textarea{font-family:var(--font)}
         <div class="form-group"><label class="form-label">Descrição / Referência</label><input class="form-input" id="cm-desc" placeholder="Ex: Commitment Acronis Q1 2025"></div>
         <div class="form-group"><label class="form-label">Data de contratação</label><input class="form-input" id="cm-date" type="date"></div>
       </div>
-      <div class="form-group"><label class="form-label">Licenciamento vinculado</label>
-        <select class="form-select" id="cm-license"><option value="">Nenhum</option></select>
-      </div>
+
       <div class="form-group"><label class="form-label">Observações</label><textarea class="form-textarea" id="cm-notes" rows="2" placeholder="Observações adicionais..."></textarea></div>
     </div>
     <div class="modal-footer">
@@ -825,6 +823,9 @@ input,select,textarea{font-family:var(--font)}
     <div class="modal-body">
       <div class="form-group"><label class="form-label">Cliente *</label>
         <select class="form-select" id="cu-client"><option value="">Selecione...</option></select>
+      </div>
+      <div class="form-group"><label class="form-label">Licenciamento vinculado</label>
+        <select class="form-select" id="cu-license" onchange="onUsageLicenseChange(this.value)"><option value="">Nenhum</option></select>
       </div>
       <div class="form-group"><label class="form-label">Solução / Produto *</label><input class="form-input" id="cu-product" placeholder="Ex: Acronis Cyber Protect Cloud"></div>
       <div class="form-group admin-only"><label class="form-label">Custo (R$) — valor abatido do saldo *</label><input class="form-input" id="cu-cost" type="number" min="0" step="0.01" placeholder="0,00"></div>
@@ -3033,7 +3034,6 @@ function renderCommitments(){
   grid.innerHTML=commitments.map(cm=>{
     const {used,total,remaining,pct}=commitBalance(cm);
     const st=commitStatus(pct);
-    const lic=licenses.find(l=>String(l.id)===String(cm.licenseId));
     const barW=Math.max(0,Math.min(100,100-pct)); // consumed portion
     return `<div class="card" style="cursor:pointer;border-color:${st.level!=='ok'?st.color.replace('var(--','').replace(')','')&&st.color:'var(--border)'};${st.level==='critical'?'border-width:2px':st.level==='warning'?'border-width:1.5px':''}" onclick="openCommitDetail(${cm.id})">
       <!-- Top bar: consumed -->
@@ -3076,7 +3076,6 @@ function renderCommitments(){
       </div>
 
       ${pct<=25?`<div style="margin-top:10px;padding:6px 10px;border-radius:var(--r);background:${st.bg};border:1px solid ${st.color}40;font-size:11px;font-weight:600;color:${st.color};display:flex;align-items:center;gap:6px">${st.icon} ${st.label} — ${pct}% restante</div>`:''}
-      ${lic?`<div style="margin-top:8px;font-size:11px;color:var(--purple)">🔑 ${lic.product}</div>`:''}
       <div style="margin-top:8px;font-size:11px;color:var(--text3)">${(cm.usages||[]).length} uso${(cm.usages||[]).length!==1?'s':''} registrado${(cm.usages||[]).length!==1?'s':''}</div>
     </div>`;
   }).join('');
@@ -3095,8 +3094,6 @@ function openCommitModal(id=null){
   document.getElementById('cm-notes').value=cm?cm.notes||'':'';
   // Populate license select
   const ls=document.getElementById('cm-license');
-  ls.innerHTML='<option value="">Nenhum</option>'+licenses.map(l=>`<option value="${l.id}">${l.product}${l.clientId?' ('+clientName(l.clientId)+')':''}</option>`).join('');
-  ls.value=cm?cm.licenseId||'':'';
   openModal('commit-modal-overlay');
 }
 
@@ -3108,7 +3105,7 @@ function saveCommitment(){
     value:Number(value),
     desc:document.getElementById('cm-desc').value.trim(),
     date:document.getElementById('cm-date').value,
-    licenseId:document.getElementById('cm-license').value||null,
+
     notes:document.getElementById('cm-notes').value.trim(),
     usages:editingCommitId?(commitments.find(x=>x.id===editingCommitId)||{}).usages||[]:[],
     createdAt:Date.now(),
@@ -3144,7 +3141,6 @@ function renderCommitDetail(){
   const cm=commitments.find(x=>x.id===currentCommitId); if(!cm) return;
   const {used,total,remaining,pct}=commitBalance(cm);
   const st=commitStatus(pct);
-  const lic=licenses.find(l=>String(l.id)===String(cm.licenseId));
   const usages=cm.usages||[];
 
   let html=`<div class="detail-header">
@@ -3193,12 +3189,6 @@ function renderCommitDetail(){
       </div>
     </div>
 
-    ${lic?`<div class="panel" style="padding:12px 16px;margin-bottom:16px;cursor:pointer;display:flex;align-items:center;gap:10px" onclick="openLicDetail(${lic.id})">
-      <span style="font-size:18px">🔑</span>
-      <div style="flex:1"><div style="font-weight:600;font-size:13px">${lic.product}</div><div style="font-size:11px;color:var(--text3)">${clientName(lic.clientId)} · ${fmtDate(lic.end)}</div></div>
-      <span class="badge badge-blue">Ver licença →</span>
-    </div>`:''}
-
     <!-- Usos do saldo -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
       <div style="font-size:13px;font-weight:600">Usos do saldo (${usages.length})</div>
@@ -3208,17 +3198,20 @@ function renderCommitDetail(){
     ${usages.length===0?`<div class="empty-state" style="padding:24px"><div class="empty-state-icon">📋</div><div class="empty-state-text">Nenhum uso registrado</div></div>`:''}
 
     ${usages.length>0?`<div class="panel" style="overflow:hidden"><table class="data-table">
-      <thead><tr><th>Cliente</th><th>Solução</th><th>Custo (abatido)</th><th>Data</th><th>Obs.</th><th></th></tr></thead>
-      <tbody>${usages.map((u,i)=>`<tr>
-        <td style="font-weight:600">${clientName(u.clientId)||u.clientId||'—'}</td>
+      <thead><tr><th>Cliente</th><th>Solução</th><th>Licenciamento</th><th>Custo (abatido)</th><th>Data</th><th>Obs.</th><th></th></tr></thead>
+      <tbody>${usages.map((u,i)=>{
+        const lic=u.licenseId?licenses.find(l=>String(l.id)===String(u.licenseId)):null;
+        return `<tr>
+        <td style="font-weight:600">${clientName(u.clientId)||'—'}</td>
         <td style="color:var(--text2)">${u.product||'—'}</td>
+        <td style="font-size:11px;color:var(--purple)">${lic?`<span onclick="openLicDetail(${lic.id})" style="cursor:pointer" title="Ver licenciamento">🔑 ${lic.product}</span>`:'—'}</td>
         <td style="font-family:var(--mono);color:var(--amber);font-weight:600">${fmtCur(u.cost)}</td>
         <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${fmtDate(u.date)}</td>
         <td style="font-size:11px;color:var(--text3)">${u.notes||'—'}</td>
         <td><button class="icon-btn" onclick="removeCommitUsage(${i})" style="color:var(--red)" title="Remover">🗑</button></td>
-      </tr>`).join('')}
+      </tr>`;}).join('')}
       <tfoot><tr style="background:rgba(37,99,235,0.05)">
-        <td colspan="2" style="font-weight:700;padding:10px 14px">Total utilizado</td>
+        <td colspan="3" style="font-weight:700;padding:10px 14px">Total utilizado</td>
         <td style="font-family:var(--mono);font-weight:700;color:var(--amber);padding:10px 14px">${fmtCur(used)}</td>
         <td colspan="3"></td>
       </tr></tfoot>
@@ -3236,11 +3229,25 @@ function openCommitUsageModal(){
   // Populate client select
   const cs=document.getElementById('cu-client');
   cs.innerHTML='<option value="">Selecione...</option>'+clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  // Populate license select
+  const ls=document.getElementById('cu-license');
+  ls.innerHTML='<option value="">Nenhum licenciamento vinculado</option>'+licenses.map(l=>`<option value="${l.id}">${l.product} — ${clientName(l.clientId)||'sem cliente'}</option>`).join('');
   document.getElementById('cu-product').value='';
   document.getElementById('cu-cost').value='';
   document.getElementById('cu-date').value=todayStr();
   document.getElementById('cu-notes').value='';
   openModal('commit-usage-overlay');
+}
+
+function onUsageLicenseChange(licId){
+  if(!licId) return;
+  const l=licenses.find(x=>String(x.id)===String(licId));
+  if(!l) return;
+  // Auto-fill product from license and select the client
+  const prod=document.getElementById('cu-product');
+  if(!prod.value) prod.value=l.product||'';
+  const cli=document.getElementById('cu-client');
+  if(l.clientId&&!cli.value) cli.value=l.clientId;
 }
 
 function saveCommitUsage(){
@@ -3251,7 +3258,8 @@ function saveCommitUsage(){
   if(!cost){alert('Informe o custo abatido do saldo');return;}
   const cm=commitments.find(x=>x.id===_usageCommitId); if(!cm) return;
   if(!cm.usages) cm.usages=[];
-  cm.usages.push({clientId,product,cost,date:document.getElementById('cu-date').value,notes:document.getElementById('cu-notes').value.trim()});
+  const licenseId=document.getElementById('cu-license').value||null;
+  cm.usages.push({clientId,product,cost,licenseId,date:document.getElementById('cu-date').value,notes:document.getElementById('cu-notes').value.trim()});
   if(window.saveToFirebase) saveToFirebase('commitments',String(cm.id),cm);
   closeModal('commit-usage-overlay');
   renderCommitDetail();
