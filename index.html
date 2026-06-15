@@ -817,7 +817,7 @@ input,select,textarea{font-family:var(--font)}
 <div class="modal-overlay" id="commit-usage-overlay" onclick="if(event.target===this)closeModal('commit-usage-overlay')">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title">➕ Adicionar uso de saldo</div>
+      <div class="modal-title" id="cu-modal-title">➕ Adicionar uso de saldo</div>
       <button class="modal-close" onclick="closeModal('commit-usage-overlay')">✕</button>
     </div>
     <div class="modal-body">
@@ -834,7 +834,8 @@ input,select,textarea{font-family:var(--font)}
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('commit-usage-overlay')">Cancelar</button>
-      <button class="btn btn-accent" onclick="saveCommitUsage()">Adicionar</button>
+      <button class="btn btn-danger" id="cu-delete-btn" onclick="deleteCommitUsage()" style="margin-right:auto;display:none">🗑 Remover</button>
+      <button class="btn btn-accent" id="cu-save-btn" onclick="saveCommitUsage()">Adicionar</button>
     </div>
   </div>
 </div>
@@ -3208,7 +3209,7 @@ function renderCommitDetail(){
         <td style="font-family:var(--mono);color:var(--amber);font-weight:600">${fmtCur(u.cost)}</td>
         <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${fmtDate(u.date)}</td>
         <td style="font-size:11px;color:var(--text3)">${u.notes||'—'}</td>
-        <td><button class="icon-btn" onclick="removeCommitUsage(${i})" style="color:var(--red)" title="Remover">🗑</button></td>
+        <td style="white-space:nowrap;display:flex;gap:4px"><button class="icon-btn" onclick="openCommitUsageModal(${i})" title="Editar">✏️</button><button class="icon-btn" onclick="removeCommitUsage(${i})" style="color:var(--red)" title="Remover">🗑</button></td>
       </tr>`;}).join('')}
       <tfoot><tr style="background:rgba(37,99,235,0.05)">
         <td colspan="3" style="font-weight:700;padding:10px 14px">Total utilizado</td>
@@ -3224,18 +3225,29 @@ function renderCommitDetail(){
 }
 
 let _usageCommitId=null;
-function openCommitUsageModal(){
+function openCommitUsageModal(idx=null){
   _usageCommitId=currentCommitId;
-  // Populate client select
+  editingUsageIdx=idx;
+  const isEdit=idx!==null;
+  document.getElementById('cu-modal-title').textContent=isEdit?'✏️ Editar uso de saldo':'➕ Adicionar uso de saldo';
+  document.getElementById('cu-save-btn').textContent=isEdit?'Salvar':'Adicionar';
+  document.getElementById('cu-delete-btn').style.display=isEdit?'':'none';
+
+  // Populate selects
   const cs=document.getElementById('cu-client');
   cs.innerHTML='<option value="">Selecione...</option>'+clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
-  // Populate license select
   const ls=document.getElementById('cu-license');
   ls.innerHTML='<option value="">Nenhum licenciamento vinculado</option>'+licenses.map(l=>`<option value="${l.id}">${l.product} — ${clientName(l.clientId)||'sem cliente'}</option>`).join('');
-  document.getElementById('cu-product').value='';
-  document.getElementById('cu-cost').value='';
-  document.getElementById('cu-date').value=todayStr();
-  document.getElementById('cu-notes').value='';
+
+  // If editing, populate with existing values
+  const cm=commitments.find(x=>x.id===currentCommitId);
+  const u=isEdit&&cm?(cm.usages||[])[idx]:null;
+  document.getElementById('cu-client').value=u?u.clientId||'':'';
+  document.getElementById('cu-license').value=u?u.licenseId||'':'';
+  document.getElementById('cu-product').value=u?u.product||'':'';
+  document.getElementById('cu-cost').value=u?u.cost||'':'';
+  document.getElementById('cu-date').value=u?u.date||todayStr():todayStr();
+  document.getElementById('cu-notes').value=u?u.notes||'':'';
   openModal('commit-usage-overlay');
 }
 
@@ -3259,7 +3271,19 @@ function saveCommitUsage(){
   const cm=commitments.find(x=>x.id===_usageCommitId); if(!cm) return;
   if(!cm.usages) cm.usages=[];
   const licenseId=document.getElementById('cu-license').value||null;
-  cm.usages.push({clientId,product,cost,licenseId,date:document.getElementById('cu-date').value,notes:document.getElementById('cu-notes').value.trim()});
+  const entry={clientId,product,cost,licenseId,date:document.getElementById('cu-date').value,notes:document.getElementById('cu-notes').value.trim()};
+  if(editingUsageIdx!==null){ cm.usages[editingUsageIdx]=entry; }
+  else { cm.usages.push(entry); }
+  if(window.saveToFirebase) saveToFirebase('commitments',String(cm.id),cm);
+  closeModal('commit-usage-overlay');
+  renderCommitDetail();
+  renderCommitments();
+}
+
+function deleteCommitUsage(){
+  if(editingUsageIdx===null||!confirm('Remover este uso do saldo?')) return;
+  const cm=commitments.find(x=>x.id===currentCommitId); if(!cm) return;
+  cm.usages.splice(editingUsageIdx,1);
   if(window.saveToFirebase) saveToFirebase('commitments',String(cm.id),cm);
   closeModal('commit-usage-overlay');
   renderCommitDetail();
