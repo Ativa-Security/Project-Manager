@@ -4004,14 +4004,14 @@ window.cancelMfa=function(){
 let _db, _auth;
 
 async function proceedAfterMfa(user){
-  // If called from the new promise-based flow, just resolve and let onAuthStateChanged handle the rest
+  // Called by MFA verify/setup on success — resolve the waiting Promise
   if(window._mfaResolve){
     const resolve = window._mfaResolve;
     window._mfaResolve = null;
     resolve();
     return;
   }
-  // Fallback for edge cases (OTPAuth not loaded)
+  // Fallback: direct launch (shouldn't happen in normal flow)
   document.getElementById('login-screen').style.display='none';
   ['mfa-setup-screen','mfa-verify-screen'].forEach(id=>document.getElementById(id).classList.remove('active'));
   await showWelcomeIntro();
@@ -4122,30 +4122,35 @@ _auth.onAuthStateChanged(async user=>{
       if(tids.length) nextTaskId=Math.max(...tids)+1;
     }catch(e){ console.error('Error loading data:',e); }
 
-    // 2. MFA — happens while login screen is still visible
-    const doMfa = ()=> new Promise(resolve=>{
-      window._mfaResolve = resolve; // proceedAfterMfa will call this
+    // 2. MFA check — show MFA screen, wait for completion
+    await new Promise(resolve=>{
+      window._mfaResolve = resolve;
+
+      const tryMfa=()=>{
+        if(typeof OTPAuth!=='undefined'){
+          if(mfaEnabled&&mfaSecret) showMfaVerify(user,mfaSecret);
+          else showMfaSetup(user,genSecret());
+        } else {
+          // OTPAuth not ready yet, resolve immediately and skip MFA
+          window._mfaResolve = null;
+          resolve();
+        }
+      };
+
       if(typeof OTPAuth!=='undefined'){
-        if(mfaEnabled&&mfaSecret) showMfaVerify(user,mfaSecret);
-        else showMfaSetup(user,genSecret());
+        tryMfa();
       } else {
-        setTimeout(()=>{
-          if(typeof OTPAuth!=='undefined'){
-            if(mfaEnabled&&mfaSecret) showMfaVerify(user,mfaSecret);
-            else showMfaSetup(user,genSecret());
-          } else { resolve(); }
-        },600);
+        // Give OTPAuth up to 1.5s to load
+        setTimeout(tryMfa, 1500);
       }
     });
 
-    await doMfa();
-
-    // 3. MFA passed — hide login+MFA screens, show welcome intro
+    // 3. MFA passed — hide all auth screens, show welcome intro
     document.getElementById('login-screen').style.display='none';
     ['mfa-setup-screen','mfa-verify-screen'].forEach(id=>document.getElementById(id).classList.remove('active'));
     await showWelcomeIntro();
 
-    // 4. Intro done — enter the app (proceedAfterMfa already set role/UI, just navigate)
+    // 4. Intro done — enter the app
     document.getElementById('app').classList.add('visible');
     applyRole();
     navigate('dashboard');
