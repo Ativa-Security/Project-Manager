@@ -4004,14 +4004,30 @@ window.cancelMfa=function(){
 let _db, _auth;
 
 async function proceedAfterMfa(user){
-  // Already have userData from onAuthStateChanged closure — just show app
+  // If called from the new promise-based flow, just resolve and let onAuthStateChanged handle the rest
+  if(window._mfaResolve){
+    const resolve = window._mfaResolve;
+    window._mfaResolve = null;
+    resolve();
+    return;
+  }
+  // Fallback for edge cases (OTPAuth not loaded)
+  document.getElementById('login-screen').style.display='none';
+  ['mfa-setup-screen','mfa-verify-screen'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  await showWelcomeIntro();
   document.getElementById('app').classList.add('visible');
-  // Apply role visibility
+  applyRole();
+  navigate('dashboard');
+  updateLicBadge(); updateCommitBadge();
+}
+
+function applyRole(){
   const admin=isAdmin();
   document.querySelectorAll('.admin-only').forEach(el=>{ el.style.display=admin?'':'none'; });
   document.getElementById('nav-settings').style.display=admin?'':'none';
   if(!admin){ document.getElementById('nav-reports').style.display='none'; }
-  renderDashboard(); updateLicBadge(); updateCommitBadge();
+  renderDashboard();
+}
 }
 
 document.addEventListener('DOMContentLoaded',()=>{
@@ -4066,55 +4082,49 @@ _auth.onAuthStateChanged(async user=>{
   if(user){
     let mfaSecret=null, mfaEnabled=false, userData=null;
 
-    // Load user profile + data IN PARALLEL with the intro animation
-    const dataPromise = (async ()=>{
-      try{
-        let snap=await _db.collection('Users').where('email','==',user.email).get();
-        if(snap.empty) snap=await _db.collection('users').where('email','==',user.email).get();
-        if(!snap.empty){
-          userData=snap.docs[0].data();
-          currentRole=userData.role||'tecnico';
-          mfaSecret=userData.mfaSecret||null;
-          mfaEnabled=userData.mfaEnabled||false;
-          if(userData.active===false){ alert('Conta desativada.'); _auth.signOut(); return; }
-          if(userData.name){
-            const av=avColor(userData.name);
-            document.getElementById('sb-avatar').textContent=initials(userData.name);
-            document.getElementById('sb-avatar').style.background=av.bg;
-            document.getElementById('sb-avatar').style.color=av.text;
-            document.getElementById('sb-name').textContent=userData.name;
-            document.getElementById('sb-role').textContent=currentRole==='admin'?'Admin':'Técnico';
-          }
+    // 1. Load user profile + data
+    try{
+      let snap=await _db.collection('Users').where('email','==',user.email).get();
+      if(snap.empty) snap=await _db.collection('users').where('email','==',user.email).get();
+      if(!snap.empty){
+        userData=snap.docs[0].data();
+        currentRole=userData.role||'tecnico';
+        mfaSecret=userData.mfaSecret||null;
+        mfaEnabled=userData.mfaEnabled||false;
+        if(userData.active===false){ alert('Conta desativada.'); _auth.signOut(); return; }
+        if(userData.name){
+          const av=avColor(userData.name);
+          document.getElementById('sb-avatar').textContent=initials(userData.name);
+          document.getElementById('sb-avatar').style.background=av.bg;
+          document.getElementById('sb-avatar').style.color=av.text;
+          document.getElementById('sb-name').textContent=userData.name;
+          document.getElementById('sb-role').textContent=currentRole==='admin'?'Admin':'Técnico';
         }
-      }catch(e){ console.error(e); }
+      }
+    }catch(e){ console.error(e); }
 
-      try{
-        const [cSnap,pSnap,lSnap,cmSnap]=await Promise.all([
-          _db.collection('clients').get(),
-          _db.collection('projects').get(),
-          _db.collection('licenses').get(),
-          _db.collection('commitments').get(),
-        ]);
-        clients=[]; cSnap.forEach(d=>clients.push(d.data()));
-        projects=[]; pSnap.forEach(d=>projects.push(d.data()));
-        licenses=[]; lSnap.forEach(d=>licenses.push(d.data()));
-        commitments=[]; cmSnap.forEach(d=>commitments.push(d.data()));
-        if(clients.length) nextClientId=Math.max(...clients.map(x=>x.id||0))+1;
-        if(projects.length) nextProjectId=Math.max(...projects.map(x=>x.id||0))+1;
-        if(licenses.length) nextLicId=Math.max(...licenses.map(x=>x.id||0))+1;
-        if(commitments.length) nextCommitId=Math.max(...commitments.map(x=>x.id||0))+1;
-        const tids=projects.flatMap(p=>(p.tasks||[]).map(t=>t.id||0));
-        if(tids.length) nextTaskId=Math.max(...tids)+1;
-      }catch(e){ console.error('Error loading data:',e); }
-    })();
+    try{
+      const [cSnap,pSnap,lSnap,cmSnap]=await Promise.all([
+        _db.collection('clients').get(),
+        _db.collection('projects').get(),
+        _db.collection('licenses').get(),
+        _db.collection('commitments').get(),
+      ]);
+      clients=[]; cSnap.forEach(d=>clients.push(d.data()));
+      projects=[]; pSnap.forEach(d=>projects.push(d.data()));
+      licenses=[]; lSnap.forEach(d=>licenses.push(d.data()));
+      commitments=[]; cmSnap.forEach(d=>commitments.push(d.data()));
+      if(clients.length) nextClientId=Math.max(...clients.map(x=>x.id||0))+1;
+      if(projects.length) nextProjectId=Math.max(...projects.map(x=>x.id||0))+1;
+      if(licenses.length) nextLicId=Math.max(...licenses.map(x=>x.id||0))+1;
+      if(commitments.length) nextCommitId=Math.max(...commitments.map(x=>x.id||0))+1;
+      const tids=projects.flatMap(p=>(p.tasks||[]).map(t=>t.id||0));
+      if(tids.length) nextTaskId=Math.max(...tids)+1;
+    }catch(e){ console.error('Error loading data:',e); }
 
-    // Show intro — waits both for animation AND data to be ready
-    await Promise.all([showWelcomeIntro(), dataPromise]);
-
-    // NOW hide login and show MFA (after intro fully done)
-    document.getElementById('login-screen').style.display='none';
-
-    const goMfa = ()=>{
+    // 2. MFA — happens while login screen is still visible
+    const doMfa = ()=> new Promise(resolve=>{
+      window._mfaResolve = resolve; // proceedAfterMfa will call this
       if(typeof OTPAuth!=='undefined'){
         if(mfaEnabled&&mfaSecret) showMfaVerify(user,mfaSecret);
         else showMfaSetup(user,genSecret());
@@ -4123,11 +4133,23 @@ _auth.onAuthStateChanged(async user=>{
           if(typeof OTPAuth!=='undefined'){
             if(mfaEnabled&&mfaSecret) showMfaVerify(user,mfaSecret);
             else showMfaSetup(user,genSecret());
-          } else { proceedAfterMfa(user); }
+          } else { resolve(); }
         },600);
       }
-    };
-    goMfa();
+    });
+
+    await doMfa();
+
+    // 3. MFA passed — hide login+MFA screens, show welcome intro
+    document.getElementById('login-screen').style.display='none';
+    ['mfa-setup-screen','mfa-verify-screen'].forEach(id=>document.getElementById(id).classList.remove('active'));
+    await showWelcomeIntro();
+
+    // 4. Intro done — enter the app (proceedAfterMfa already set role/UI, just navigate)
+    document.getElementById('app').classList.add('visible');
+    applyRole();
+    navigate('dashboard');
+    updateLicBadge(); updateCommitBadge();
 
   } else {
     ['mfa-setup-screen','mfa-verify-screen'].forEach(id=>document.getElementById(id).classList.remove('active'));
