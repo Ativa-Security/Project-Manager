@@ -3921,10 +3921,10 @@ function showWelcomeIntro(){
     const status = document.getElementById('wi-status');
     const steps = [
       [200,  'Autenticando sessão...'],
-      [600,  'Carregando permissões...'],
-      [1000, 'Sincronizando dados...'],
-      [1400, 'Preparando o ambiente...'],
-      [1800, 'Tudo pronto!'],
+      [800,  'Carregando permissões...'],
+      [1400, 'Sincronizando dados...'],
+      [2000, 'Preparando o ambiente...'],
+      [2500, 'Tudo pronto!'],
     ];
     steps.forEach(([delay, text])=>{
       setTimeout(()=>{
@@ -3933,14 +3933,14 @@ function showWelcomeIntro(){
       }, delay);
     });
 
-    // Dismiss after ~2.2s with fade out
+    // Dismiss after 3s with fade out
     setTimeout(()=>{
       overlay.style.opacity='0';
       setTimeout(()=>{
         overlay.style.display='none';
         resolve();
       }, 400);
-    }, 2200);
+    }, 3000);
   });
 }
 
