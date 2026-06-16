@@ -4037,6 +4037,8 @@ async function proceedAfterMfa(user){
   applyRole();
   navigate('dashboard');
   updateLicBadge(); updateCommitBadge();
+  const pwaBtn2 = document.getElementById('pwa-install-btn');
+  if(pwaBtn2) pwaBtn2.style.display = _pwaPrompt ? 'flex' : 'none';
 }
 
 function applyRole(){
@@ -4056,11 +4058,9 @@ let _pwaPrompt = null;
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
   _pwaPrompt = e;
-  // Show install button only inside the app (not on login screen)
+  // If app already visible, show immediately; otherwise it'll show after login
   const btn = document.getElementById('pwa-install-btn');
-  if(btn && document.getElementById('app').classList.contains('visible')){
-    btn.style.display = 'flex';
-  }
+  if(btn) btn.style.display = 'flex';
 });
 
 window.installPWA = async function(){
@@ -4231,8 +4231,9 @@ _auth.onAuthStateChanged(async user=>{
     applyRole();
     navigate('dashboard');
     updateLicBadge(); updateCommitBadge();
-    // Show PWA install button if prompt is available
-    if(_pwaPrompt){ const b=document.getElementById('pwa-install-btn'); if(b) b.style.display='flex'; }
+    // Show PWA install button if prompt was already captured
+    const pwaBtn = document.getElementById('pwa-install-btn');
+    if(pwaBtn) pwaBtn.style.display = _pwaPrompt ? 'flex' : 'none';
 
   } else {
     ['mfa-setup-screen','mfa-verify-screen'].forEach(id=>document.getElementById(id).classList.remove('active'));
