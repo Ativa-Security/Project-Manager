@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ativa360</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <style>
 :root {
   --font: 'DM Sans', sans-serif;
@@ -45,18 +45,38 @@ input,select,textarea{font-family:var(--font)}
 /* ══════════════════════════════════
    LOGIN
 ══════════════════════════════════ */
-#login-screen{position:fixed;inset:0;z-index:9999;background:linear-gradient(160deg,#070b14 0%,#0c1529 40%,#0d2260 100%);display:flex;align-items:center;justify-content:center}
-.login-card{background:rgba(10,16,33,0.85);border:1px solid rgba(37,99,235,0.2);border-radius:var(--r3);padding:40px;width:400px;max-width:95vw;backdrop-filter:blur(20px);box-shadow:0 32px 80px rgba(0,0,0,0.5)}
-.login-logo{display:flex;align-items:center;gap:14px;margin-bottom:28px}
-.login-title{font-size:22px;font-weight:700;letter-spacing:-.02em}
-.login-sub{font-size:12px;color:var(--text2)}
+#login-screen{position:fixed;inset:0;z-index:9999;background:#020408;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#login-screen::before{content:'';position:absolute;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");opacity:0.035;pointer-events:none;z-index:0}
+#login-screen::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse 65% 55% at 20% 40%,rgba(37,99,235,0.2) 0%,transparent 70%),radial-gradient(ellipse 45% 45% at 80% 65%,rgba(96,165,250,0.1) 0%,transparent 70%),radial-gradient(ellipse 55% 65% at 50% 0%,rgba(14,30,80,0.7) 0%,transparent 60%);animation:orbPulse 8s ease-in-out infinite alternate}
+@keyframes orbPulse{0%{opacity:.7;transform:scale(1)}100%{opacity:1;transform:scale(1.04)}}
+.login-grid{position:absolute;inset:0;z-index:0;pointer-events:none;background-image:linear-gradient(rgba(37,99,235,0.055) 1px,transparent 1px),linear-gradient(90deg,rgba(37,99,235,0.055) 1px,transparent 1px);background-size:48px 48px;mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,black 40%,transparent 100%)}
+.login-scanline{position:absolute;top:-2px;left:0;right:0;height:2px;z-index:1;pointer-events:none;background:linear-gradient(90deg,transparent 0%,rgba(96,165,250,0.5) 50%,transparent 100%);animation:scanDown 5s linear infinite;opacity:.4}
+@keyframes scanDown{0%{top:-2px}100%{top:100%}}
+.login-corner{position:absolute;width:22px;height:22px;z-index:2;pointer-events:none;border-color:rgba(96,165,250,0.45);border-style:solid}
+.login-corner.tl{top:22px;left:22px;border-width:2px 0 0 2px}
+.login-corner.tr{top:22px;right:22px;border-width:2px 2px 0 0}
+.login-corner.bl{bottom:22px;left:22px;border-width:0 0 2px 2px}
+.login-corner.br{bottom:22px;right:22px;border-width:0 2px 2px 0}
+.login-card{position:relative;z-index:10;width:440px;max-width:95vw;background:rgba(4,10,24,0.88);border:1px solid rgba(96,165,250,0.18);border-radius:16px;padding:44px 44px 40px;backdrop-filter:blur(28px);box-shadow:0 0 0 1px rgba(96,165,250,0.05),0 32px 80px rgba(0,0,0,0.75),inset 0 1px 0 rgba(255,255,255,0.05);animation:cardIn .65s cubic-bezier(.22,1,.36,1) both}
+@keyframes cardIn{from{opacity:0;transform:translateY(28px) scale(.96)}to{opacity:1;transform:none}}
+.login-logo{text-align:center;margin-bottom:28px}
+.login-logo img{height:62px;width:auto;margin-bottom:16px;filter:drop-shadow(0 0 22px rgba(96,165,250,0.35))}
+.login-title{font-family:'Syne',sans-serif;font-size:27px;font-weight:800;letter-spacing:-.02em;background:linear-gradient(135deg,#fff 0%,#93c5fd 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1;margin-bottom:5px}
+.login-sub{font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(148,163,184,0.65);letter-spacing:.12em;text-transform:uppercase}
+.login-divider{height:1px;background:linear-gradient(90deg,transparent,rgba(96,165,250,0.25),transparent);margin:22px 0}
 .login-field{margin-bottom:16px}
-.login-label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px}
-.login-input{width:100%;background:rgba(255,255,255,0.05);border:1.5px solid var(--border2);border-radius:var(--r);padding:10px 14px;color:var(--text);font-size:14px;outline:none;transition:border-color .15s}
-.login-input:focus{border-color:var(--accent)}
-.login-btn{width:100%;background:var(--accent);color:#fff;border-radius:var(--r);padding:12px;font-size:14px;font-weight:600;margin-top:8px;transition:background .15s}
-.login-btn:hover{background:#1d4ed8}
-.login-error{font-size:12px;color:var(--red);background:var(--red-bg);padding:8px 12px;border-radius:var(--r);margin-bottom:10px;display:none}
+.login-label{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;color:rgba(96,165,250,0.75);text-transform:uppercase;letter-spacing:.1em;display:flex;align-items:center;gap:5px;margin-bottom:7px}
+.login-label::before{content:'//';color:rgba(96,165,250,0.35)}
+.login-input{width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(96,165,250,0.18);border-radius:8px;padding:11px 14px;color:#e2e8f0;font-size:14px;font-family:'JetBrains Mono',monospace;outline:none;transition:all .2s;box-shadow:inset 0 1px 0 rgba(255,255,255,0.04)}
+.login-input:focus{border-color:rgba(96,165,250,0.55);background:rgba(37,99,235,0.07);box-shadow:0 0 0 3px rgba(37,99,235,0.1),inset 0 1px 0 rgba(255,255,255,0.04)}
+.login-input::placeholder{color:rgba(148,163,184,0.35)}
+.login-btn{width:100%;padding:13px;margin-top:10px;border:none;border-radius:8px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;letter-spacing:.04em;color:#fff;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;background:linear-gradient(135deg,#1d4ed8 0%,#2563eb 50%,#3b82f6 100%);box-shadow:0 4px 20px rgba(37,99,235,0.4),inset 0 1px 0 rgba(255,255,255,0.15)}
+.login-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 8px 32px rgba(37,99,235,0.55),inset 0 1px 0 rgba(255,255,255,0.2)}
+.login-btn:active:not(:disabled){transform:translateY(0)}
+.login-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.login-btn::after{content:'';position:absolute;inset:0;background:linear-gradient(transparent 40%,rgba(255,255,255,0.07))}
+.login-error{font-family:'JetBrains Mono',monospace;font-size:11px;color:#f87171;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.22);border-radius:6px;padding:8px 12px;margin-bottom:10px;display:none}
+.login-version{text-align:center;margin-top:18px;font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(148,163,184,0.28);letter-spacing:.08em}
 
 /* ══════════════════════════════════
    MFA
@@ -332,24 +352,37 @@ input,select,textarea{font-family:var(--font)}
 
 <!-- LOGIN -->
 <div id="login-screen">
+  <!-- Decorative elements -->
+  <div class="login-grid"></div>
+  <div class="login-scanline"></div>
+  <div class="login-corner tl"></div>
+  <div class="login-corner tr"></div>
+  <div class="login-corner bl"></div>
+  <div class="login-corner br"></div>
+  <!-- Floating particles -->
+  <canvas id="login-particles" style="position:absolute;inset:0;z-index:1;pointer-events:none;opacity:.4"></canvas>
+
   <div class="login-card">
     <div class="login-logo">
-      <svg width="36" height="36" viewBox="0 0 283 295" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M128.306 1.877C119.136 4.808 105.957 15.2 102.12 24.346C96.729 34.683 97.032 52.829 102.765 62.973L107.089 70.625L90.208 99.918L73.326 129.21L78.584 128.705C83.65 128.216 84.872 126.422 112.231 79.247C127.845 52.325 140.986 30.307 141.432 30.317C142.475 30.343 173.953 85.283 172.925 85.283C172.498 85.283 169.437 84.143 166.119 82.75C162.802 81.357 153.907 79.509 146.352 78.643C138.797 77.778 131.132 76.704 129.318 76.256C127.153 75.72 125.329 76.557 124.009 78.695C121.165 83.296 125.336 85.161 142.395 86.918C166.09 89.359 181.996 99.411 193.344 119.113C198.117 127.4 199.734 128.976 203.483 128.99C205.938 129 207.944 128.529 207.944 127.942C207.944 126.248 142.344 12.503 141.338 12.452C140.84 12.426 134.27 23.319 126.737 36.657C119.205 49.995 112.567 60.926 111.985 60.949C110.01 61.026 107.364 50.825 107.364 43.133C107.364 33.432 110.515 25.957 117.377 19.372C132.091 5.252 153.712 6.012 166.997 21.116C169.888 24.404 172.255 27.782 172.255 28.623C172.255 29.497 173.992 29.361 176.31 28.307C181.821 25.8 181.448 23.806 173.859 15.201C162.38 2.182 144.091-3.167 128.306 1.877ZM78.232 146.118C111.217 179.831 167.018 180.729 202.07 148.108L212 138.869L206.58 138.796C202.646 138.744 199.311 140.307 194.413 144.498C176.164 160.115 149.373 167.269 126.617 162.604C111.779 159.561 98.204 153.209 88.705 144.862C83.633 140.403 80.255 138.725 76.36 138.725H71L78.232 146.118Z" fill="#60a5fa"/></svg>
-      <div><div class="login-title">Ativa360</div><div class="login-sub">Gestão de Clientes · Ativa Security</div></div>
+      <img src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjgzIiBoZWlnaHQ9IjI5NSIgdmlld0JveD0iMCAwIDI4MyAyOTUiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGQ9Ik02Mi41NDY5IDIzMS4xMjlIMzkuMzU3NEwzNS40NTIxIDIzOUgyMi45MTg5TDQ0LjY4NTUgMTk3LjQwNEg1Ny4yMTg4TDc4Ljk4NTQgMjM5SDY2LjQ1MjFMNjIuNTQ2OSAyMzEuMTI5Wk00My4zODM4IDIyMy4wMTZINTguNTgxMUw1MS4wMTI3IDIwNy42OTdMNDMuMzgzOCAyMjMuMDE2Wk0xMDYuNjg2IDIwNi40NTZWMjM5SDk1LjQ1NDFWMjA2LjQ1Nkg3Ny44MDQ3VjE5Ny40MDRIMTI0LjM2NVYyMDYuNDU2SDEwNi42ODZaTTEzMS44MTIgMjM5VjE5Ny40MDRIMTQzLjA0NFYyMzlIMTMxLjgxMlpNMTg0LjAwNCAyMzlIMTcwLjkyNkwxNDkuODg2IDE5Ny40MDRIMTYyLjQxOUwxNzcuNTU2IDIyOC43MDdMMTkyLjY2MiAxOTcuNDA0SDIwNS4xOTVMMTg0LjAwNCAyMzlaTTI0My42NDMgMjMxLjEyOUgyMjAuNDUzTDIxNi41NDggMjM5SDIwNC4wMTVMMjI1Ljc4MSAxOTcuNDA0SDIzOC4zMTRMMjYwLjA4MSAyMzlIMjQ3LjU0OEwyNDMuNjQzIDIzMS4xMjlaTTIyNC40NzkgMjIzLjAxNkgyMzkuNjc3TDIzMi4xMDggMjA3LjY5N0wyMjQuNDc5IDIyMy4wMTZaTTMxLjQzNzUgMjU3LjU1NUMzMC44MjgxIDI1Ny4yNTggMzAuMTI1IDI1Ni45NDUgMjkuMzI4MSAyNTYuNjE3QzI4LjUzMTIgMjU2LjI3MyAyNy42MTcyIDI1NS45NjkgMjYuNTg1OSAyNTUuNzAzQzI1LjU3MDMgMjU1LjQzOCAyNC40MjE5IDI1NS4yMTkgMjMuMTQwNiAyNTUuMDQ3QzIxLjg1OTQgMjU0Ljg1OSAyMC40Mzc1IDI1NC43NjYgMTguODc1IDI1NC43NjZDMTYuOTg0NCAyNTQuNzY2IDE1LjI5NjkgMjU0Ljg3NSAxMy44MTI1IDI1NS4wOTRDMTIuMzQzOCAyNTUuMzEyIDExLjA5MzggMjU1LjY1NiAxMC4wNjI1IDI1Ni4xMjVDOS4wNDY4OCAyNTYuNTc4IDguMjY1NjIgMjU3LjE1NiA3LjcxODc1IDI1Ny44NTlDNy4xODc1IDI1OC41NjIgNi45MjE4OCAyNTkuMzk4IDYuOTIxODggMjYwLjM2N0M2LjkyMTg4IDI2MS4xOCA3LjE3MTg4IDI2MS44OTEgNy42NzE4OCAyNjIuNUM4LjE4NzUgMjYzLjEwOSA4Ljg3NSAyNjMuNjQ4IDkuNzM0MzggMjY0LjExN0MxMC42MDk0IDI2NC41ODYgMTEuNjI1IDI2NS4wMTYgMTIuNzgxMiAyNjUuNDA2QzEzLjk1MzEgMjY1Ljc4MSAxNS4xODc1IDI2Ni4xNDEgMTYuNDg0NCAyNjYuNDg0QzE3Ljc5NjkgMjY2LjgxMiAxOS4xNDA2IDI2Ny4xNDggMjAuNTE1NiAyNjcuNDkyQzIxLjkwNjIgMjY3LjgzNiAyMy4yNSAyNjguMjExIDI0LjU0NjkgMjY4LjYxN0MyNS44NTk0IDI2OS4wMDggMjcuMDkzOCAyNjkuNDUzIDI4LjI1IDI2OS45NTNDMjkuNDIxOSAyNzAuNDM4IDMwLjQzNzUgMjcxLjAwOCAzMS4yOTY5IDI3MS42NjRDMzIuMTcxOSAyNzIuMzIgMzIuODU5NCAyNzMuMDcgMzMuMzU5NCAyNzMuOTE0QzMzLjg3NSAyNzQuNzU4IDM0LjEzMjggMjc1LjczNCAzNC4xMzI4IDI3Ni44NDRDMzQuMTMyOCAyNzguMDQ3IDMzLjkwNjIgMjc5LjEwMiAzMy40NTMxIDI4MC4wMDhDMzMgMjgwLjg5OCAzMi4zODI4IDI4MS42NzIgMzEuNjAxNiAyODIuMzI4QzMwLjgzNTkgMjgyLjk2OSAyOS45Mjk3IDI4My41MDggMjguODgyOCAyODMuOTQ1QzI3Ljg1MTYgMjg0LjM2NyAyNi43NDIyIDI4NC43MDMgMjUuNTU0NyAyODQuOTUzQzI0LjM4MjggMjg1LjIwMyAyMy4xNjQxIDI4NS4zNzUgMjEuODk4NCAyODUuNDY5QzIwLjY0ODQgMjg1LjU3OCAxOS40MTQxIDI4NS42MzMgMTguMTk1MyAyODUuNjMzQzE1LjM5ODQgMjg1LjYzMyAxMi44NTk0IDI4NS40MyAxMC41NzgxIDI4NS4wMjNDOC4zMTI1IDI4NC42MTcgNi4xNDg0NCAyODQuMDYyIDQuMDg1OTQgMjgzLjM1OVYyNzkuNzczQzYuMjEwOTQgMjgxLjAzOSA4LjQ1MzEyIDI4MS45MDYgMTAuODEyNSAyODIuMzc1QzEzLjE4NzUgMjgyLjg0NCAxNS42Nzk3IDI4My4wNzggMTguMjg5MSAyODMuMDc4QzIwLjEzMjggMjgzLjA3OCAyMS44MzU5IDI4Mi45NjkgMjMuMzk4NCAyODIuNzVDMjQuOTYwOSAyODIuNTMxIDI2LjMxMjUgMjgyLjE4OCAyNy40NTMxIDI4MS43MTlDMjguNTkzOCAyODEuMjM0IDI5LjQ3NjYgMjgwLjYwOSAzMC4xMDE2IDI3OS44NDRDMzAuNzQyMiAyNzkuMDc4IDMxLjA2MjUgMjc4LjE0MSAzMS4wNjI1IDI3Ny4wMzFDMzEuMDYyNSAyNzYuMTQxIDMwLjgwNDcgMjc1LjM1OSAzMC4yODkxIDI3NC42ODhDMjkuNzg5MSAyNzQuMDE2IDI5LjEwMTYgMjczLjQzIDI4LjIyNjYgMjcyLjkzQzI3LjM2NzIgMjcyLjQxNCAyNi4zNTE2IDI3MS45NjEgMjUuMTc5NyAyNzEuNTdDMjQuMDIzNCAyNzEuMTggMjIuNzk2OSAyNzAuODIgMjEuNSAyNzAuNDkyQzIwLjIwMzEgMjcwLjE0OCAxOC44NTk0IDI2OS44MiAxNy40Njg4IDI2OS41MDhDMTYuMDkzOCAyNjkuMTggMTQuNzU3OCAyNjguODI4IDEzLjQ2MDkgMjY4LjQ1M0MxMi4xNjQxIDI2OC4wNzggMTAuOTI5NyAyNjcuNjU2IDkuNzU3ODEgMjY3LjE4OEM4LjYwMTU2IDI2Ni43MTkgNy41ODU5NCAyNjYuMTcyIDYuNzEwOTQgMjY1LjU0N0M1Ljg1MTU2IDI2NC45MDYgNS4xNjQwNiAyNjQuMTcyIDQuNjQ4NDQgMjYzLjM0NEM0LjE0ODQ0IDI2Mi41MTYgMy44OTg0NCAyNjEuNTU1IDMuODk4NDQgMjYwLjQ2MUMzLjg5ODQ0IDI1OS4zODMgNC4xMDE1NiAyNTguNDMgNC41MDc4MSAyNTcuNjAyQzQuOTE0MDYgMjU2Ljc1OCA1LjQ2ODc1IDI1Ni4wMzEgNi4xNzE4OCAyNTUuNDIyQzYuODkwNjIgMjU0LjgxMiA3LjcyNjU2IDI1NC4zMDUgOC42Nzk2OSAyNTMuODk4QzkuNjMyODEgMjUzLjQ3NyAxMC42NDg0IDI1My4xNDggMTEuNzI2NiAyNTIuOTE0QzEyLjgyMDMgMjUyLjY2NCAxMy45NTMxIDI1Mi40ODQgMTUuMTI1IDI1Mi4zNzVDMTYuMjk2OSAyNTIuMjY2IDE3LjQ1MzEgMjUyLjIxMSAxOC41OTM4IDI1Mi4yMTFDMTkuODQzOCAyNTIuMjExIDIxLjAyMzQgMjUyLjI2NiAyMi4xMzI4IDI1Mi4zNzVDMjMuMjU3OCAyNTIuNDg0IDI0LjMzNTkgMjUyLjYzMyAyNS4zNjcyIDI1Mi44MkMyNi40MTQxIDI1Mi45OTIgMjcuNDI5NyAyNTMuMTk1IDI4LjQxNDEgMjUzLjQzQzI5LjQxNDEgMjUzLjY2NCAzMC40MjE5IDI1My45MTQgMzEuNDM3NSAyNTQuMThWMjU3LjU1NVpNNDMuMjAzMSAyODVWMjUyLjc5N0g3MC4wMzkxVjI1NS41MzlINDYuMzkwNlYyNjYuNjI1SDY4Ljg0MzhWMjY5LjM0NEg0Ni4zOTA2VjI4Mi4yNThINzAuMzkwNlYyODVINDMuMjAzMVpNMTEyLjQ2MSAyODIuNDQ1QzExMS4zMzYgMjgyLjkxNCAxMTAuMjE5IDI4My4zNDQgMTA5LjEwOSAyODMuNzM0QzEwOC4wMTYgMjg0LjEyNSAxMDYuODc1IDI4NC40NjEgMTA1LjY4OCAyODQuNzQyQzEwNC41IDI4NS4wMjMgMTAzLjI1IDI4NS4yNDIgMTAxLjkzOCAyODUuMzk4QzEwMC42MjUgMjg1LjU1NSA5OS4xOTUzIDI4NS42MzMgOTcuNjQ4NCAyODUuNjMzQzk1Ljc0MjIgMjg1LjYzMyA5My45MDYyIDI4NS40NzcgOTIuMTQwNiAyODUuMTY0QzkwLjM5MDYgMjg0Ljg1MiA4OC43NTc4IDI4NC4zODMgODcuMjQyMiAyODMuNzU4Qzg1LjcyNjYgMjgzLjEzMyA4NC4zNTE2IDI4Mi4zNTkgODMuMTE3MiAyODEuNDM4QzgxLjg4MjggMjgwLjUgODAuODIwMyAyNzkuNDE0IDc5LjkyOTcgMjc4LjE4Qzc5LjA1NDcgMjc2Ljk0NSA3OC4zNzUgMjc1LjU1NSA3Ny44OTA2IDI3NC4wMDhDNzcuNDIxOSAyNzIuNDYxIDc3LjE4NzUgMjcwLjc2NiA3Ny4xODc1IDI2OC45MjJDNzcuMTg3NSAyNjcuMDc4IDc3LjQyMTkgMjY1LjM4MyA3Ny44OTA2IDI2My44MzZDNzguMzc1IDI2Mi4yODkgNzkuMDU0NyAyNjAuODk4IDc5LjkyOTcgMjU5LjY2NEM4MC44MjAzIDI1OC40MyA4MS44ODI4IDI1Ny4zNTIgODMuMTE3MiAyNTYuNDNDODQuMzUxNiAyNTUuNDkyIDg1LjcyNjYgMjU0LjcxMSA4Ny4yNDIyIDI1NC4wODZDODguNzU3OCAyNTMuNDYxIDkwLjM5MDYgMjUyLjk5MiA5Mi4xNDA2IDI1Mi42OEM5My44OTA2IDI1Mi4zNjcgOTUuNzI2NiAyNTIuMjExIDk3LjY0ODQgMjUyLjIxMUM5OS4xOTUzIDI1Mi4yMTEgMTAwLjYyNSAyNTIuMjg5IDEwMS45MzggMjUyLjQ0NUMxMDMuMjUgMjUyLjYwMiAxMDQuNSAyNTIuODIgMTA1LjY4OCAyNTMuMTAyQzEwNi44NzUgMjUzLjM4MyAxMDguMDE2IDI1My43MTkgMTA5LjEwOSAyNTQuMTA5QzExMC4yMTkgMjU0LjQ4NCAxMTEuMzM2IDI1NC45MDYgMTEyLjQ2MSAyNTUuMzc1VjI1OC44OTFDMTExLjU3IDI1OC4zMjggMTEwLjYxNyAyNTcuNzk3IDEwOS42MDIgMjU3LjI5N0MxMDguNTg2IDI1Ni43OTcgMTA3LjQ4NCAyNTYuMzU5IDEwNi4yOTcgMjU1Ljk4NEMxMDUuMTI1IDI1NS42MDkgMTAzLjg2NyAyNTUuMzEyIDEwMi41MjMgMjU1LjA5NEMxMDEuMTggMjU0Ljg3NSA5OS43NDIyIDI1NC43NjYgOTguMjEwOSAyNTQuNzY2Qzk1LjExNzIgMjU0Ljc2NiA5Mi40Mzc1IDI1NS4xMDIgOTAuMTcxOSAyNTUuNzczQzg3LjkwNjIgMjU2LjQ0NSA4Ni4wMzEyIDI1Ny4zOTggODQuNTQ2OSAyNTguNjMzQzgzLjA3ODEgMjU5Ljg1MiA4MS45ODQ0IDI2MS4zMzYgODEuMjY1NiAyNjMuMDg2QzgwLjU2MjUgMjY0LjgyIDgwLjIxMDkgMjY2Ljc2NiA4MC4yMTA5IDI2OC45MjJDODAuMjEwOSAyNzEuMDc4IDgwLjU2MjUgMjczLjAyMyA4MS4yNjU2IDI3NC43NThDODEuOTg0NCAyNzYuNDkyIDgzLjA3ODEgMjc3Ljk3NyA4NC41NDY5IDI3OS4yMTFDODYuMDMxMiAyODAuNDMgODcuOTA2MiAyODEuMzc1IDkwLjE3MTkgMjgyLjA0N0M5Mi40Mzc1IDI4Mi43MDMgOTUuMTE3MiAyODMuMDMxIDk4LjIxMDkgMjgzLjAzMUM5OS43NDIyIDI4My4wMzEgMTAxLjE4OCAyODIuOTIyIDEwMi41NDcgMjgyLjcwM0MxMDMuOTIyIDI4Mi40ODQgMTA1LjIwMyAyODIuMTg4IDEwNi4zOTEgMjgxLjgxMkMxMDcuNTk0IDI4MS40MzggMTA4LjY5NSAyODEuMDA4IDEwOS42OTUgMjgwLjUyM0MxMTAuNzExIDI4MC4wMjMgMTExLjYzMyAyNzkuNSAxMTIuNDYxIDI3OC45NTNWMjgyLjQ0NVpNMTUzLjM4MyAyNzQuODc1QzE1My4zODMgMjc2LjQ4NCAxNTMuMDM5IDI3Ny45NTMgMTUyLjM1MiAyNzkuMjgxQzE1MS42OCAyODAuNTk0IDE1MC42NjQgMjgxLjcyNyAxNDkuMzA1IDI4Mi42OEMxNDcuOTYxIDI4My42MTcgMTQ2LjI3MyAyODQuMzQ0IDE0NC4yNDIgMjg0Ljg1OUMxNDIuMjExIDI4NS4zNzUgMTM5Ljg0NCAyODUuNjMzIDEzNy4xNDEgMjg1LjYzM0MxMzQuNDM4IDI4NS42MzMgMTMyLjA3IDI4NS4zNzUgMTMwLjAzOSAyODQuODU5QzEyOC4wMDggMjg0LjM0NCAxMjYuMzEyIDI4My42MTcgMTI0Ljk1MyAyODIuNjhDMTIzLjU5NCAyODEuNzI3IDEyMi41NyAyODAuNTk0IDEyMS44ODMgMjc5LjI4MUMxMjEuMjExIDI3Ny45NTMgMTIwLjg3NSAyNzYuNDg0IDEyMC44NzUgMjc0Ljg3NVYyNTIuNzk3SDEyMy44MDVWMjc1LjEwOUMxMjMuODA1IDI3Ni4xODggMTI0LjA4NiAyNzcuMjExIDEyNC42NDggMjc4LjE4QzEyNS4yMjcgMjc5LjEzMyAxMjYuMDc4IDI3OS45NjkgMTI3LjIwMyAyODAuNjg4QzEyOC4zMjggMjgxLjQwNiAxMjkuNzE5IDI4MS45NzcgMTMxLjM3NSAyODIuMzk4QzEzMy4wMzEgMjgyLjgyIDEzNC45NTMgMjgzLjAzMSAxMzcuMTQxIDI4My4wMzFDMTM5LjMxMiAyODMuMDMxIDE0MS4yMjcgMjgyLjgyIDE0Mi44ODMgMjgyLjM5OEMxNDQuNTM5IDI4MS45NzcgMTQ1LjkzIDI4MS40MDYgMTQ3LjA1NSAyODAuNjg4QzE0OC4xOCAyNzkuOTY5IDE0OS4wMjMgMjc5LjEzMyAxNDkuNTg2IDI3OC4xOEMxNTAuMTY0IDI3Ny4yMTEgMTUwLjQ1MyAyNzYuMTg4IDE1MC40NTMgMjc1LjEwOVYyNTIuNzk3SDE1My4zODNWMjc0Ljg3NVpNMTY2Ljg4MyAyNzEuMjE5VjI4NUgxNjMuOTUzVjI1Mi43OTdIMTc5Ljk4NEMxODIuNDM4IDI1Mi43OTcgMTg0LjUzOSAyNTIuOTkyIDE4Ni4yODkgMjUzLjM4M0MxODguMDM5IDI1My43NTggMTg5LjQ2OSAyNTQuMzM2IDE5MC41NzggMjU1LjExN0MxOTEuNzAzIDI1NS44ODMgMTkyLjUyMyAyNTYuODQ0IDE5My4wMzkgMjU4QzE5My41NTUgMjU5LjE1NiAxOTMuODEyIDI2MC41MDggMTkzLjgxMiAyNjIuMDU1QzE5My44MTIgMjY0LjQ2MSAxOTMuMTggMjY2LjM5MSAxOTEuOTE0IDI2Ny44NDRDMTkwLjY0OCAyNjkuMjgxIDE4OC42MDkgMjcwLjI2NiAxODUuNzk3IDI3MC43OTdMMTk2Ljc4OSAyODVIMTkzLjEwOUwxODIuNzI3IDI3MS4xMjVDMTgyLjI4OSAyNzEuMTU2IDE4MS44NDQgMjcxLjE4IDE4MS4zOTEgMjcxLjE5NUMxODAuOTM4IDI3MS4yMTEgMTgwLjQ2OSAyNzEuMjE5IDE3OS45ODQgMjcxLjIxOUgxNjYuODgzWk0xOTAuNzg5IDI2Mi4wNTVDMTkwLjc4OSAyNjAuNjggMTkwLjU0NyAyNTkuNTcgMTkwLjA2MiAyNTguNzI3QzE4OS41NzggMjU3Ljg2NyAxODguNzg5IDI1Ny4yMDMgMTg3LjY5NSAyNTYuNzM0QzE4Ni42MDIgMjU2LjI2NiAxODUuMTY0IDI1NS45NTMgMTgzLjM4MyAyNTUuNzk3QzE4MS42MTcgMjU1LjYyNSAxNzkuNDQ1IDI1NS41MzkgMTc2Ljg2NyAyNTUuNTM5SDE2Ni44ODNWMjY4LjQ3N0gxNzYuNzczQzE3OS4zNTIgMjY4LjQ3NyAxODEuNTMxIDI2OC40MDYgMTgzLjMxMiAyNjguMjY2QzE4NS4wOTQgMjY4LjEwOSAxODYuNTM5IDI2Ny44MDUgMTg3LjY0OCAyNjcuMzUyQzE4OC43NTggMjY2Ljg4MyAxODkuNTU1IDI2Ni4yMzQgMTkwLjAzOSAyNjUuNDA2QzE5MC41MzkgMjY0LjU2MiAxOTAuNzg5IDI2My40NDUgMTkwLjc4OSAyNjIuMDU1Wk0yMDMuOTM4IDI4NVYyNTIuNzk3SDIwNi44NjdWMjg1SDIwMy45MzhaTTIzMC43NzMgMjU1LjQ2OVYyODVIMjI3Ljg2N1YyNTUuNDY5SDIxMy4yMTlWMjUyLjc5N0gyNDUuNDIyVjI1NS40NjlIMjMwLjc3M1pNMjY2LjExNyAyNzEuMzU5VjI4NUgyNjMuMTg4VjI3MS4zNTlMMjQ4LjA3IDI1Mi43OTdIMjUxLjU2MkwyNjQuNjY0IDI2OC45MjJMMjc3LjcxOSAyNTIuNzk3SDI4MS4yMzRMMjY2LjExNyAyNzEuMzU5WiIgZmlsbD0id2hpdGUiLz4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMjguMzA2IDEuODc3MjNDMTE5LjEzNiA0LjgwODQ1IDEwNS45NTcgMTUuMjAwNSAxMDIuMTIgMjQuMzQ1NkM5Ni43MjkgMzQuNjgyNiA5Ny4wMzIzIDUyLjgyODYgMTAyLjc2NSA2Mi45NzI5TDEwNy4wODkgNzAuNjI0OUw5MC4yMDc1IDk5LjkxNzdMNzMuMzI2MyAxMjkuMjFMNzguNTg0IDEyOC43MDVDODMuNjUwNCAxMjguMjE2IDg0Ljg3MTkgMTI2LjQyMiAxMTIuMjMxIDc5LjI0NjlDMTI3Ljg0NSA1Mi4zMjUgMTQwLjk4NiAzMC4zMDY4IDE0MS40MzIgMzAuMzE2NUMxNDIuNDc1IDMwLjM0MjUgMTczLjk1MyA4NS4yODI2IDE3Mi45MjUgODUuMjgyNkMxNzIuNDk4IDg1LjI4MjYgMTY5LjQzNyA4NC4xNDI1IDE2Ni4xMTkgODIuNzQ5OEMxNjIuODAyIDgxLjM1NyAxNTMuOTA3IDc5LjUwOTIgMTQ2LjM1MiA3OC42NDI4QzEzOC43OTcgNzcuNzc4IDEzMS4xMzIgNzYuNzA0MyAxMjkuMzE4IDc2LjI1NTdDMTI3LjE1MyA3NS43MTk3IDEyNS4zMjkgNzYuNTU3IDEyNC4wMDkgNzguNjk0NkMxMjEuMTY1IDgzLjI5NTUgMTI1LjMzNiA4NS4xNjExIDE0Mi4zOTUgODYuOTE4M0MxNjYuMDkgODkuMzU4OCAxODEuOTk2IDk5LjQxMDggMTkzLjM0NCAxMTkuMTEzQzE5OC4xMTcgMTI3LjQgMTk5LjczNCAxMjguOTc2IDIwMy40ODMgMTI4Ljk5QzIwNS45MzggMTI5IDIwNy45NDQgMTI4LjUyOSAyMDcuOTQ0IDEyNy45NDJDMjA3Ljk0NCAxMjYuMjQ4IDE0Mi4zNDQgMTIuNTAyNSAxNDEuMzM4IDEyLjQ1MjNDMTQwLjg0IDEyLjQyNjQgMTM0LjI3IDIzLjMxODkgMTI2LjczNyAzNi42NTY3QzExOS4yMDUgNDkuOTk0NiAxMTIuNTY3IDYwLjkyNTkgMTExLjk4NSA2MC45NDg2QzExMC4wMSA2MS4wMjYzIDEwNy4zNjQgNTAuODI1NCAxMDcuMzY0IDQzLjEzMjlDMTA3LjM2NCAzMy40MzI0IDExMC41MTUgMjUuOTU3IDExNy4zNzcgMTkuMzcyMkMxMzIuMDkxIDUuMjUyMTggMTUzLjcxMiA2LjAxMTcxIDE2Ni45OTcgMjEuMTE2NEMxNjkuODg4IDI0LjQwMzkgMTcyLjI1NSAyNy43ODIxIDE3Mi4yNTUgMjguNjIyNkMxNzIuMjU1IDI5LjQ5NzEgMTczLjk5MiAyOS4zNjExIDE3Ni4zMSAyOC4zMDY4QzE4MS44MjEgMjUuNzk5OSAxODEuNDQ4IDIzLjgwNjMgMTczLjg1OSAxNS4yMDA1QzE2Mi4zOCAyLjE4MTY5IDE0NC4wOTEgLTMuMTY3MzggMTI4LjMwNiAxLjg3NzIzWk03OC4yMzIgMTQ2LjExOEMxMTEuMjE3IDE3OS44MzEgMTY3LjAxOCAxODAuNzI5IDIwMi4wNyAxNDguMTA4TDIxMiAxMzguODY5TDIwNi41OCAxMzguNzk2QzIwMi42NDYgMTM4Ljc0NCAxOTkuMzExIDE0MC4zMDcgMTk0LjQxMyAxNDQuNDk4QzE3Ni4xNjQgMTYwLjExNSAxNDkuMzczIDE2Ny4yNjkgMTI2LjYxNyAxNjIuNjA0QzExMS43NzkgMTU5LjU2MSA5OC4yMDM2IDE1My4yMDkgODguNzA1MyAxNDQuODYyQzgzLjYzMjUgMTQwLjQwMyA4MC4yNTUgMTM4LjcyNSA3Ni4zNTk5IDEzOC43MjVINzFMNzguMjMyIDE0Ni4xMThaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4=' alt="Ativa Security">
+      <div class="login-title">Ativa360</div>
+      <div class="login-sub">Plataforma de Gestão · Ativa Security</div>
     </div>
+    <div class="login-divider"></div>
     <div class="login-field">
       <label class="login-label">E-mail corporativo</label>
-      <input class="login-input" id="login-email" type="email" placeholder="seu@ativait.com.br" autocomplete="email">
+      <input class="login-input" id="login-email" type="email" placeholder="usuario@ativait.com.br" autocomplete="email" onkeydown="if(event.key==='Enter')document.getElementById('login-password').focus()">
     </div>
     <div class="login-field">
-      <label class="login-label">Senha</label>
+      <label class="login-label">Senha de acesso</label>
       <div style="position:relative">
-        <input class="login-input" id="login-password" type="password" placeholder="••••••••" autocomplete="current-password" style="padding-right:44px" onkeydown="if(event.key==='Enter')doLogin()">
-        <button onclick="const i=document.getElementById('login-password');i.type=i.type==='password'?'text':'password'" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:16px;color:var(--text3)">👁</button>
+        <input class="login-input" id="login-password" type="password" placeholder="••••••••••••" autocomplete="current-password" style="padding-right:46px" onkeydown="if(event.key==='Enter')doLogin()">
+        <button onclick="const i=document.getElementById('login-password');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'👁':'🙈'" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:15px;background:none;border:none;cursor:pointer;color:rgba(148,163,184,0.5);padding:4px">👁</button>
       </div>
     </div>
     <div class="login-error" id="login-error"></div>
-    <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
+    <button class="login-btn" id="login-btn" onclick="doLogin()">Acessar plataforma</button>
+    <div class="login-version">v2.0 · Ativa360 &nbsp;|&nbsp; Acesso restrito</div>
   </div>
 </div>
 
@@ -3774,6 +3807,67 @@ function buildDigitInputs(cid, onComplete){
 function getMfaCode(cid){ return [...document.getElementById(cid).children].map(x=>x.value).join(''); }
 function clearDigits(cid){ const w=document.getElementById(cid); [...w.children].forEach(x=>x.value=''); w.children[0]?.focus(); }
 function genSecret(){ const c='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'; let s=''; const a=new Uint8Array(20); crypto.getRandomValues(a); a.forEach(b=>s+=c[b%32]); return s; }
+
+// ══════════════════════════════════
+//   LOGIN PARTICLES
+// ══════════════════════════════════
+(function initLoginParticles(){
+  const canvas=document.getElementById('login-particles');
+  if(!canvas) return;
+  const ctx=canvas.getContext('2d');
+  let W,H,particles=[],raf;
+  const COLS=['rgba(96,165,250,','rgba(37,99,235,','rgba(147,197,253,'];
+
+  function resize(){ W=canvas.width=window.innerWidth; H=canvas.height=window.innerHeight; }
+
+  function spawn(){
+    return {
+      x:Math.random()*W, y:Math.random()*H,
+      r:Math.random()*1.8+0.4,
+      vx:(Math.random()-.5)*.35, vy:(Math.random()-.5)*.35-.1,
+      alpha:Math.random()*.5+.1,
+      life:0, maxLife:Math.random()*260+120,
+      col:COLS[Math.floor(Math.random()*COLS.length)],
+    };
+  }
+
+  function init(){
+    resize(); particles=[];
+    const n=Math.floor((W*H)/12000);
+    for(let i=0;i<n;i++){ const p=spawn(); p.life=Math.floor(Math.random()*p.maxLife); particles.push(p); }
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    particles.forEach((p,i)=>{
+      const pr=p.life/p.maxLife;
+      const fade=pr<.15?pr/.15:pr>.75?(1-(pr-.75)/.25):1;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=p.col+(p.alpha*fade)+')'; ctx.fill();
+      p.x+=p.vx; p.y+=p.vy; p.life++;
+      p.vx+=(Math.random()-.5)*.01; p.vy+=(Math.random()-.5)*.01;
+      p.vx=Math.max(-.5,Math.min(.5,p.vx)); p.vy=Math.max(-.5,Math.min(.5,p.vy));
+      if(p.life>=p.maxLife||p.x<-10||p.x>W+10||p.y<-10||p.y>H+10) particles[i]=spawn();
+    });
+    // Faint connecting lines between nearby particles
+    for(let i=0;i<particles.length;i++)
+      for(let j=i+1;j<particles.length;j++){
+        const dx=particles[i].x-particles[j].x, dy=particles[i].y-particles[j].y;
+        const d=Math.sqrt(dx*dx+dy*dy);
+        if(d<90){ ctx.beginPath(); ctx.moveTo(particles[i].x,particles[i].y); ctx.lineTo(particles[j].x,particles[j].y); ctx.strokeStyle='rgba(96,165,250,'+(0.065*(1-d/90))+')'; ctx.lineWidth=.5; ctx.stroke(); }
+      }
+    raf=requestAnimationFrame(draw);
+  }
+
+  // Stop animation when login screen hides
+  const obs=new MutationObserver(()=>{
+    if(document.getElementById('login-screen').style.display==='none'){ cancelAnimationFrame(raf); obs.disconnect(); }
+  });
+  obs.observe(document.getElementById('login-screen'),{attributes:true,attributeFilter:['style']});
+
+  window.addEventListener('resize',init);
+  init(); draw();
+})();
 
 function showMfaSetup(user, secret){
   _mfaUser=user; _mfaSecret=secret;
