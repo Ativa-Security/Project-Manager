@@ -760,8 +760,8 @@ input,select,textarea{font-family:var(--font)}
           <div style="background:rgba(52,201,126,0.05);border:1px solid rgba(52,201,126,0.2);border-radius:var(--r);padding:12px 14px">
             <div style="font-size:12px;font-weight:600;color:var(--green);margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em">🛠 Suporte técnico</div>
             <div class="form-grid">
-              <div class="form-group" style="margin:0"><label class="form-label">Horas de suporte incluídas/mês</label><input class="form-input" id="l-support-hours" type="number" placeholder="0" step="0.5"></div>
-              <div class="form-group" style="margin:0"><label class="form-label">Horas despendidas (acumulado)</label><input class="form-input" id="l-support-used" type="number" placeholder="0" step="0.5"></div>
+              <div class="form-group" style="margin:0"><label class="form-label">Horas de suporte incluídas/mês</label><input class="form-input" id="l-support-hours" oninput="_fmtHInput(this)" type="number" placeholder="0" step="0.5"></div>
+              <div class="form-group" style="margin:0"><label class="form-label">Horas despendidas (acumulado)</label><input class="form-input" id="l-support-used" oninput="_fmtHInput(this)" type="number" placeholder="0" step="0.5"></div>
               <div class="form-group admin-only" style="margin:0"><label class="form-label">Proposta hora de suporte — cliente paga (R$)</label><input class="form-input" id="l-support-rate-client" type="number" placeholder="0,00" step="0.01"></div>
               <div class="form-group admin-only" style="margin:0"><label class="form-label">Custo hora de suporte — nosso custo (R$)</label><input class="form-input" id="l-support-rate-cost" type="number" placeholder="0,00" step="0.01"></div>
             </div>
@@ -798,8 +798,8 @@ input,select,textarea{font-family:var(--font)}
           </select>
         </div>
         <div class="form-group"><label class="form-label">Prazo</label><input class="form-input" id="t-due" type="date"></div>
-        <div class="form-group"><label class="form-label">Horas previstas — Tarefas</label><input class="form-input" id="t-est" type="number" placeholder="0"></div>
-        <div class="form-group"><label class="form-label">Horas executadas</label><input class="form-input" id="t-done-h" type="number" placeholder="0"></div>
+        <div class="form-group"><label class="form-label">Horas previstas — Tarefas</label><input class="form-input" id="t-est" oninput="_fmtHInput(this)" type="number" placeholder="0"></div>
+        <div class="form-group"><label class="form-label">Horas executadas</label><input class="form-input" id="t-done-h" oninput="_fmtHInput(this)" type="number" placeholder="0"></div>
       </div>
       <div class="form-group" id="t-waiting-wrap" style="display:none"><label class="form-label">Motivo do aguardo</label><input class="form-input" id="t-waiting-reason" placeholder="Ex: Aguardando acesso do cliente"></div>
       <div class="form-group" id="t-concluded-wrap" style="display:none"><label class="form-label">Data de conclusão</label><input class="form-input" id="t-concluded" type="date"></div>
@@ -928,7 +928,7 @@ input,select,textarea{font-family:var(--font)}
       <div class="form-grid">
         <div class="form-group admin-only">
           <label class="form-label">Horas contratadas *</label>
-          <input class="form-input" id="hp-hours" type="number" min="0.5" step="0.5" placeholder="Ex: 10">
+          <input class="form-input" id="hp-hours" type="text" placeholder="Ex: 10:00" maxlength="6" oninput="_fmtHInput(this)">
         </div>
         <div class="form-group admin-only">
           <label class="form-label">Valor do pacote (R$)</label>
@@ -985,7 +985,7 @@ input,select,textarea{font-family:var(--font)}
       <div class="form-grid">
         <div class="form-group">
           <label class="form-label">Horas consumidas *</label>
-          <input class="form-input" id="hu-hours" type="number" min="0.25" step="0.25" placeholder="Ex: 1.5">
+          <input class="form-input" id="hu-hours" type="text" placeholder="Ex: 01:30" maxlength="6" oninput="_fmtHInput(this)">
         </div>
         <div class="form-group">
           <label class="form-label">Data</label>
@@ -1051,7 +1051,7 @@ input,select,textarea{font-family:var(--font)}
       </div>
       <div class="form-group admin-only">
         <label class="form-label">Nova quantidade de horas (deixe em branco para manter)</label>
-        <input class="form-input" id="hr-hours" type="number" min="0.5" step="0.5" placeholder="Mantém a quantidade atual">
+        <input class="form-input" id="hr-hours" type="text" placeholder="Ex: 10:00 — mantém se vazio" maxlength="6" oninput="_fmtHInput(this)">
       </div>
       <div class="form-group admin-only">
         <label class="form-label">Novo valor do pacote (R$) — deixe em branco para manter</label>
@@ -1200,6 +1200,31 @@ if(savedTheme==='light'){
 //   HELPERS
 // ══════════════════════════════════
 function fmtDate(d){ if(!d) return '—'; const [y,m,day]=d.split('-'); return `${day}/${m}/${y}`; }
+function fmtH(h){
+  // Convert decimal hours to HH:MM — e.g. 2.5 → 02:30, 0.25 → 00:15
+  const total = Math.round((Number(h)||0) * 60);
+  const hh = Math.floor(total/60);
+  const mm = total % 60;
+  return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+}
+function parseHM(v){
+  // Convert HH:MM string to decimal hours — e.g. "02:30" → 2.5, "1:15" → 1.25
+  // Also accepts plain decimals like "2.5" or "2,5"
+  if(!v) return 0;
+  v = String(v).trim().replace(',','.');
+  if(v.includes(':')){
+    const [hh,mm] = v.split(':');
+    return (parseInt(hh)||0) + (parseInt(mm)||0)/60;
+  }
+  return parseFloat(v)||0;
+}
+function _fmtHInput(el){
+  // Auto-insert ":" after 2 digits for UX
+  let v = el.value.replace(/[^0-9:]/g,'');
+  if(v.length===2 && !v.includes(':') && (el._lastLen||0) < 2) v = v+':';
+  el._lastLen = v.length;
+  el.value = v;
+}
 function fmtCur(v){ if(v===undefined||v===null||v==='') return '—'; return 'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function fmtCurShort(v){ if(!v) return 'R$ 0'; const n=Number(v); if(n>=1000) return 'R$ '+(n/1000).toFixed(1)+'k'; return 'R$ '+n.toLocaleString('pt-BR'); }
 function todayStr(){ return new Date().toISOString().split('T')[0]; }
@@ -1630,13 +1655,13 @@ function renderClientHours(pkgs){
         </div>
         <div style="text-align:right">
           <div style="font-size:11px;color:var(--text3)">Saldo</div>
-          <div style="font-size:15px;font-weight:700;font-family:var(--mono);color:${ov>0?'var(--red)':st.color}">${ov>0?'-'+ov.toFixed(1):remaining.toFixed(1)}h</div>
+          <div style="font-size:15px;font-weight:700;font-family:var(--mono);color:${ov>0?'var(--red)':st.color}">${ov>0?'-'+fmtH(ov):fmtH(remaining)}</div>
         </div>
       </div>
       <div style="display:flex;gap:16px;font-size:11px;color:var(--text3);margin-bottom:8px">
-        <span>Contratadas: <strong style="color:var(--accent2)">${total}h</strong></span>
-        <span>Utilizadas: <strong style="color:var(--amber)">${used.toFixed(1)}h</strong></span>
-        ${ov>0?`<span style="color:var(--red);font-weight:600">+${ov.toFixed(1)}h excesso</span>`:''}
+        <span>Contratadas: <strong style="color:var(--accent2)">${fmtH(total)}</strong></span>
+        <span>Utilizadas: <strong style="color:var(--amber)">${fmtH(used)}</strong></span>
+        ${ov>0?`<span style="color:var(--red);font-weight:600">+${fmtH(ov)} excesso</span>`:''}
       </div>
       <div style="height:6px;background:var(--bg4);border-radius:3px;overflow:hidden">
         <div style="height:100%;border-radius:3px;background:${pct>=100?'var(--red)':pct>=80?'var(--amber)':'var(--accent2)'};width:${barW}%;transition:width .4s"></div>
@@ -1997,7 +2022,7 @@ function renderProjDetail(){
             <div style="font-size:13px;font-weight:500;${t.status==='done'?'text-decoration:line-through;color:var(--text3)':''}">${t.name}</div>
             <div style="font-size:11px;color:var(--text3);margin-top:2px">${t.owner?'👤 '+t.owner+' · ':''} ${t.due?'📅 '+fmtDate(t.due):''}${t.waitingReason?' · ⏸ '+t.waitingReason:''}${t.status==='done'&&t.concludedDate?' · ✓ '+fmtDate(t.concludedDate):''}</div>
           </div>
-          ${!t.na&&(t.estimated||t.doneHours)?`<div style="font-size:11px;font-family:var(--mono);color:var(--text3)">${t.doneHours||0}/${t.estimated||0}h</div>`:''}
+          ${!t.na&&(t.estimated||t.doneHours)?`<div style="font-size:11px;font-family:var(--mono);color:var(--text3)">${fmtH(t.doneHours||0)}/${fmtH(t.estimated||0)}</div>`:''}
           ${tLate?`<span class="badge badge-red" style="font-size:10px">Atrasado</span>`:''}
         </div>`;
       });
@@ -2026,17 +2051,17 @@ function renderProjDetail(){
       <div class="kpi-card"><div class="kpi-n" style="color:var(--green)">${fmtCur(proposal)}</div><div class="kpi-l">Proposta (cliente paga)</div></div>
       <div class="kpi-card"><div class="kpi-n" style="color:var(--amber)">${fmtCur(custoPrevisto)}</div><div class="kpi-l">Custo Previsto</div></div>
       <div class="kpi-card"><div class="kpi-n" style="color:${margem>=0?'var(--green)':'var(--red)'}">${fmtCur(margem)} <span style="font-size:13px">(${margemPct}%)</span></div><div class="kpi-l">Margem Bruta</div></div>
-      <div class="kpi-card"><div class="kpi-n" style="color:${overHours?'var(--red)':'var(--text2)'}">${hrsProject}h</div><div class="kpi-l">Horas previstas — Projeto</div></div>
+      <div class="kpi-card"><div class="kpi-n" style="color:${overHours?'var(--red)':'var(--text2)'}">${fmtH(hrsProject)}</div><div class="kpi-l">Horas previstas — Projeto</div></div>
     </div>
 
     <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Valores variáveis (execução)</div>
     <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px">
-      <div class="kpi-card"><div class="kpi-n" style="color:var(--text2)">${hrsTasksEst}h</div><div class="kpi-l">Horas previstas — Tarefas</div></div>
+      <div class="kpi-card"><div class="kpi-n" style="color:var(--text2)">${fmtH(hrsTasksEst)}</div><div class="kpi-l">Horas previstas — Tarefas</div></div>
       <div class="kpi-card">
-        <div class="kpi-n" style="color:${overHours?'var(--red)':'var(--text2)'}">${hrsDone}h</div>
+        <div class="kpi-n" style="color:${overHours?'var(--red)':'var(--text2)'}">${fmtH(hrsDone)}</div>
         <div class="kpi-l">Horas executadas</div>
         ${hrsProject>0?`<div class="kpi-sub" style="color:${overHours?'var(--red)':'var(--green)'}">
-          ${overHours?`▲ +${hrsDone-hrsProject}h acima`:`▾ ${hrsProject-hrsDone}h restantes`}
+          ${overHours?`▲ +${fmtH(hrsDone-hrsProject)} acima`:`▾ ${fmtH(hrsProject-hrsDone)} restantes`}
         </div>`:''}
       </div>
       <div class="kpi-card"><div class="kpi-n" style="color:var(--amber)">${fmtCur(custoHoras)}</div><div class="kpi-l">Custo de horas ${hr?`(${fmtCur(hr)}/h)`:''}</div></div>
@@ -2046,7 +2071,7 @@ function renderProjDetail(){
     ${hrsProject>0?`<div style="margin-bottom:18px">
       <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:5px">
         <span>⏱ Consumo de horas</span>
-        <span style="font-family:var(--mono)">${hrsDone}h / ${hrsProject}h (${Math.min(200,hrsProject>0?Math.round(hrsDone/hrsProject*100):0)}%)</span>
+        <span style="font-family:var(--mono)">${fmtH(hrsDone)} / ${fmtH(hrsProject)} (${Math.min(200,hrsProject>0?Math.round(hrsDone/hrsProject*100):0)}%)</span>
       </div>
       <div class="progress-bar" style="height:10px">
         <div class="progress-fill" style="width:${Math.min(100,hrsProject>0?Math.round(hrsDone/hrsProject*100):0)}%;background:${overHours?'var(--red)':hrsDone/hrsProject>.8?'var(--amber)':'var(--green)'}"></div>
@@ -2057,7 +2082,7 @@ function renderProjDetail(){
       <div style="font-size:12px;font-weight:600;color:var(--accent2);margin-bottom:8px">📅 Pagamento Mensalizado</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
         <div><div style="font-size:11px;color:var(--text3)">Mensalidade (cliente)</div><div style="font-size:14px;font-weight:700;color:var(--green)">${fmtCur(p.monthlyProposal)}</div></div>
-        <div><div style="font-size:11px;color:var(--text3)">Horas suporte/mês</div><div style="font-size:14px;font-weight:700">${p.supportHours||0}h</div></div>
+        <div><div style="font-size:11px;color:var(--text3)">Horas suporte/mês</div><div style="font-size:14px;font-weight:700">${fmtH(p.supportHours||0)}</div></div>
         <div><div style="font-size:11px;color:var(--text3)">Receita anual</div><div style="font-size:14px;font-weight:700;color:var(--green)">${fmtCur((Number(p.monthlyProposal)||0)*12)}</div></div>
       </div>
     </div>`:''}
@@ -2138,8 +2163,8 @@ function openTaskModal(projId, taskId){
   ['name','owner'].forEach(f=>document.getElementById('t-'+f).value=t?t[f]||'':'');
   document.getElementById('t-status').value=t?t.status||'todo':'todo';
   document.getElementById('t-due').value=t?t.due||'':'';
-  document.getElementById('t-est').value=t?t.estimated||'':'';
-  document.getElementById('t-done-h').value=t?t.doneHours||'':'';
+  document.getElementById('t-est').value=t&&t.estimated?fmtH(t.estimated):'';
+  document.getElementById('t-done-h').value=t&&t.doneHours?fmtH(t.doneHours):'';
   document.getElementById('t-na').checked=t?t.na||false:false;
   document.getElementById('t-waiting-reason').value=t?t.waitingReason||'':'';
   document.getElementById('t-concluded').value=t?t.concludedDate||'':'';
@@ -2163,8 +2188,8 @@ function saveTask(){
     id:editingTaskId||nextTaskId++,
     name, owner:document.getElementById('t-owner').value.trim(),
     status, due:document.getElementById('t-due').value,
-    estimated:document.getElementById('t-est').value,
-    doneHours:document.getElementById('t-done-h').value,
+    estimated:parseHM(document.getElementById('t-est').value)||'',
+    doneHours:parseHM(document.getElementById('t-done-h').value)||'',
     na:document.getElementById('t-na').checked,
     waitingReason:status==='waiting'?document.getElementById('t-waiting-reason').value.trim():'',
     concludedFromWaiting:editingTaskId?((p.tasks.find(x=>x.id===editingTaskId)||{}).status==='waiting'&&status==='done'):false,
@@ -2236,7 +2261,7 @@ function renderLicCard(l, compact){
       ${l.parentId?`<span style="font-size:10px;font-weight:600;color:var(--accent2);background:rgba(37,99,235,0.1);padding:2px 7px;border-radius:10px">🔄 Renovação</span>`:''}
     ${licenses.some(x=>x.parentId===l.id)?`<span style="font-size:10px;font-weight:600;color:var(--green);background:var(--green-bg);padding:2px 7px;border-radius:10px">✓ Renovado</span>`:''}
     ${l.monthly&&isAdmin()?`<span style="color:var(--green)">💰 ${fmtCur(l.monthlyProposal)}/mês</span>`:''}
-      ${l.supportHours?`<span>🛠 ${l.supportHours}h/mês</span>`:''}
+      ${l.supportHours?`<span>🛠 ${fmtH(l.supportHours)}/mês</span>`:''}
     </div>
     <div class="lic-progress-bar"><div style="height:100%;border-radius:3px;width:${prog}%;background:${progColor};transition:width .3s"></div></div>
   </div>`;
@@ -2254,8 +2279,8 @@ function openLicenseModal(id=null){
   loadLicenseProductSelect(l?l.product||'':'');
   document.getElementById('l-start').value        = l?l.start||'':'';
   document.getElementById('l-end').value          = l?l.end||'':'';
-  document.getElementById('l-support-hours').value= l?l.supportHours||'':'';
-  document.getElementById('l-support-used').value = l?l.supportUsed||'':'';
+  document.getElementById('l-support-hours').value= l&&l.supportHours?fmtH(l.supportHours):'';
+  document.getElementById('l-support-used').value = l&&l.supportUsed?fmtH(l.supportUsed):'';
 
   // Admin-only fields
   if(isAdmin()){
@@ -2298,8 +2323,8 @@ function saveLicense(){
     notes:    document.getElementById('l-notes').value.trim(),
     monthly,
     // Support fields — always saved, independent of monthly
-    supportHours:      parseFloat(document.getElementById('l-support-hours').value)||0,
-    supportUsed:       parseFloat(document.getElementById('l-support-used').value)||0,
+    supportHours:      parseHM(document.getElementById('l-support-hours').value),
+    supportUsed:       parseHM(document.getElementById('l-support-used').value),
     supportRateClient: isAdmin()?parseFloat(document.getElementById('l-support-rate-client').value)||0:0,
     supportRateCost:   isAdmin()?parseFloat(document.getElementById('l-support-rate-cost').value)||0:0,
     // Admin financial fields
@@ -2395,7 +2420,7 @@ function openLicDetail(id){
     <div class="rep-section"><div class="rep-section-title">🛠 Suporte técnico</div>
       <div class="kpi-grid" style="grid-template-columns:repeat(${isAdmin()?4:2},1fr)">
         <div class="kpi-card"><div class="kpi-n" style="color:var(--accent2)">${l.supportHours||0}h</div><div class="kpi-l">Incluídas/mês</div></div>
-        <div class="kpi-card"><div class="kpi-n" style="color:${(l.supportUsed||0)>(l.supportHours||0)?'var(--red)':'var(--green)'}">${l.supportUsed||0}h</div><div class="kpi-l">Horas despendidas</div><div class="kpi-sub">${l.supportHours?`${Math.max(0,(l.supportHours||0)-(l.supportUsed||0))}h disponíveis`:'—'}</div></div>
+        <div class="kpi-card"><div class="kpi-n" style="color:${(l.supportUsed||0)>(l.supportHours||0)?'var(--red)':'var(--green)'}">${fmtH(l.supportUsed||0)}</div><div class="kpi-l">Horas despendidas</div><div class="kpi-sub">${l.supportHours?`${fmtH(Math.max(0,(l.supportHours||0)-(l.supportUsed||0)))} disponíveis`:'—'}</div></div>
         ${isAdmin()?`
         <div class="kpi-card"><div class="kpi-n" style="color:var(--green)">${fmtCur(l.supportRateClient)}/h</div><div class="kpi-l">Proposta hora suporte</div><div class="kpi-sub">(cliente paga)</div></div>
         <div class="kpi-card"><div class="kpi-n" style="color:var(--amber)">${fmtCur(l.supportRateCost)}/h</div><div class="kpi-l">Custo hora suporte</div><div class="kpi-sub">(nosso custo)</div></div>
@@ -3176,8 +3201,8 @@ function repHours(){
     <!-- KPIs globais -->
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">
       <div class="kpi-card"><div class="kpi-label">Total Clientes c/ Horas</div><div class="kpi-value">${roots.length}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Total Horas Contratadas</div><div class="kpi-value">${totContracted}h</div></div>
-      <div class="kpi-card"><div class="kpi-label">Total Horas Utilizadas</div><div class="kpi-value" style="color:var(--amber)">${totUsed.toFixed(1)}h</div></div>
+      <div class="kpi-card"><div class="kpi-label">Total Horas Contratadas</div><div class="kpi-value">${fmtH(totContracted)}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Total Horas Utilizadas</div><div class="kpi-value" style="color:var(--amber)">${fmtH(totUsed)}</div></div>
       <div class="kpi-card"><div class="kpi-label">Horas Excedentes</div><div class="kpi-value" style="color:${totOver>0?'var(--red)':'var(--green)'}">${totOver>0?'+'+totOver.toFixed(1):totRemaining.toFixed(1)+'h saldo'}${totOver>0?' horas':''}</div></div>
     </div>
 
@@ -3189,8 +3214,8 @@ function repHours(){
         const uy=stats.reduce((s,x)=>s+x.usedThisYear,0);
         const oy=Math.max(0,uy-cy);
         return `<div class="kpi-card"><div class="kpi-label">Contratadas em ${year}</div><div class="kpi-value">${cy}h</div></div>
-        <div class="kpi-card"><div class="kpi-label">Utilizadas em ${year}</div><div class="kpi-value" style="color:var(--amber)">${uy.toFixed(1)}h</div></div>
-        <div class="kpi-card"><div class="kpi-label">${oy>0?'Excesso em '+year:'Saldo em '+year}</div><div class="kpi-value" style="color:${oy>0?'var(--red)':'var(--green)'}">${oy>0?'+'+oy.toFixed(1):Math.max(0,cy-uy).toFixed(1)}h</div></div>`;
+        <div class="kpi-card"><div class="kpi-label">Utilizadas em ${year}</div><div class="kpi-value" style="color:var(--amber)">${fmtH(uy)}</div></div>
+        <div class="kpi-card"><div class="kpi-label">${oy>0?'Excesso em '+year:'Saldo em '+year}</div><div class="kpi-value" style="color:${oy>0?'var(--red)':'var(--green)'}">${oy>0?'+'+fmtH(oy):fmtH(Math.max(0,cy-uy))}</div></div>`;
       })()}
     </div>
 
@@ -3204,24 +3229,24 @@ function repHours(){
         </tr></thead>
         <tbody>${stats.sort((a,b)=>b.totalUsed-a.totalUsed).map(x=>{
           const st=hoursBadgeStatus(x.pkg);
-          const bal=x.over>0?`<span style="color:var(--red)">+${x.over.toFixed(1)}h excesso</span>`:`<span style="color:var(--green)">${x.remaining.toFixed(1)}h saldo</span>`;
+          const bal=x.over>0?`<span style="color:var(--red)">+${fmtH(x.over)} excesso</span>`:`<span style="color:var(--green)">${fmtH(x.remaining)} saldo</span>`;
           return `<tr>
             <td style="font-weight:600">${clientName(x.pkg.clientId)}</td>
             <td style="font-size:12px;color:var(--text3)">${x.pkg.desc||'—'}</td>
-            <td style="font-family:var(--mono);color:var(--accent2);font-weight:600">${x.totalContracted}h</td>
-            <td style="font-family:var(--mono);color:var(--amber);font-weight:600">${x.totalUsed.toFixed(1)}h</td>
+            <td style="font-family:var(--mono);color:var(--accent2);font-weight:600">${fmtH(x.totalContracted)}</td>
+            <td style="font-family:var(--mono);color:var(--amber);font-weight:600">${fmtH(x.totalUsed)}</td>
             <td>${bal}</td>
             <td style="font-family:var(--mono)">${x.chain.length-1}</td>
-            <td style="font-family:var(--mono)">${x.contractedThisYear}h</td>
-            <td style="font-family:var(--mono)">${x.usedThisYear.toFixed(1)}h</td>
+            <td style="font-family:var(--mono)">${fmtH(x.contractedThisYear)}</td>
+            <td style="font-family:var(--mono)">${fmtH(x.usedThisYear)}</td>
             <td><span class="badge" style="background:${st.color}20;color:${st.color};border:1px solid ${st.color}40">${st.icon} ${st.label}</span></td>
           </tr>`;
         }).join('')}
         <tfoot><tr style="background:rgba(37,99,235,0.05)">
           <td colspan="2" style="font-weight:700;padding:10px 14px">TOTAL</td>
-          <td style="font-family:var(--mono);font-weight:700;color:var(--accent2);padding:10px 14px">${totContracted}h</td>
-          <td style="font-family:var(--mono);font-weight:700;color:var(--amber);padding:10px 14px">${totUsed.toFixed(1)}h</td>
-          <td style="padding:10px 14px">${totOver>0?`<span style="color:var(--red)">+${totOver.toFixed(1)}h excesso</span>`:`<span style="color:var(--green)">${totRemaining.toFixed(1)}h saldo</span>`}</td>
+          <td style="font-family:var(--mono);font-weight:700;color:var(--accent2);padding:10px 14px">${fmtH(totContracted)}</td>
+          <td style="font-family:var(--mono);font-weight:700;color:var(--amber);padding:10px 14px">${fmtH(totUsed)}</td>
+          <td style="padding:10px 14px">${totOver>0?`<span style="color:var(--red)">+${fmtH(totOver)}h excesso</span>`:`<span style="color:var(--green)">${fmtH(totRemaining)} saldo</span>`}</td>
           <td colspan="4"></td>
         </tr></tfoot>
       </tbody></table>
@@ -3239,7 +3264,7 @@ function repHours(){
             return `<tr>
               <td style="font-family:var(--mono);font-size:11px">${fmtDate(u.date)}</td>
               <td style="font-weight:600">${clientName(u.clientId)}</td>
-              <td style="font-family:var(--mono);font-weight:700;color:var(--amber)">${Number(u.hours).toFixed(1)}h</td>
+              <td style="font-family:var(--mono);font-weight:700;color:var(--amber)">${fmtH(u.hours)}</td>
               <td>${u.tech||'—'}</td>
               <td style="font-size:12px">${u.desc||'—'}</td>
               <td style="font-size:11px;color:var(--purple)">${proj?proj.name:'—'}</td>
@@ -3327,7 +3352,7 @@ function repLicenses(){
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;align-content:start">
       <div class="kpi-card"><div class="kpi-n" style="color:var(--green)">${fmtCur(totalMRR)}</div><div class="kpi-l">MRR Licenças</div></div>
       <div class="kpi-card"><div class="kpi-n" style="color:var(--accent2)">${fmtCur(totalRecurring)}</div><div class="kpi-l">Receita recorrente total</div></div>
-      <div class="kpi-card"><div class="kpi-n" style="color:var(--amber)">${totalSupportUsed}h</div><div class="kpi-l">Horas suporte usadas</div></div>
+      <div class="kpi-card"><div class="kpi-n" style="color:var(--amber)">${fmtH(totalSupportUsed)}</div><div class="kpi-l">Horas suporte usadas</div></div>
       <div class="kpi-card"><div class="kpi-n" style="color:var(--green)">${fmtCur(totalSupportRevenue)}</div><div class="kpi-l">Receita suporte</div></div>
       <div class="kpi-card" style="background:${critical.length>0?'rgba(255,95,95,0.06)':'var(--bg2)'};border-color:${critical.length>0?'rgba(255,95,95,0.3)':'var(--border)'}">
         <div class="kpi-n" style="color:${critical.length>0?'var(--red)':'var(--green)'}">${critical.length}</div><div class="kpi-l">🔴 Críticas ≤75d</div>
@@ -3543,15 +3568,15 @@ function renderHoursGrid(){
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
         <div style="background:var(--bg3);border-radius:var(--r);padding:8px;text-align:center">
           <div style="font-size:10px;color:var(--text3)">Contratadas</div>
-          <div style="font-size:15px;font-weight:700;font-family:var(--mono);color:var(--accent2)">${total}h</div>
+          <div style="font-size:15px;font-weight:700;font-family:var(--mono);color:var(--accent2)">${fmtH(total)}</div>
         </div>
         <div style="background:var(--bg3);border-radius:var(--r);padding:8px;text-align:center">
           <div style="font-size:10px;color:var(--text3)">Utilizadas</div>
-          <div style="font-size:15px;font-weight:700;font-family:var(--mono);color:var(--amber)">${used.toFixed(1)}h</div>
+          <div style="font-size:15px;font-weight:700;font-family:var(--mono);color:var(--amber)">${fmtH(used)}</div>
         </div>
         <div style="background:${st.bg};border-radius:var(--r);padding:8px;text-align:center;border:1px solid ${st.color}30">
           <div style="font-size:10px;color:var(--text3)">${ov>0?'Excesso':'Saldo'}</div>
-          <div style="font-size:15px;font-weight:700;font-family:var(--mono);color:${st.color}">${ov>0?'+'+ov.toFixed(1):remaining.toFixed(1)}h</div>
+          <div style="font-size:15px;font-weight:700;font-family:var(--mono);color:${st.color}">${ov>0?'+'+fmtH(ov):fmtH(remaining)}</div>
         </div>
       </div>
       <div style="font-size:10px;color:var(--text3);display:flex;gap:12px;flex-wrap:wrap">
@@ -3561,7 +3586,7 @@ function renderHoursGrid(){
         ${expired?'<span style="color:var(--red)">⬛ Expirado</span>':''}
         ${renewals?`<span style="color:var(--accent2)">🔄 ${renewals} renovação${renewals>1?'s':''}</span>`:''}
       </div>
-      ${ov>0?`<div style="margin-top:10px;padding:6px 10px;border-radius:var(--r);background:rgba(255,95,95,0.1);border:1px solid rgba(255,95,95,0.3);font-size:11px;font-weight:600;color:var(--red)">🔴 ${ov.toFixed(1)}h além do contratado!</div>`:''}
+      ${ov>0?`<div style="margin-top:10px;padding:6px 10px;border-radius:var(--r);background:rgba(255,95,95,0.1);border:1px solid rgba(255,95,95,0.3);font-size:11px;font-weight:600;color:var(--red)">🔴 ${fmtH(ov)} além do contratado!</div>`:''}
     </div>`;
   }).join('');
   updateHoursBadge();
@@ -3578,7 +3603,7 @@ function openHoursModal(id=null){
   const cs=document.getElementById('hp-client');
   cs.innerHTML='<option value="">Selecione...</option>'+clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
   document.getElementById('hp-client').value=pkg?pkg.clientId||'':'';
-  document.getElementById('hp-hours').value=pkg?pkg.hours||'':'';
+  document.getElementById('hp-hours').value=pkg&&pkg.hours?fmtH(pkg.hours):'';
   document.getElementById('hp-desc').value=pkg?pkg.desc||'':'';
   document.getElementById('hp-start').value=pkg?pkg.start||todayStr():todayStr();
   document.getElementById('hp-end').value=pkg?pkg.end||'':'';
@@ -3624,7 +3649,7 @@ function _toggleHoursMonthly(){
 
 function saveHoursPackage(){
   const clientId=document.getElementById('hp-client').value;
-  const hours=parseFloat(document.getElementById('hp-hours').value)||0;
+  const hours=parseHM(document.getElementById('hp-hours').value);
   const start=document.getElementById('hp-start').value;
   const end=document.getElementById('hp-end').value;
   if(!clientId||!hours||!start||!end){alert('Preencha cliente, horas, data de contratação e validade');return;}
@@ -3722,15 +3747,15 @@ function renderHoursDetail(){
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
         <div style="text-align:center;background:var(--bg2);border-radius:var(--r);padding:10px">
           <div style="font-size:10px;color:var(--text3)">Contratadas</div>
-          <div style="font-size:20px;font-weight:700;color:var(--accent2);font-family:var(--mono)">${total}h</div>
+          <div style="font-size:20px;font-weight:700;color:var(--accent2);font-family:var(--mono)">${fmtH(total)}</div>
         </div>
         <div style="text-align:center;background:var(--bg2);border-radius:var(--r);padding:10px">
           <div style="font-size:10px;color:var(--text3)">Utilizadas</div>
-          <div style="font-size:20px;font-weight:700;color:var(--amber);font-family:var(--mono)">${used.toFixed(1)}h</div>
+          <div style="font-size:20px;font-weight:700;color:var(--amber);font-family:var(--mono)">${fmtH(used)}</div>
         </div>
         <div style="text-align:center;background:var(--bg2);border-radius:var(--r);padding:10px;border:2px solid ${st.color}40">
           <div style="font-size:10px;color:var(--text3)">${ov>0?'Excesso':'Saldo'}</div>
-          <div style="font-size:20px;font-weight:700;color:${st.color};font-family:var(--mono)">${ov>0?'+'+ov.toFixed(1):remaining.toFixed(1)}h</div>
+          <div style="font-size:20px;font-weight:700;color:${st.color};font-family:var(--mono)">${ov>0?'+'+fmtH(ov):fmtH(remaining)}</div>
         </div>
         <div style="text-align:center;background:var(--bg2);border-radius:var(--r);padding:10px">
           <div style="font-size:10px;color:var(--text3)">Consumo</div>
@@ -3746,15 +3771,15 @@ function renderHoursDetail(){
     <div class="panel" style="padding:14px 16px;margin-bottom:16px;display:grid;grid-template-columns:${pkg.monthly&&isAdmin()?'repeat(4,1fr)':'repeat(3,1fr)'};gap:12px">
       <div style="text-align:center">
         <div style="font-size:10px;color:var(--text3);margin-bottom:4px">📅 Total contratado (todos os períodos)</div>
-        <div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--accent2)">${totalHoursAll}h</div>
+        <div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--accent2)">${fmtH(totalHoursAll)}</div>
       </div>
       <div style="text-align:center">
         <div style="font-size:10px;color:var(--text3);margin-bottom:4px">🕐 Total utilizado (todos os períodos)</div>
-        <div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--amber)">${totalUsedAll.toFixed(1)}h</div>
+        <div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--amber)">${fmtH(totalUsedAll)}</div>
       </div>
       <div style="text-align:center">
         <div style="font-size:10px;color:var(--text3);margin-bottom:4px">📊 Utilizado em ${year}</div>
-        <div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--purple)">${usedThisYear.toFixed(1)}h</div>
+        <div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--purple)">${fmtH(usedThisYear)}</div>
       </div>
       ${pkg.monthly&&isAdmin()?`<div style="text-align:center">
         <div style="font-size:10px;color:var(--text3);margin-bottom:4px">💰 MRR (cliente paga)</div>
@@ -3773,7 +3798,7 @@ function renderHoursDetail(){
         return `<div class="panel" style="padding:10px 14px;margin-bottom:6px;display:flex;align-items:center;gap:12px${isActive?';border-color:var(--accent2)':''}">
           <div style="flex:1">
             <div style="font-size:12px;font-weight:600">${isActive?'✦ Período atual':'Período '+(i+1)}</div>
-            <div style="font-size:11px;color:var(--text3)">${fmtDate(p.start)} → ${fmtDate(p.end)} · ${p.hours}h contratadas · ${usedP.toFixed(1)}h usadas${overP>0?` · <span style="color:var(--red)">+${overP.toFixed(1)}h excesso</span>`:''}</div>
+            <div style="font-size:11px;color:var(--text3)">${fmtDate(p.start)} → ${fmtDate(p.end)} · ${fmtH(p.hours)} contratadas · ${fmtH(usedP)} usadas${overP>0?` · <span style="color:var(--red)">+${fmtH(overP)} excesso</span>`:''}</div>
           </div>
           <span style="font-size:11px;font-weight:600;color:${overP>0?'var(--red)':ps.expired?'var(--text3)':'var(--green)'}">${overP>0?'Excedido':ps.expired?'Expirado':'OK'}</span>
         </div>`;
@@ -3794,7 +3819,7 @@ function renderHoursDetail(){
         const proj=u.projectId?projects.find(p=>String(p.id)===String(u.projectId)):null;
         return `<tr>
           <td style="font-family:var(--mono);font-size:11px">${fmtDate(u.date)}</td>
-          <td style="font-family:var(--mono);font-weight:700;color:var(--amber)">${Number(u.hours).toFixed(1)}h</td>
+          <td style="font-family:var(--mono);font-weight:700;color:var(--amber)">${fmtH(u.hours)}</td>
           <td>${u.tech||'—'}</td>
           <td style="font-size:12px;color:var(--text2)">${u.desc||'—'}</td>
           <td style="font-size:11px;color:var(--purple)">${proj?proj.name:'—'}</td>
@@ -3807,7 +3832,7 @@ function renderHoursDetail(){
       }).join('')}
       <tfoot><tr style="background:rgba(37,99,235,0.05)">
         <td style="font-weight:700;padding:10px 14px">Total</td>
-        <td style="font-family:var(--mono);font-weight:700;color:var(--amber);padding:10px 14px">${totalUsedAll.toFixed(1)}h</td>
+        <td style="font-family:var(--mono);font-weight:700;color:var(--amber);padding:10px 14px">${fmtH(totalUsedAll)}</td>
         <td colspan="5"></td>
       </tr></tfoot>
       </tbody></table></div>`:''}
@@ -3832,7 +3857,7 @@ function openHoursUsageModal(pkgId,idx=null){
   // Populate projects
   const ps=document.getElementById('hu-project');
   ps.innerHTML='<option value="">Nenhum</option>'+projects.filter(p=>!p.parentId||true).map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
-  document.getElementById('hu-hours').value=u?u.hours||'':'';
+  document.getElementById('hu-hours').value=u&&u.hours?fmtH(u.hours):'';
   document.getElementById('hu-date').value=u?u.date||todayStr():todayStr();
   document.getElementById('hu-tech').value=u?u.tech||'':'';
   document.getElementById('hu-desc').value=u?u.desc||'':'';
@@ -3841,8 +3866,8 @@ function openHoursUsageModal(pkgId,idx=null){
 }
 
 function saveHoursUsage(){
-  const hours=parseFloat(document.getElementById('hu-hours').value)||0;
-  if(!hours){alert('Informe as horas consumidas');return;}
+  const hours=parseHM(document.getElementById('hu-hours').value);
+  if(!hours){alert('Informe as horas consumidas (Ex: 01:30)');return;}
   const pkg=hoursPackages.find(x=>x.id===_usageHoursPkgId); if(!pkg) return;
   if(!pkg.usages) pkg.usages=[];
   const entry={
@@ -3888,7 +3913,7 @@ function openHoursRenewal(pkgId){
   if(pkg.end){ const d=new Date(pkg.end+'T12:00:00'); d.setDate(d.getDate()+1); nextStart=d.toISOString().split('T')[0]; }
   document.getElementById('hr-start').value=nextStart;
   document.getElementById('hr-end').value='';
-  document.getElementById('hr-hours').value='';
+  document.getElementById('hr-hours').value='';  // blank = keep current
   document.getElementById('hr-value').value='';
   document.getElementById('hr-error').style.display='none';
   // Show monthly fields if package has monthly
@@ -3916,6 +3941,7 @@ function confirmHoursRenewal(){
   document.getElementById('hr-error').style.display='none';
   const pkg=hoursPackages.find(x=>x.id===_renewingHoursId); if(!pkg) return;
   const nh=document.getElementById('hr-hours').value;
+  const nhH=nh?parseHM(nh):null;
   const nv=document.getElementById('hr-value').value;
   const nt=document.querySelector('input[name="hr-tipo"]:checked').value;
   const nmp=document.getElementById('hr-monthly-proposal').value;
@@ -3924,7 +3950,7 @@ function confirmHoursRenewal(){
     ...JSON.parse(JSON.stringify(pkg)),
     id:nextHoursId++,
     start,end,
-    hours:nh?parseFloat(nh):pkg.hours,
+    hours:nhH!==null?nhH:pkg.hours,
     value:nv?parseFloat(nv):pkg.value,
     tipo:nt||pkg.tipo||'anual',
     monthlyProposal:nmp?parseFloat(nmp):pkg.monthlyProposal||0,
