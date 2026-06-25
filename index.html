@@ -696,17 +696,17 @@ input,select,textarea{font-family:var(--font)}
         <div class="form-group"><label class="form-label">Prazo</label><input class="form-input" id="p-end" type="date"></div>
         <div class="form-group" id="p-concluded-wrap" style="display:none"><label class="form-label">Data de conclusão</label><input class="form-input" id="p-concluded" type="date"></div>
         <div class="form-group" id="p-caveat-wrap" style="display:none;grid-column:1/-1"><label class="form-label">Ressalvas / observações de conclusão</label><textarea class="form-textarea" id="p-caveat" rows="2" placeholder="Descreva as ressalvas ao finalizar o projeto..."></textarea></div>
-        <div class="form-group admin-only"><label class="form-label">Valor proposta (R$)</label><input class="form-input" id="p-proposal" type="number" placeholder="0,00"></div>
-        <div class="form-group admin-only"><label class="form-label">Custo de horas previstas (R$)</label><input class="form-input" id="p-quote" type="number" placeholder="0,00"></div>
+        <div class="form-group admin-only"><label class="form-label">Valor proposta (R$)</label><input class="form-input" id="p-proposal" type="text" placeholder="0,00" oninput="_maskBRL(this)" inputmode="decimal"></div>
+        <div class="form-group admin-only"><label class="form-label">Custo de horas previstas (R$)</label><input class="form-input" id="p-quote" type="text" placeholder="0,00" oninput="_maskBRL(this)" inputmode="decimal"></div>
         <div class="form-group admin-only"><label class="form-label">Horas previstas</label><input class="form-input" id="p-hours" type="number" placeholder="0"></div>
-        <div class="form-group admin-only"><label class="form-label">Custo hora (R$/h)</label><input class="form-input" id="p-hourrate" type="number" placeholder="0,00"></div>
+        <div class="form-group admin-only"><label class="form-label">Custo hora (R$/h)</label><input class="form-input" id="p-hourrate" type="text" placeholder="0,00" oninput="_maskBRL(this)" inputmode="decimal"></div>
         <div class="form-group admin-only" style="grid-column:1/-1;display:flex;align-items:center;gap:10px">
           <input type="checkbox" id="p-monthly" style="width:16px;height:16px">
           <label for="p-monthly" style="font-size:13px;cursor:pointer">Pagamento mensalizado</label>
         </div>
         <div class="form-group admin-only" id="p-monthly-wrap" style="display:none;grid-column:1/-1">
           <div class="form-grid">
-            <div><label class="form-label">Valor mensal proposta (R$)</label><input class="form-input" id="p-monthly-proposal" type="number" placeholder="0,00"></div>
+            <div><label class="form-label">Valor mensal proposta (R$)</label><input class="form-input" id="p-monthly-proposal" type="text" placeholder="0,00" oninput="_maskBRL(this)" inputmode="decimal"></div>
             <div><label class="form-label">Horas de suporte/mês</label><input class="form-input" id="p-support-hours" type="number" placeholder="0"></div>
           </div>
         </div>
@@ -736,8 +736,8 @@ input,select,textarea{font-family:var(--font)}
         <div class="form-group"><label class="form-label">Cliente *</label><select class="form-select" id="l-client"><option value="">Selecione o cliente...</option></select></div>
         <div class="form-group"><label class="form-label">Data de início</label><input class="form-input" id="l-start" type="date"></div>
         <div class="form-group"><label class="form-label">Data de vencimento *</label><input class="form-input" id="l-end" type="date"></div>
-        <div class="form-group admin-only"><label class="form-label">Valor proposta — cliente paga (R$)</label><input class="form-input" id="l-proposal" type="number" placeholder="0,00"></div>
-        <div class="form-group admin-only"><label class="form-label">Valor cotação — nosso custo (R$)</label><input class="form-input" id="l-quote" type="number" placeholder="0,00"></div>
+        <div class="form-group admin-only"><label class="form-label">Valor proposta — cliente paga (R$)</label><input class="form-input" id="l-proposal" type="text" placeholder="0,00" oninput="_maskBRL(this)" inputmode="decimal"></div>
+        <div class="form-group admin-only"><label class="form-label">Valor cotação — nosso custo (R$)</label><input class="form-input" id="l-quote" type="text" placeholder="0,00" oninput="_maskBRL(this)" inputmode="decimal"></div>
 
         <!-- ── PAGAMENTO MENSALIZADO (MRR) ── -->
         <div class="form-group admin-only" style="grid-column:1/-1">
@@ -748,8 +748,8 @@ input,select,textarea{font-family:var(--font)}
             </label>
             <div id="l-monthly-wrap" style="display:none;margin-top:12px">
               <div class="form-grid">
-                <div class="form-group" style="margin:0"><label class="form-label">Valor mensal — cliente paga (R$)</label><input class="form-input" id="l-monthly-proposal" type="number" placeholder="0,00" step="0.01"></div>
-                <div class="form-group" style="margin:0"><label class="form-label">Valor mensal — nosso custo (R$)</label><input class="form-input" id="l-monthly-quote" type="number" placeholder="0,00" step="0.01"></div>
+                <div class="form-group" style="margin:0"><label class="form-label">Valor mensal — cliente paga (R$)</label><input class="form-input" id="l-monthly-proposal" type="text" placeholder="0,00" oninput="_maskBRL(this)" inputmode="decimal"></div>
+                <div class="form-group" style="margin:0"><label class="form-label">Valor mensal — nosso custo (R$)</label><input class="form-input" id="l-monthly-quote" type="text" placeholder="0,00" oninput="_maskBRL(this)" inputmode="decimal"></div>
               </div>
             </div>
           </div>
@@ -762,8 +762,8 @@ input,select,textarea{font-family:var(--font)}
             <div class="form-grid">
               <div class="form-group" style="margin:0"><label class="form-label">Horas de suporte incluídas/mês</label><input class="form-input" id="l-support-hours" oninput="_fmtHInput(this)" type="number" placeholder="0" step="0.5"></div>
               <div class="form-group" style="margin:0"><label class="form-label">Horas despendidas (acumulado)</label><input class="form-input" id="l-support-used" oninput="_fmtHInput(this)" type="number" placeholder="0" step="0.5"></div>
-              <div class="form-group admin-only" style="margin:0"><label class="form-label">Proposta hora de suporte — cliente paga (R$)</label><input class="form-input" id="l-support-rate-client" type="number" placeholder="0,00" step="0.01"></div>
-              <div class="form-group admin-only" style="margin:0"><label class="form-label">Custo hora de suporte — nosso custo (R$)</label><input class="form-input" id="l-support-rate-cost" type="number" placeholder="0,00" step="0.01"></div>
+              <div class="form-group admin-only" style="margin:0"><label class="form-label">Proposta hora de suporte — cliente paga (R$)</label><input class="form-input" id="l-support-rate-client" type="text" placeholder="0,00" oninput="_maskBRL(this)" inputmode="decimal"></div>
+              <div class="form-group admin-only" style="margin:0"><label class="form-label">Custo hora de suporte — nosso custo (R$)</label><input class="form-input" id="l-support-rate-cost" type="text" placeholder="0,00" oninput="_maskBRL(this)" inputmode="decimal"></div>
             </div>
           </div>
         </div>
@@ -857,11 +857,11 @@ input,select,textarea{font-family:var(--font)}
       </div>
       <div class="form-group admin-only">
         <label class="form-label">Atualizar valor proposta (R$) — deixe em branco para manter</label>
-        <input class="form-input" id="ren-proposal" type="number" placeholder="Mantém o valor atual">
+        <input class="form-input" id="ren-proposal" type="text" placeholder="Mantém o valor atual" oninput="_maskBRL(this)" inputmode="decimal">
       </div>
       <div class="form-group admin-only">
         <label class="form-label">Atualizar valor cotação (R$) — deixe em branco para manter</label>
-        <input class="form-input" id="ren-quote" type="number" placeholder="Mantém o valor atual">
+        <input class="form-input" id="ren-quote" type="text" placeholder="Mantém o valor atual" oninput="_maskBRL(this)" inputmode="decimal">
       </div>
       <div class="form-group admin-only">
         <label class="form-label">Atualizar quantidade de licenças — deixe em branco para manter</label>
@@ -869,8 +869,8 @@ input,select,textarea{font-family:var(--font)}
       </div>
       <div id="ren-monthly-fields" class="admin-only">
         <div class="form-row" style="gap:12px">
-          <div class="form-group" style="flex:1"><label class="form-label">Novo MRR — cliente paga (R$)</label><input class="form-input" id="ren-monthly-proposal" type="number" placeholder="Mantém o atual"></div>
-          <div class="form-group" style="flex:1"><label class="form-label">Novo MRR — nosso custo (R$)</label><input class="form-input" id="ren-monthly-quote" type="number" placeholder="Mantém o atual"></div>
+          <div class="form-group" style="flex:1"><label class="form-label">Novo MRR — cliente paga (R$)</label><input class="form-input" id="ren-monthly-proposal" type="text" placeholder="Mantém o atual" oninput="_maskBRL(this)" inputmode="decimal"></div>
+          <div class="form-group" style="flex:1"><label class="form-label">Novo MRR — nosso custo (R$)</label><input class="form-input" id="ren-monthly-quote" type="text" placeholder="Mantém o atual" oninput="_maskBRL(this)" inputmode="decimal"></div>
         </div>
       </div>
       <div id="ren-error" style="font-size:12px;color:var(--red);display:none;margin-top:8px">Preencha as datas de início e vencimento.</div>
@@ -932,7 +932,7 @@ input,select,textarea{font-family:var(--font)}
         </div>
         <div class="form-group admin-only">
           <label class="form-label">Valor do pacote (R$)</label>
-          <input class="form-input" id="hp-value" type="number" min="0" step="0.01" placeholder="0,00">
+          <input class="form-input" id="hp-value" type="text" placeholder="0,00" oninput="_maskBRL(this)" inputmode="decimal">
         </div>
       </div>
 
@@ -944,8 +944,8 @@ input,select,textarea{font-family:var(--font)}
         </label>
         <div id="hp-monthly-fields" style="display:none">
           <div class="form-row" style="gap:12px">
-            <div class="form-group" style="flex:1"><label class="form-label">Valor mensal — cliente paga (R$)</label><input class="form-input" id="hp-monthly-proposal" type="number" min="0" step="0.01" placeholder="0,00"></div>
-            <div class="form-group" style="flex:1"><label class="form-label">Custo mensal — nosso custo (R$)</label><input class="form-input" id="hp-monthly-quote" type="number" min="0" step="0.01" placeholder="0,00"></div>
+            <div class="form-group" style="flex:1"><label class="form-label">Valor mensal — cliente paga (R$)</label><input class="form-input" id="hp-monthly-proposal" type="text" placeholder="0,00" oninput="_maskBRL(this)" inputmode="decimal"></div>
+            <div class="form-group" style="flex:1"><label class="form-label">Custo mensal — nosso custo (R$)</label><input class="form-input" id="hp-monthly-quote" type="text" placeholder="0,00" oninput="_maskBRL(this)" inputmode="decimal"></div>
           </div>
         </div>
       </div>
@@ -1055,12 +1055,12 @@ input,select,textarea{font-family:var(--font)}
       </div>
       <div class="form-group admin-only">
         <label class="form-label">Novo valor do pacote (R$) — deixe em branco para manter</label>
-        <input class="form-input" id="hr-value" type="number" min="0" step="0.01" placeholder="Mantém o valor atual">
+        <input class="form-input" id="hr-value" type="text" placeholder="Mantém o valor atual" oninput="_maskBRL(this)" inputmode="decimal">
       </div>
       <div id="hr-monthly-fields" class="admin-only">
         <div class="form-row" style="gap:12px">
-          <div class="form-group" style="flex:1"><label class="form-label">Novo MRR — cliente paga (R$)</label><input class="form-input" id="hr-monthly-proposal" type="number" min="0" step="0.01" placeholder="Mantém o atual"></div>
-          <div class="form-group" style="flex:1"><label class="form-label">Novo MRR — nosso custo (R$)</label><input class="form-input" id="hr-monthly-quote" type="number" min="0" step="0.01" placeholder="Mantém o atual"></div>
+          <div class="form-group" style="flex:1"><label class="form-label">Novo MRR — cliente paga (R$)</label><input class="form-input" id="hr-monthly-proposal" type="text" placeholder="Mantém o atual" oninput="_maskBRL(this)" inputmode="decimal"></div>
+          <div class="form-group" style="flex:1"><label class="form-label">Novo MRR — nosso custo (R$)</label><input class="form-input" id="hr-monthly-quote" type="text" placeholder="Mantém o atual" oninput="_maskBRL(this)" inputmode="decimal"></div>
         </div>
       </div>
       <div id="hr-error" style="font-size:12px;color:var(--red);display:none;margin-top:8px">Preencha as datas.</div>
@@ -1126,7 +1126,7 @@ input,select,textarea{font-family:var(--font)}
         <select class="form-select" id="cu-license" onchange="onUsageLicenseChange(this.value)"><option value="">Nenhum</option></select>
       </div>
       <div class="form-group"><label class="form-label">Solução / Produto *</label><input class="form-input" id="cu-product" placeholder="Ex: Acronis Cyber Protect Cloud"></div>
-      <div class="form-group admin-only"><label class="form-label">Custo (R$) — valor abatido do saldo *</label><input class="form-input" id="cu-cost" type="number" min="0" step="0.01" placeholder="0,00"></div>
+      <div class="form-group admin-only"><label class="form-label">Custo (R$) — valor abatido do saldo *</label><input class="form-input" id="cu-cost" type="text" placeholder="0,00" oninput="_maskBRL(this)" inputmode="decimal"></div>
       <div class="form-group"><label class="form-label">Data</label><input class="form-input" id="cu-date" type="date"></div>
       <div class="form-group"><label class="form-label">Observações</label><input class="form-input" id="cu-notes" placeholder="Detalhes..."></div>
     </div>
@@ -1206,6 +1206,25 @@ function fmtH(h){
   const hh = Math.floor(total/60);
   const mm = total % 60;
   return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+}
+function parseBRL(v){
+  // "R$ 1.234,56" or "1234.56" or "1234,56" → float
+  if(!v && v!==0) return 0;
+  const s = String(v).replace(/R\$\s?/g,'').replace(/\./g,'').replace(',','.').trim();
+  return parseFloat(s)||0;
+}
+function fmtBRL_input(v){
+  // Format number as BRL string for input display: 1234.5 → "1.234,50"
+  if(!v && v!==0) return '';
+  const n = parseFloat(String(v).replace(/R\$\s?/g,'').replace(/\./g,'').replace(',','.')) || 0;
+  return n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function _maskBRL(el){
+  // Live mask: keep only digits, format as currency while typing
+  let v = el.value.replace(/\D/g,'');
+  if(!v){ el.value=''; return; }
+  const n = parseInt(v,10)/100;
+  el.value = n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 }
 function parseHM(v){
   // Convert HH:MM string to decimal hours — e.g. "02:30" → 2.5, "1:15" → 1.25
@@ -1877,11 +1896,12 @@ function openProjectModal(id=null){
   toggleProjStatusFields(pStatus);
   document.getElementById('p-status').onchange = function(){ toggleProjStatusFields(this.value); };
   if(isAdmin()){
-    ['proposal','quote','hours','hourrate'].forEach(f=>document.getElementById('p-'+f).value=p?p[f]||'':'');
+    ['hours'].forEach(f=>document.getElementById('p-'+f).value=p?p[f]||'':'');
+    ['proposal','quote','hourrate'].forEach(f=>{ const v=p?p[f]:null; document.getElementById('p-'+f).value=v?fmtBRL_input(v):''; });
     const m=p?p.monthly||false:false;
     document.getElementById('p-monthly').checked=m;
     document.getElementById('p-monthly-wrap').style.display=m?'grid':'none';
-    document.getElementById('p-monthly-proposal').value=p?p.monthlyProposal||'':'';
+    document.getElementById('p-monthly-proposal').value=p&&p.monthlyProposal?fmtBRL_input(p.monthlyProposal):'';
     document.getElementById('p-support-hours').value=p?p.supportHours||'':'';
     document.getElementById('p-monthly').onchange=function(){ document.getElementById('p-monthly-wrap').style.display=this.checked?'grid':'none'; };
   }
@@ -1908,11 +1928,11 @@ function saveProject(){
     sector:document.getElementById('p-sector').value,
     monthly,
     ...(isAdmin()?{
-      proposal:document.getElementById('p-proposal').value,
-      quote:document.getElementById('p-quote').value,
+      proposal:parseBRL(document.getElementById('p-proposal').value),
+      quote:parseBRL(document.getElementById('p-quote').value),
       hours:document.getElementById('p-hours').value,
-      hourrate:document.getElementById('p-hourrate').value,
-      monthlyProposal:monthly?document.getElementById('p-monthly-proposal').value:'',
+      hourrate:parseBRL(document.getElementById('p-hourrate').value)||0,
+      monthlyProposal:monthly?parseBRL(document.getElementById('p-monthly-proposal').value)||'':'',
       supportHours:monthly?document.getElementById('p-support-hours').value:'',
     }:{}),
     tasks:editingProjId?(projects.find(x=>x.id===editingProjId)||{}).tasks||[]:[],
@@ -2109,7 +2129,7 @@ function renderProjDetail(){
                   ${['Km','Pedágio','Hospedagem','Alimentação','Licença/Software','Infraestrutura','Outros'].map(c=>`<option value="${c}" ${e.cat===c?'selected':''}>${c}</option>`).join('')}
                 </select>
               </td>
-              <td style="padding:8px 14px;border-bottom:1px solid var(--border)"><input class="form-input" type="number" style="padding:4px 8px;font-size:12px;text-align:right;width:120px" value="${e.value||''}" placeholder="0,00" onchange="updateExtra(${p.id},${i},'value',this.value)"></td>
+              <td style="padding:8px 14px;border-bottom:1px solid var(--border)"><input class="form-input" type="text" oninput="_maskBRL(this)" inputmode="decimal" style="padding:4px 8px;font-size:12px;text-align:right;width:120px" value="${e.value||''}" placeholder="0,00" onchange="updateExtra(${p.id},${i},'value',parseBRL(this.value))"></td>
               <td style="padding:6px;border-bottom:1px solid var(--border)"><button class="btn btn-danger btn-sm" onclick="removeExtra(${p.id},${i})" style="padding:3px 8px">✕</button></td>
             </tr>`).join('')}
         </tbody>
@@ -2284,12 +2304,12 @@ function openLicenseModal(id=null){
 
   // Admin-only fields
   if(isAdmin()){
-    document.getElementById('l-proposal').value            = l?l.proposal||'':'';
-    document.getElementById('l-quote').value               = l?l.quote||'':'';
-    document.getElementById('l-monthly-proposal').value    = l?l.monthlyProposal||'':'';
-    document.getElementById('l-monthly-quote').value       = l?l.monthlyQuote||'':'';
-    document.getElementById('l-support-rate-client').value = l?l.supportRateClient||'':'';
-    document.getElementById('l-support-rate-cost').value   = l?l.supportRateCost||'':'';
+    document.getElementById('l-proposal').value            = l&&l.proposal?fmtBRL_input(l.proposal):'';
+    document.getElementById('l-quote').value               = l&&l.quote?fmtBRL_input(l.quote):'';
+    document.getElementById('l-monthly-proposal').value    = l&&l.monthlyProposal?fmtBRL_input(l.monthlyProposal):'';
+    document.getElementById('l-monthly-quote').value       = l&&l.monthlyQuote?fmtBRL_input(l.monthlyQuote):'';
+    document.getElementById('l-support-rate-client').value = l&&l.supportRateClient?fmtBRL_input(l.supportRateClient):'';
+    document.getElementById('l-support-rate-cost').value   = l&&l.supportRateCost?fmtBRL_input(l.supportRateCost):'';
   }
 
   // Monthly checkbox + wrap visibility
@@ -2325,14 +2345,14 @@ function saveLicense(){
     // Support fields — always saved, independent of monthly
     supportHours:      parseHM(document.getElementById('l-support-hours').value),
     supportUsed:       parseHM(document.getElementById('l-support-used').value),
-    supportRateClient: isAdmin()?parseFloat(document.getElementById('l-support-rate-client').value)||0:0,
-    supportRateCost:   isAdmin()?parseFloat(document.getElementById('l-support-rate-cost').value)||0:0,
+    supportRateClient: isAdmin()?parseBRL(document.getElementById('l-support-rate-client').value):0,
+    supportRateCost:   isAdmin()?parseBRL(document.getElementById('l-support-rate-cost').value):0,
     // Admin financial fields
-    proposal:          isAdmin()?parseFloat(document.getElementById('l-proposal').value)||0:0,
-    quote:             isAdmin()?parseFloat(document.getElementById('l-quote').value)||0:0,
+    proposal:          isAdmin()?parseBRL(document.getElementById('l-proposal').value):0,
+    quote:             isAdmin()?parseBRL(document.getElementById('l-quote').value):0,
     // MRR — only when monthly is checked
-    monthlyProposal:   isAdmin()&&monthly?parseFloat(document.getElementById('l-monthly-proposal').value)||0:0,
-    monthlyQuote:      isAdmin()&&monthly?parseFloat(document.getElementById('l-monthly-quote').value)||0:0,
+    monthlyProposal:   isAdmin()&&monthly?parseBRL(document.getElementById('l-monthly-proposal').value):0,
+    monthlyQuote:      isAdmin()&&monthly?parseBRL(document.getElementById('l-monthly-quote').value):0,
     createdAt:editingLicId?(licenses.find(x=>x.id===editingLicId)||{}).createdAt||Date.now():Date.now(),
   };
 
@@ -3607,14 +3627,14 @@ function openHoursModal(id=null){
   document.getElementById('hp-desc').value=pkg?pkg.desc||'':'';
   document.getElementById('hp-start').value=pkg?pkg.start||todayStr():todayStr();
   document.getElementById('hp-end').value=pkg?pkg.end||'':'';
-  document.getElementById('hp-value').value=pkg?pkg.value||'':'';
+  document.getElementById('hp-value').value=pkg&&pkg.value?fmtBRL_input(pkg.value):'';
   document.getElementById('hp-notes').value=pkg?pkg.notes||'':'';
   // Monthly payment
   const hasMonthly=pkg&&pkg.monthly;
   document.getElementById('hp-monthly').checked=!!hasMonthly;
   document.getElementById('hp-monthly-fields').style.display=hasMonthly?'block':'none';
-  document.getElementById('hp-monthly-proposal').value=pkg?pkg.monthlyProposal||'':'';
-  document.getElementById('hp-monthly-quote').value=pkg?pkg.monthlyQuote||'':'';
+  document.getElementById('hp-monthly-proposal').value=pkg&&pkg.monthlyProposal?fmtBRL_input(pkg.monthlyProposal):'';
+  document.getElementById('hp-monthly-quote').value=pkg&&pkg.monthlyQuote?fmtBRL_input(pkg.monthlyQuote):'';
   // Set tipo radio
   const tipo=pkg?pkg.tipo||'anual':'anual';
   document.getElementById('hp-tipo-anual').checked  = tipo==='anual';
@@ -3659,11 +3679,11 @@ function saveHoursPackage(){
     id:_editingHoursId||nextHoursId++,
     clientId,hours,tipo,
     monthly,
-    monthlyProposal:monthly?parseFloat(document.getElementById('hp-monthly-proposal').value)||0:0,
-    monthlyQuote:monthly?parseFloat(document.getElementById('hp-monthly-quote').value)||0:0,
+    monthlyProposal:monthly?parseBRL(document.getElementById('hp-monthly-proposal').value):0,
+    monthlyQuote:monthly?parseBRL(document.getElementById('hp-monthly-quote').value):0,
     desc:document.getElementById('hp-desc').value.trim(),
     start,end,
-    value:parseFloat(document.getElementById('hp-value').value)||0,
+    value:parseBRL(document.getElementById('hp-value').value),
     notes:document.getElementById('hp-notes').value.trim(),
     usages:_editingHoursId?(hoursPackages.find(x=>x.id===_editingHoursId)||{}).usages||[]:[],
     parentId:(hoursPackages.find(x=>x.id===_editingHoursId)||{}).parentId||null,
@@ -3942,7 +3962,7 @@ function confirmHoursRenewal(){
   const pkg=hoursPackages.find(x=>x.id===_renewingHoursId); if(!pkg) return;
   const nh=document.getElementById('hr-hours').value;
   const nhH=nh?parseHM(nh):null;
-  const nv=document.getElementById('hr-value').value;
+  const nv=parseBRL(document.getElementById('hr-value').value)||0;
   const nt=document.querySelector('input[name="hr-tipo"]:checked').value;
   const nmp=document.getElementById('hr-monthly-proposal').value;
   const nmq=document.getElementById('hr-monthly-quote').value;
@@ -3951,10 +3971,10 @@ function confirmHoursRenewal(){
     id:nextHoursId++,
     start,end,
     hours:nhH!==null?nhH:pkg.hours,
-    value:nv?parseFloat(nv):pkg.value,
+    value:nv||pkg.value||0,
     tipo:nt||pkg.tipo||'anual',
-    monthlyProposal:nmp?parseFloat(nmp):pkg.monthlyProposal||0,
-    monthlyQuote:nmq?parseFloat(nmq):pkg.monthlyQuote||0,
+    monthlyProposal:nmpH||pkg.monthlyProposal||0,
+    monthlyQuote:nmqH||pkg.monthlyQuote||0,
     usages:[],
     parentId:pkg.id,
     createdAt:Date.now(),
@@ -4223,7 +4243,7 @@ function openCommitUsageModal(idx=null){
   document.getElementById('cu-client').value=u?u.clientId||'':'';
   document.getElementById('cu-license').value=u?u.licenseId||'':'';
   document.getElementById('cu-product').value=u?u.product||'':'';
-  document.getElementById('cu-cost').value=u?u.cost||'':'';
+  document.getElementById('cu-cost').value=u&&u.cost?fmtBRL_input(u.cost):'';
   document.getElementById('cu-date').value=u?u.date||todayStr():todayStr();
   document.getElementById('cu-notes').value=u?u.notes||'':'';
   openModal('commit-usage-overlay');
@@ -4243,7 +4263,7 @@ function onUsageLicenseChange(licId){
 function saveCommitUsage(){
   const clientId=document.getElementById('cu-client').value;
   const product=document.getElementById('cu-product').value.trim();
-  const cost=parseFloat(document.getElementById('cu-cost').value)||0;
+  const cost=parseBRL(document.getElementById('cu-cost').value);
   if(!product){alert('Informe o produto/solução');return;}
   if(!cost){alert('Informe o custo abatido do saldo');return;}
   const cm=commitments.find(x=>x.id===_usageCommitId); if(!cm) return;
@@ -4326,16 +4346,16 @@ window.confirmRenewal = function(){
     createdAt: Date.now(),
   };
   // Override values if provided
-  const np=document.getElementById('ren-proposal').value;
-  const nq=document.getElementById('ren-quote').value;
+  const np=parseBRL(document.getElementById('ren-proposal').value)||0;
+  const nq=parseBRL(document.getElementById('ren-quote').value)||0;
   const nqty=document.getElementById('ren-qty').value;
-  const nmp=document.getElementById('ren-monthly-proposal').value;
-  const nmq=document.getElementById('ren-monthly-quote').value;
-  if(np) newLic.proposal = parseFloat(np);
-  if(nq) newLic.quote    = parseFloat(nq);
+  const nmp=parseBRL(document.getElementById('ren-monthly-proposal').value)||0;
+  const nmq=parseBRL(document.getElementById('ren-monthly-quote').value)||0;
+  if(np) newLic.proposal = np;
+  if(nq) newLic.quote    = nq;
   if(nqty) newLic.qty   = parseInt(nqty);
-  if(nmp) newLic.monthlyProposal = parseFloat(nmp);
-  if(nmq) newLic.monthlyQuote    = parseFloat(nmq);
+  if(nmp) newLic.monthlyProposal = nmp;
+  if(nmq) newLic.monthlyQuote    = nmq;
 
   licenses.push(newLic);
   if(window.saveToFirebase) saveToFirebase('licenses',String(newLic.id),newLic);
