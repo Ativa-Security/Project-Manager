@@ -490,6 +490,7 @@ input,select,textarea{font-family:var(--font)}
       <div class="nav-item" onclick="navTo('projects',this)" title="Projetos"><span class="nav-icon">📋</span><span class="nav-label">Projetos</span></div>
       <div class="nav-item" onclick="navTo('licenses',this)" title="Licenciamentos"><span class="nav-icon">🔑</span><span class="nav-label">Licenciamentos</span><span class="nav-badge" id="lic-alert-badge" style="display:none">!</span></div>
       <div class="nav-item" onclick="navTo('commitments',this)" title="Commitment Acronis"><span class="nav-icon">💳</span><span class="nav-label">Commitment</span><span class="nav-badge" id="commit-alert-badge" style="display:none">!</span></div>
+      <div class="nav-item" onclick="navTo('hours',this)" title="Horas Técnicas"><span class="nav-icon">⏱</span><span class="nav-label">Horas Técnicas</span><span class="nav-badge" id="hours-alert-badge" style="display:none">!</span></div>
       <div class="nav-item" id="nav-reports" onclick="navTo('reports',this)" title="Relatórios"><span class="nav-icon">📊</span><span class="nav-label">Relatórios</span></div>
       <div class="nav-item" id="nav-settings" onclick="navTo('settings',this)" title="Configurações" style="display:none"><span class="nav-icon">⚙️</span><span class="nav-label">Configurações</span></div>
     </nav>
@@ -589,6 +590,16 @@ input,select,textarea{font-family:var(--font)}
       <div class="card-grid" id="commitments-grid"></div>
     </div>
 
+    <!-- ── HOURS ── -->
+    <div class="page" id="page-hours">
+      <div class="section-header">
+        <div class="section-title">⏱ Horas Técnicas</div>
+        <button class="btn btn-accent" onclick="openHoursModal()">+ Novo Pacote</button>
+      </div>
+      <div id="hours-alerts-banner"></div>
+      <div class="card-grid" id="hours-grid"></div>
+    </div>
+
     <!-- ── REPORTS ── -->
     <div class="page" id="page-reports">
       <div class="section-header">
@@ -604,6 +615,7 @@ input,select,textarea{font-family:var(--font)}
         <div class="rep-tab" onclick="switchReport('mrr',this)">📈 MRR</div>
         <div class="rep-tab" onclick="switchReport('performance',this)">🏆 Desempenho</div>
         <div class="rep-tab" onclick="switchReport('licenses',this)">🔑 Licenciamentos</div>
+        <div class="rep-tab" onclick="switchReport('hours',this)">⏱ Horas Técnicas</div>
       </div>
       <div id="reports-content"></div>
     </div>
@@ -851,6 +863,10 @@ input,select,textarea{font-family:var(--font)}
         <label class="form-label">Atualizar valor cotação (R$) — deixe em branco para manter</label>
         <input class="form-input" id="ren-quote" type="number" placeholder="Mantém o valor atual">
       </div>
+      <div class="form-group admin-only">
+        <label class="form-label">Atualizar quantidade de licenças — deixe em branco para manter</label>
+        <input class="form-input" id="ren-qty" type="number" min="1" step="1" placeholder="Mantém a quantidade atual">
+      </div>
       <div id="ren-monthly-fields" class="admin-only">
         <div class="form-row" style="gap:12px">
           <div class="form-group" style="flex:1"><label class="form-label">Novo MRR — cliente paga (R$)</label><input class="form-input" id="ren-monthly-proposal" type="number" placeholder="Mantém o atual"></div>
@@ -864,6 +880,138 @@ input,select,textarea{font-family:var(--font)}
       <button class="btn btn-accent" onclick="confirmRenewal()">🔄 Confirmar renovação</button>
     </div>
   </div>
+</div>
+
+<!-- HOURS PACKAGE MODAL -->
+<div class="modal-overlay" id="hours-modal-overlay" onclick="if(event.target===this)closeModal('hours-modal-overlay')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="hours-modal-title">Novo Pacote de Horas</div>
+      <button class="modal-close" onclick="closeModal('hours-modal-overlay')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Cliente *</label>
+          <select class="form-select" id="hp-client"><option value="">Selecione...</option></select>
+        </div>
+        <div class="form-group admin-only">
+          <label class="form-label">Horas contratadas *</label>
+          <input class="form-input" id="hp-hours" type="number" min="0.5" step="0.5" placeholder="Ex: 10">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Descrição</label>
+        <input class="form-input" id="hp-desc" placeholder="Ex: Pacote Suporte Mensal">
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Contratado em *</label>
+          <input class="form-input" id="hp-start" type="date">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Validade *</label>
+          <input class="form-input" id="hp-end" type="date">
+        </div>
+      </div>
+      <div class="form-group admin-only">
+        <label class="form-label">Valor do pacote (R$)</label>
+        <input class="form-input" id="hp-value" type="number" min="0" step="0.01" placeholder="0,00">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Observações</label>
+        <textarea class="form-textarea" id="hp-notes" rows="2" placeholder="Detalhes do pacote..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger" id="hp-delete-btn" onclick="deleteHoursPackage()" style="margin-right:auto;display:none">Excluir</button>
+      <button class="btn btn-ghost" onclick="closeModal('hours-modal-overlay')">Cancelar</button>
+      <button class="btn btn-accent" onclick="saveHoursPackage()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- HOURS USAGE MODAL -->
+<div class="modal-overlay" id="hours-usage-overlay" onclick="if(event.target===this)closeModal('hours-usage-overlay')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="hu-modal-title">➕ Registrar horas</div>
+      <button class="modal-close" onclick="closeModal('hours-usage-overlay')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Horas consumidas *</label>
+          <input class="form-input" id="hu-hours" type="number" min="0.25" step="0.25" placeholder="Ex: 1.5">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Data</label>
+          <input class="form-input" id="hu-date" type="date">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Técnico responsável</label>
+        <input class="form-input" id="hu-tech" placeholder="Nome do técnico">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Descrição do serviço</label>
+        <input class="form-input" id="hu-desc" placeholder="O que foi realizado...">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Projeto vinculado</label>
+        <select class="form-select" id="hu-project"><option value="">Nenhum</option></select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger" id="hu-delete-btn" onclick="deleteHoursUsage()" style="margin-right:auto;display:none">🗑 Remover</button>
+      <button class="btn btn-ghost" onclick="closeModal('hours-usage-overlay')">Cancelar</button>
+      <button class="btn btn-accent" id="hu-save-btn" onclick="saveHoursUsage()">Registrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- HOURS RENEWAL MODAL -->
+<div class="modal-overlay" id="hours-renewal-overlay" onclick="if(event.target===this)closeModal('hours-renewal-overlay')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🔄 Renovar pacote de horas</div>
+      <button class="modal-close" onclick="closeModal('hours-renewal-overlay')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:rgba(37,99,235,0.06);border:1px solid rgba(37,99,235,0.15);border-radius:var(--r);padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--text2)">
+        🔄 Será criado um <strong>novo pacote</strong> vinculado a este, mantendo histórico de renovações.
+      </div>
+      <div id="hr-summary" style="background:var(--bg3);border-radius:var(--r);padding:12px 14px;margin-bottom:16px;font-size:13px"></div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label" style="color:var(--red)">Nova data de contratação *</label>
+          <input class="form-input" id="hr-start" type="date">
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="color:var(--red)">Nova validade *</label>
+          <input class="form-input" id="hr-end" type="date">
+        </div>
+      </div>
+      <div class="form-group admin-only">
+        <label class="form-label">Nova quantidade de horas (deixe em branco para manter)</label>
+        <input class="form-input" id="hr-hours" type="number" min="0.5" step="0.5" placeholder="Mantém a quantidade atual">
+      </div>
+      <div class="form-group admin-only">
+        <label class="form-label">Novo valor do pacote (R$) — deixe em branco para manter</label>
+        <input class="form-input" id="hr-value" type="number" min="0" step="0.01" placeholder="Mantém o valor atual">
+      </div>
+      <div id="hr-error" style="font-size:12px;color:var(--red);display:none;margin-top:8px">Preencha as datas.</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('hours-renewal-overlay')">Cancelar</button>
+      <button class="btn btn-accent" onclick="confirmHoursRenewal()">🔄 Confirmar renovação</button>
+    </div>
+  </div>
+</div>
+
+<!-- HOURS DETAIL OVERLAY -->
+<div class="detail-overlay" id="hours-detail-overlay" onclick="if(event.target===this)closeDetail('hours-detail-overlay')">
+  <div class="detail-panel" id="hours-detail-panel"></div>
 </div>
 
 <!-- COMMITMENT MODAL -->
@@ -956,6 +1104,8 @@ let nextProjectId = 1;
 let nextLicId     = 1;
 let commitments   = [];
 let nextCommitId  = 1;
+let hoursPackages = [];
+let nextHoursId   = 1;
 let nextTaskId    = 1000;
 
 let currentUser = null;
@@ -1045,6 +1195,7 @@ function navTo(page, el){
   if(page==='projects')  renderProjects();
   if(page==='licenses')  renderLicenses();
   if(page==='commitments') renderCommitments();
+  if(page==='hours')       renderHoursGrid();
   if(page==='reports')   renderReport('overview');
   if(page==='settings')  openSettings('users');
 }
@@ -2239,6 +2390,7 @@ function renderReport(tab){
   else if(tab==='mrr')     el.innerHTML=repMRR();
   else if(tab==='performance') el.innerHTML=repPerformance();
   else if(tab==='licenses') el.innerHTML=repLicenses();
+  else if(tab==='hours')    el.innerHTML=repHours();
 }
 
 function periodFilter(){
@@ -2886,6 +3038,116 @@ function repPerformance(){
   return html;
 }
 
+function repHours(){
+  const year=new Date().getFullYear();
+  const roots=hoursPackages.filter(p=>!p.parentId);
+
+  // Build stats per root
+  const stats=roots.map(root=>{
+    function buildChain(id){
+      const chain=[hoursPackages.find(x=>x.id===id)];
+      let cur=chain[0];
+      while(cur){ const next=hoursPackages.find(p=>p.parentId===cur.id); if(!next) break; chain.push(next); cur=next; }
+      return chain.filter(Boolean);
+    }
+    const chain=buildChain(root.id);
+    const allUsages=chain.flatMap(p=>(p.usages||[]));
+    const totalContracted=chain.reduce((s,p)=>s+(Number(p.hours)||0),0);
+    const totalUsed=allUsages.reduce((s,u)=>s+(Number(u.hours)||0),0);
+    const usedThisYear=allUsages.filter(u=>u.date&&u.date.startsWith(year+'')).reduce((s,u)=>s+(Number(u.hours)||0),0);
+    const contractedThisYear=chain.filter(p=>p.start&&p.start.startsWith(year+'')).reduce((s,p)=>s+(Number(p.hours)||0),0);
+    const pkg=chain[chain.length-1]; // active
+    const over=Math.max(0,totalUsed-totalContracted);
+    return {root,chain,pkg,allUsages,totalContracted,totalUsed,usedThisYear,contractedThisYear,over,remaining:Math.max(0,totalContracted-totalUsed)};
+  });
+
+  const totContracted=stats.reduce((s,x)=>s+x.totalContracted,0);
+  const totUsed=stats.reduce((s,x)=>s+x.totalUsed,0);
+  const totOver=stats.reduce((s,x)=>s+x.over,0);
+  const totRemaining=stats.reduce((s,x)=>s+x.remaining,0);
+
+  return `<div class="${REPORT_WRAPPER}">
+    ${reportLogoHeader()}
+    <div class="rep-section-title">⏱ Relatório de Horas Técnicas</div>
+
+    <!-- KPIs globais -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">
+      <div class="kpi-card"><div class="kpi-label">Total Clientes c/ Horas</div><div class="kpi-value">${roots.length}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Total Horas Contratadas</div><div class="kpi-value">${totContracted}h</div></div>
+      <div class="kpi-card"><div class="kpi-label">Total Horas Utilizadas</div><div class="kpi-value" style="color:var(--amber)">${totUsed.toFixed(1)}h</div></div>
+      <div class="kpi-card"><div class="kpi-label">Horas Excedentes</div><div class="kpi-value" style="color:${totOver>0?'var(--red)':'var(--green)'}">${totOver>0?'+'+totOver.toFixed(1):totRemaining.toFixed(1)+'h saldo'}${totOver>0?' horas':''}</div></div>
+    </div>
+
+    <!-- Anual ${year} -->
+    <div class="rep-section-title">📅 Resumo ${year}</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px">
+      ${(()=>{
+        const cy=stats.reduce((s,x)=>s+x.contractedThisYear,0);
+        const uy=stats.reduce((s,x)=>s+x.usedThisYear,0);
+        const oy=Math.max(0,uy-cy);
+        return `<div class="kpi-card"><div class="kpi-label">Contratadas em ${year}</div><div class="kpi-value">${cy}h</div></div>
+        <div class="kpi-card"><div class="kpi-label">Utilizadas em ${year}</div><div class="kpi-value" style="color:var(--amber)">${uy.toFixed(1)}h</div></div>
+        <div class="kpi-card"><div class="kpi-label">${oy>0?'Excesso em '+year:'Saldo em '+year}</div><div class="kpi-value" style="color:${oy>0?'var(--red)':'var(--green)'}">${oy>0?'+'+oy.toFixed(1):Math.max(0,cy-uy).toFixed(1)}h</div></div>`;
+      })()}
+    </div>
+
+    <!-- Tabela por cliente -->
+    <div class="rep-section-title">👥 Detalhamento por cliente</div>
+    <div class="panel" style="overflow:hidden;margin-bottom:24px">
+      <table class="data-table">
+        <thead><tr>
+          <th>Cliente</th><th>Pacote</th><th>Contratadas</th><th>Utilizadas</th><th>Saldo / Excesso</th>
+          <th>Renov.</th><th>Contratado em ${year}</th><th>Utilizado em ${year}</th><th>Status</th>
+        </tr></thead>
+        <tbody>${stats.sort((a,b)=>b.totalUsed-a.totalUsed).map(x=>{
+          const st=hoursBadgeStatus(x.pkg);
+          const bal=x.over>0?`<span style="color:var(--red)">+${x.over.toFixed(1)}h excesso</span>`:`<span style="color:var(--green)">${x.remaining.toFixed(1)}h saldo</span>`;
+          return `<tr>
+            <td style="font-weight:600">${clientName(x.pkg.clientId)}</td>
+            <td style="font-size:12px;color:var(--text3)">${x.pkg.desc||'—'}</td>
+            <td style="font-family:var(--mono);color:var(--accent2);font-weight:600">${x.totalContracted}h</td>
+            <td style="font-family:var(--mono);color:var(--amber);font-weight:600">${x.totalUsed.toFixed(1)}h</td>
+            <td>${bal}</td>
+            <td style="font-family:var(--mono)">${x.chain.length-1}</td>
+            <td style="font-family:var(--mono)">${x.contractedThisYear}h</td>
+            <td style="font-family:var(--mono)">${x.usedThisYear.toFixed(1)}h</td>
+            <td><span class="badge" style="background:${st.color}20;color:${st.color};border:1px solid ${st.color}40">${st.icon} ${st.label}</span></td>
+          </tr>`;
+        }).join('')}
+        <tfoot><tr style="background:rgba(37,99,235,0.05)">
+          <td colspan="2" style="font-weight:700;padding:10px 14px">TOTAL</td>
+          <td style="font-family:var(--mono);font-weight:700;color:var(--accent2);padding:10px 14px">${totContracted}h</td>
+          <td style="font-family:var(--mono);font-weight:700;color:var(--amber);padding:10px 14px">${totUsed.toFixed(1)}h</td>
+          <td style="padding:10px 14px">${totOver>0?`<span style="color:var(--red)">+${totOver.toFixed(1)}h excesso</span>`:`<span style="color:var(--green)">${totRemaining.toFixed(1)}h saldo</span>`}</td>
+          <td colspan="4"></td>
+        </tr></tfoot>
+      </tbody></table>
+    </div>
+
+    <!-- Todos os registros de horas -->
+    <div class="rep-section-title">📋 Todos os registros de horas</div>
+    <div class="panel" style="overflow:hidden">
+      <table class="data-table">
+        <thead><tr><th>Data</th><th>Cliente</th><th>Horas</th><th>Técnico</th><th>Serviço</th><th>Projeto</th></tr></thead>
+        <tbody>${stats.flatMap(x=>x.allUsages.map(u=>({...u,clientId:x.pkg.clientId})))
+          .sort((a,b)=>(b.date||'').localeCompare(a.date||''))
+          .map(u=>{
+            const proj=u.projectId?projects.find(p=>String(p.id)===String(u.projectId)):null;
+            return `<tr>
+              <td style="font-family:var(--mono);font-size:11px">${fmtDate(u.date)}</td>
+              <td style="font-weight:600">${clientName(u.clientId)}</td>
+              <td style="font-family:var(--mono);font-weight:700;color:var(--amber)">${Number(u.hours).toFixed(1)}h</td>
+              <td>${u.tech||'—'}</td>
+              <td style="font-size:12px">${u.desc||'—'}</td>
+              <td style="font-size:11px;color:var(--purple)">${proj?proj.name:'—'}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
 function repLicenses(){
   const sorted=[...licenses].sort((a,b)=>(daysUntil(a.end)||999)-(daysUntil(b.end)||999));
   const critical=sorted.filter(l=>{ const d=daysUntil(l.end); return d!==null&&d>=0&&d<=75; });
@@ -3074,8 +3336,416 @@ function renderSettingsTheme(panel){
 
 
 // ══════════════════════════════════
-//   COMMITMENT MODULE
+//   HOURS TECHNICAL MODULE
 // ══════════════════════════════════
+function hoursStatus(pkg){
+  const used=(pkg.usages||[]).reduce((s,u)=>s+(Number(u.hours)||0),0);
+  const total=Number(pkg.hours)||0;
+  const remaining=Math.max(0,total-used);
+  const over=Math.max(0,used-total);
+  const pct=total>0?Math.min(100,Math.round((used/total)*100)):0;
+  const expired=pkg.end&&pkg.end<todayStr();
+  return {used,total,remaining,over,pct,expired};
+}
+
+function hoursBadgeStatus(pkg){
+  const {used,total,remaining,pct,expired}=hoursStatus(pkg);
+  if(expired)    return {level:'expired',color:'var(--text3)',bg:'var(--bg3)',icon:'⬛',label:'Expirado'};
+  if(pct>=100)   return {level:'over',   color:'var(--red)',  bg:'rgba(255,95,95,0.1)',icon:'🔴',label:'Horas esgotadas'};
+  if(pct>=80)    return {level:'warning',color:'var(--amber)',bg:'rgba(245,166,35,0.1)',icon:'⚠️',label:'Poucas horas restantes'};
+  return         {level:'ok',            color:'var(--green)',bg:'var(--green-bg)',icon:'✅',label:'OK'};
+}
+
+function updateHoursBadge(){
+  const badge=document.getElementById('hours-alert-badge'); if(!badge) return;
+  const critical=hoursPackages.filter(p=>{ const s=hoursBadgeStatus(p); return s.level==='over'&&!s.level==='expired'; });
+  const warn=hoursPackages.filter(p=>hoursBadgeStatus(p).level==='warning');
+  if(hoursPackages.filter(p=>hoursBadgeStatus(p).level==='over').length>0){
+    badge.textContent='!'; badge.style.display=''; badge.style.background='var(--red)';
+  } else if(warn.length>0){
+    badge.textContent='!'; badge.style.display=''; badge.style.background='var(--amber)';
+  } else { badge.style.display='none'; }
+}
+
+function renderHoursGrid(){
+  const grid=document.getElementById('hours-grid'); if(!grid) return;
+  const banner=document.getElementById('hours-alerts-banner'); if(banner) banner.innerHTML='';
+
+  const over=hoursPackages.filter(p=>hoursBadgeStatus(p).level==='over');
+  const warn=hoursPackages.filter(p=>hoursBadgeStatus(p).level==='warning');
+  let b='';
+  if(over.length) b+=`<div class="alert-banner alert-banner-red" style="margin-bottom:12px">🔴 <strong>${over.length} pacote${over.length>1?'s':''}</strong> com horas esgotadas!</div>`;
+  if(warn.length) b+=`<div class="alert-banner alert-banner-amber" style="margin-bottom:12px">⚠️ <strong>${warn.length} pacote${warn.length>1?'s':''}</strong> com poucas horas restantes (≥80% consumido)</div>`;
+  if(banner) banner.innerHTML=b;
+
+  // Group by client: show only root packages (no parentId), with latest renewal highlighted
+  const roots=hoursPackages.filter(p=>!p.parentId);
+  if(!roots.length){
+    grid.innerHTML=`<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">⏱</div><div class="empty-state-text">Nenhum pacote de horas cadastrado</div><button class="btn btn-accent" onclick="openHoursModal()">+ Novo Pacote</button></div>`;
+    return;
+  }
+
+  // For display, show the most recent renewal (or self if no renewals)
+  function getActive(root){
+    const chain=[root];
+    let cur=root;
+    while(true){ const next=hoursPackages.find(p=>p.parentId===cur.id); if(!next) break; chain.push(next); cur=next; }
+    return chain[chain.length-1];
+  }
+
+  grid.innerHTML=roots.map(root=>{
+    const pkg=getActive(root);
+    const {used,total,remaining,over: ov,pct,expired}=hoursStatus(pkg);
+    const st=hoursBadgeStatus(pkg);
+    const renewals=hoursPackages.filter(p=>p.parentId===root.id||p.parentId===pkg.id).length;
+    const barW=Math.min(100,pct);
+    return `<div class="card" style="cursor:pointer;border-color:${st.level!=='ok'?'transparent':''};${st.level==='over'?'border:2px solid var(--red)':st.level==='warning'?'border:1.5px solid var(--amber)':''}" onclick="openHoursDetail(${root.id})">
+      <div style="height:4px;background:var(--bg4);border-radius:4px;overflow:hidden;margin-bottom:14px">
+        <div style="height:100%;border-radius:4px;background:${pct>=100?'var(--red)':pct>=80?'var(--amber)':'var(--accent2)'};width:${barW}%;transition:width .4s"></div>
+      </div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
+        <div>
+          <div style="font-size:15px;font-weight:700">${clientName(pkg.clientId)||'—'}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px">${pkg.desc||'Pacote de horas'}</div>
+        </div>
+        <span style="font-size:18px">${st.icon}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+        <div style="background:var(--bg3);border-radius:var(--r);padding:8px;text-align:center">
+          <div style="font-size:10px;color:var(--text3)">Contratadas</div>
+          <div style="font-size:15px;font-weight:700;font-family:var(--mono);color:var(--accent2)">${total}h</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:var(--r);padding:8px;text-align:center">
+          <div style="font-size:10px;color:var(--text3)">Utilizadas</div>
+          <div style="font-size:15px;font-weight:700;font-family:var(--mono);color:var(--amber)">${used.toFixed(1)}h</div>
+        </div>
+        <div style="background:${st.bg};border-radius:var(--r);padding:8px;text-align:center;border:1px solid ${st.color}30">
+          <div style="font-size:10px;color:var(--text3)">${ov>0?'Excesso':'Saldo'}</div>
+          <div style="font-size:15px;font-weight:700;font-family:var(--mono);color:${st.color}">${ov>0?'+'+ov.toFixed(1):remaining.toFixed(1)}h</div>
+        </div>
+      </div>
+      <div style="font-size:10px;color:var(--text3);display:flex;gap:12px;flex-wrap:wrap">
+        <span>📅 ${fmtDate(pkg.start)} → ${fmtDate(pkg.end)}</span>
+        ${expired?'<span style="color:var(--red)">⬛ Expirado</span>':''}
+        ${renewals?`<span style="color:var(--accent2)">🔄 ${renewals} renovação${renewals>1?'s':''}</span>`:''}
+      </div>
+      ${ov>0?`<div style="margin-top:10px;padding:6px 10px;border-radius:var(--r);background:rgba(255,95,95,0.1);border:1px solid rgba(255,95,95,0.3);font-size:11px;font-weight:600;color:var(--red)">🔴 ${ov.toFixed(1)}h além do contratado!</div>`:''}
+    </div>`;
+  }).join('');
+  updateHoursBadge();
+}
+
+// ── PACKAGE MODAL ──
+let _editingHoursId=null;
+function openHoursModal(id=null){
+  _editingHoursId=id;
+  const isEdit=id!==null;
+  document.getElementById('hours-modal-title').textContent=isEdit?'Editar Pacote de Horas':'Novo Pacote de Horas';
+  document.getElementById('hp-delete-btn').style.display=isEdit?'':'none';
+  const pkg=isEdit?hoursPackages.find(x=>x.id===id):null;
+  const cs=document.getElementById('hp-client');
+  cs.innerHTML='<option value="">Selecione...</option>'+clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  document.getElementById('hp-client').value=pkg?pkg.clientId||'':'';
+  document.getElementById('hp-hours').value=pkg?pkg.hours||'':'';
+  document.getElementById('hp-desc').value=pkg?pkg.desc||'':'';
+  document.getElementById('hp-start').value=pkg?pkg.start||todayStr():todayStr();
+  document.getElementById('hp-end').value=pkg?pkg.end||'':'';
+  document.getElementById('hp-value').value=pkg?pkg.value||'':'';
+  document.getElementById('hp-notes').value=pkg?pkg.notes||'':'';
+  openModal('hours-modal-overlay');
+}
+
+function saveHoursPackage(){
+  const clientId=document.getElementById('hp-client').value;
+  const hours=parseFloat(document.getElementById('hp-hours').value)||0;
+  const start=document.getElementById('hp-start').value;
+  const end=document.getElementById('hp-end').value;
+  if(!clientId||!hours||!start||!end){alert('Preencha cliente, horas, data de contratação e validade');return;}
+  const data={
+    id:_editingHoursId||nextHoursId++,
+    clientId,hours,
+    desc:document.getElementById('hp-desc').value.trim(),
+    start,end,
+    value:parseFloat(document.getElementById('hp-value').value)||0,
+    notes:document.getElementById('hp-notes').value.trim(),
+    usages:_editingHoursId?(hoursPackages.find(x=>x.id===_editingHoursId)||{}).usages||[]:[],
+    parentId:(hoursPackages.find(x=>x.id===_editingHoursId)||{}).parentId||null,
+    createdAt:Date.now(),
+  };
+  if(_editingHoursId){ const i=hoursPackages.findIndex(x=>x.id===_editingHoursId); hoursPackages[i]=data; }
+  else hoursPackages.push(data);
+  if(window.saveToFirebase) saveToFirebase('hoursPackages',String(data.id),data);
+  closeModal('hours-modal-overlay');
+  renderHoursGrid();
+  if(_currentHoursPkg) openHoursDetail(_currentHoursPkg);
+}
+
+function deleteHoursPackage(){
+  if(!_editingHoursId||!confirm('Excluir este pacote de horas?')) return;
+  hoursPackages=hoursPackages.filter(x=>x.id!==_editingHoursId);
+  if(window.saveToFirebase) window.deleteFromFirebase&&deleteFromFirebase('hoursPackages',String(_editingHoursId));
+  closeModal('hours-modal-overlay');
+  closeDetail('hours-detail-overlay');
+  renderHoursGrid();
+}
+
+// ── DETAIL ──
+let _currentHoursPkg=null;
+function openHoursDetail(rootId){
+  _currentHoursPkg=rootId;
+  renderHoursDetail();
+  document.getElementById('hours-detail-overlay').classList.add('open');
+}
+
+function renderHoursDetail(){
+  const root=hoursPackages.find(x=>x.id===_currentHoursPkg); if(!root) return;
+
+  // Build chain: root → renewals in order
+  function buildChain(id){
+    const chain=[hoursPackages.find(x=>x.id===id)];
+    let cur=chain[0];
+    while(cur){ const next=hoursPackages.find(p=>p.parentId===cur.id); if(!next) break; chain.push(next); cur=next; }
+    return chain.filter(Boolean);
+  }
+  const chain=buildChain(root.id);
+  const pkg=chain[chain.length-1]; // active = latest
+  const allUsages=chain.flatMap((p,pi)=>(p.usages||[]).map(u=>({...u,_pkgId:p.id,_pkgIdx:pi})));
+
+  // Totals across all periods
+  const totalHoursAll=chain.reduce((s,p)=>s+(Number(p.hours)||0),0);
+  const totalUsedAll=allUsages.reduce((s,u)=>s+(Number(u.hours)||0),0);
+  const {used,total,remaining,over: ov,pct,expired}=hoursStatus(pkg);
+  const st=hoursBadgeStatus(pkg);
+
+  // Annual summary (current year)
+  const year=new Date().getFullYear();
+  const usedThisYear=allUsages.filter(u=>u.date&&u.date.startsWith(year+''))
+                              .reduce((s,u)=>s+(Number(u.hours)||0),0);
+
+  let html=`<div class="detail-header">
+    <div style="flex:1">
+      <div style="font-size:17px;font-weight:700">${clientName(pkg.clientId)}</div>
+      <div style="font-size:12px;color:var(--text3)">${pkg.desc||'Pacote de horas'}</div>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="openHoursModal(${pkg.id})">✏️ Editar</button>
+    <button class="btn btn-accent btn-sm" onclick="openHoursRenewal(${pkg.id})">🔄 Renovar</button>
+    <button onclick="closeDetail('hours-detail-overlay')" style="color:var(--text3);font-size:20px;padding:4px 8px">✕</button>
+  </div>
+  <div class="detail-body">
+
+    <!-- Status atual do pacote ativo -->
+    <div style="background:${st.bg};border:2px solid ${st.color}50;border-radius:var(--r2);padding:18px;margin-bottom:18px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <span style="font-size:22px">${st.icon}</span>
+        <div>
+          <div style="font-weight:700;color:${st.color}">${st.label}</div>
+          <div style="font-size:11px;color:var(--text3)">Contratado ${fmtDate(pkg.start)} · Válido até ${fmtDate(pkg.end)}${expired?' · <span style="color:var(--red)">EXPIRADO</span>':''}</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+        <div style="text-align:center;background:var(--bg2);border-radius:var(--r);padding:10px">
+          <div style="font-size:10px;color:var(--text3)">Contratadas</div>
+          <div style="font-size:20px;font-weight:700;color:var(--accent2);font-family:var(--mono)">${total}h</div>
+        </div>
+        <div style="text-align:center;background:var(--bg2);border-radius:var(--r);padding:10px">
+          <div style="font-size:10px;color:var(--text3)">Utilizadas</div>
+          <div style="font-size:20px;font-weight:700;color:var(--amber);font-family:var(--mono)">${used.toFixed(1)}h</div>
+        </div>
+        <div style="text-align:center;background:var(--bg2);border-radius:var(--r);padding:10px;border:2px solid ${st.color}40">
+          <div style="font-size:10px;color:var(--text3)">${ov>0?'Excesso':'Saldo'}</div>
+          <div style="font-size:20px;font-weight:700;color:${st.color};font-family:var(--mono)">${ov>0?'+'+ov.toFixed(1):remaining.toFixed(1)}h</div>
+        </div>
+        <div style="text-align:center;background:var(--bg2);border-radius:var(--r);padding:10px">
+          <div style="font-size:10px;color:var(--text3)">Consumo</div>
+          <div style="font-size:20px;font-weight:700;color:${pct>=100?'var(--red)':pct>=80?'var(--amber)':'var(--text1)'};font-family:var(--mono)">${pct}%</div>
+        </div>
+      </div>
+      <div style="height:10px;background:var(--bg4);border-radius:5px;overflow:hidden">
+        <div style="height:100%;border-radius:5px;background:${pct>=100?'var(--red)':pct>=80?'var(--amber)':'var(--accent2)'};width:${Math.min(100,pct)}%;transition:width .5s"></div>
+      </div>
+    </div>
+
+    <!-- Resumo anual -->
+    <div class="panel" style="padding:14px 16px;margin-bottom:16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+      <div style="text-align:center">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">📅 Total contratado (todos os períodos)</div>
+        <div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--accent2)">${totalHoursAll}h</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">🕐 Total utilizado (todos os períodos)</div>
+        <div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--amber)">${totalUsedAll.toFixed(1)}h</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">📊 Utilizado em ${year}</div>
+        <div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--purple)">${usedThisYear.toFixed(1)}h</div>
+      </div>
+    </div>
+
+    <!-- Períodos / renovações -->
+    ${chain.length>1?`<div style="margin-bottom:16px">
+      <div class="rep-section-title">🔄 Histórico de períodos (${chain.length})</div>
+      ${chain.map((p,i)=>{
+        const ps=hoursStatus(p);
+        const isActive=i===chain.length-1;
+        const usedP=(p.usages||[]).reduce((s,u)=>s+(Number(u.hours)||0),0);
+        const overP=Math.max(0,usedP-(p.hours||0));
+        return `<div class="panel" style="padding:10px 14px;margin-bottom:6px;display:flex;align-items:center;gap:12px${isActive?';border-color:var(--accent2)':''}">
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:600">${isActive?'✦ Período atual':'Período '+(i+1)}</div>
+            <div style="font-size:11px;color:var(--text3)">${fmtDate(p.start)} → ${fmtDate(p.end)} · ${p.hours}h contratadas · ${usedP.toFixed(1)}h usadas${overP>0?` · <span style="color:var(--red)">+${overP.toFixed(1)}h excesso</span>`:''}</div>
+          </div>
+          <span style="font-size:11px;font-weight:600;color:${overP>0?'var(--red)':ps.expired?'var(--text3)':'var(--green)'}">${overP>0?'Excedido':ps.expired?'Expirado':'OK'}</span>
+        </div>`;
+      }).join('')}
+    </div>`:''}
+
+    <!-- Registros de uso -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:600">Horas registradas (${allUsages.length})</div>
+      <button class="btn btn-accent btn-sm" onclick="openHoursUsageModal(${pkg.id})">+ Registrar horas</button>
+    </div>
+
+    ${!allUsages.length?`<div class="empty-state" style="padding:24px"><div class="empty-state-icon">⏱</div><div class="empty-state-text">Nenhuma hora registrada</div></div>`:''}
+
+    ${allUsages.length?`<div class="panel" style="overflow:hidden"><table class="data-table">
+      <thead><tr><th>Data</th><th>Horas</th><th>Técnico</th><th>Serviço</th><th>Projeto</th><th>Período</th><th></th></tr></thead>
+      <tbody>${allUsages.sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map((u,i)=>{
+        const proj=u.projectId?projects.find(p=>String(p.id)===String(u.projectId)):null;
+        return `<tr>
+          <td style="font-family:var(--mono);font-size:11px">${fmtDate(u.date)}</td>
+          <td style="font-family:var(--mono);font-weight:700;color:var(--amber)">${Number(u.hours).toFixed(1)}h</td>
+          <td>${u.tech||'—'}</td>
+          <td style="font-size:12px;color:var(--text2)">${u.desc||'—'}</td>
+          <td style="font-size:11px;color:var(--purple)">${proj?proj.name:'—'}</td>
+          <td style="font-size:10px;color:var(--text3)">P${u._pkgIdx+1}</td>
+          <td style="white-space:nowrap;display:flex;gap:4px">
+            <button class="icon-btn" onclick="openHoursUsageModal(${u._pkgId},${i})" title="Editar">✏️</button>
+            <button class="icon-btn" onclick="removeHoursUsage(${u._pkgId},'${u._origIdx!==undefined?u._origIdx:i}')" style="color:var(--red)" title="Remover">🗑</button>
+          </td>
+        </tr>`;
+      }).join('')}
+      <tfoot><tr style="background:rgba(37,99,235,0.05)">
+        <td style="font-weight:700;padding:10px 14px">Total</td>
+        <td style="font-family:var(--mono);font-weight:700;color:var(--amber);padding:10px 14px">${totalUsedAll.toFixed(1)}h</td>
+        <td colspan="5"></td>
+      </tr></tfoot>
+      </tbody></table></div>`:''}
+
+    ${pkg.notes?`<div class="panel" style="padding:12px 16px;margin-top:14px;font-size:13px;color:var(--text2)">${pkg.notes}</div>`:''}
+  </div>`;
+
+  document.getElementById('hours-detail-panel').innerHTML=html;
+}
+
+// ── USAGE MODAL ──
+let _usageHoursPkgId=null, _editingUsageHoursIdx=null;
+function openHoursUsageModal(pkgId,idx=null){
+  _usageHoursPkgId=pkgId;
+  _editingUsageHoursIdx=idx;
+  const isEdit=idx!==null;
+  document.getElementById('hu-modal-title').textContent=isEdit?'✏️ Editar registro':'➕ Registrar horas';
+  document.getElementById('hu-save-btn').textContent=isEdit?'Salvar':'Registrar';
+  document.getElementById('hu-delete-btn').style.display=isEdit?'':'none';
+  const pkg=hoursPackages.find(x=>x.id===pkgId);
+  const u=isEdit&&pkg?(pkg.usages||[])[idx]:null;
+  // Populate projects
+  const ps=document.getElementById('hu-project');
+  ps.innerHTML='<option value="">Nenhum</option>'+projects.filter(p=>!p.parentId||true).map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  document.getElementById('hu-hours').value=u?u.hours||'':'';
+  document.getElementById('hu-date').value=u?u.date||todayStr():todayStr();
+  document.getElementById('hu-tech').value=u?u.tech||'':'';
+  document.getElementById('hu-desc').value=u?u.desc||'':'';
+  document.getElementById('hu-project').value=u?u.projectId||'':'';
+  openModal('hours-usage-overlay');
+}
+
+function saveHoursUsage(){
+  const hours=parseFloat(document.getElementById('hu-hours').value)||0;
+  if(!hours){alert('Informe as horas consumidas');return;}
+  const pkg=hoursPackages.find(x=>x.id===_usageHoursPkgId); if(!pkg) return;
+  if(!pkg.usages) pkg.usages=[];
+  const entry={
+    hours,
+    date:document.getElementById('hu-date').value,
+    tech:document.getElementById('hu-tech').value.trim(),
+    desc:document.getElementById('hu-desc').value.trim(),
+    projectId:document.getElementById('hu-project').value||null,
+  };
+  if(_editingUsageHoursIdx!==null) pkg.usages[_editingUsageHoursIdx]=entry;
+  else pkg.usages.push(entry);
+  if(window.saveToFirebase) saveToFirebase('hoursPackages',String(pkg.id),pkg);
+  closeModal('hours-usage-overlay');
+  renderHoursDetail();
+  renderHoursGrid();
+}
+
+function deleteHoursUsage(){
+  if(_editingUsageHoursIdx===null||!confirm('Remover este registro?')) return;
+  const pkg=hoursPackages.find(x=>x.id===_usageHoursPkgId); if(!pkg) return;
+  pkg.usages.splice(_editingUsageHoursIdx,1);
+  if(window.saveToFirebase) saveToFirebase('hoursPackages',String(pkg.id),pkg);
+  closeModal('hours-usage-overlay');
+  renderHoursDetail();
+  renderHoursGrid();
+}
+
+function removeHoursUsage(pkgId,idx){
+  if(!confirm('Remover este registro?')) return;
+  const pkg=hoursPackages.find(x=>x.id===pkgId); if(!pkg) return;
+  pkg.usages.splice(Number(idx),1);
+  if(window.saveToFirebase) saveToFirebase('hoursPackages',String(pkg.id),pkg);
+  renderHoursDetail();
+  renderHoursGrid();
+}
+
+// ── RENEWAL ──
+let _renewingHoursId=null;
+function openHoursRenewal(pkgId){
+  _renewingHoursId=pkgId;
+  const pkg=hoursPackages.find(x=>x.id===pkgId); if(!pkg) return;
+  let nextStart='';
+  if(pkg.end){ const d=new Date(pkg.end+'T12:00:00'); d.setDate(d.getDate()+1); nextStart=d.toISOString().split('T')[0]; }
+  document.getElementById('hr-start').value=nextStart;
+  document.getElementById('hr-end').value='';
+  document.getElementById('hr-hours').value='';
+  document.getElementById('hr-value').value='';
+  document.getElementById('hr-error').style.display='none';
+  document.getElementById('hr-summary').innerHTML=`
+    <div style="font-weight:600;margin-bottom:4px">⏱ ${clientName(pkg.clientId)} — ${pkg.desc||'Pacote de horas'}</div>
+    <div style="font-size:12px;color:var(--text3);display:flex;gap:16px;flex-wrap:wrap">
+      <span>📅 Período atual: ${fmtDate(pkg.start)} → ${fmtDate(pkg.end)}</span>
+      <span>⏱ Horas: ${pkg.hours}h contratadas</span>
+    </div>`;
+  openModal('hours-renewal-overlay');
+}
+
+function confirmHoursRenewal(){
+  const start=document.getElementById('hr-start').value;
+  const end=document.getElementById('hr-end').value;
+  if(!start||!end){document.getElementById('hr-error').style.display='block';return;}
+  document.getElementById('hr-error').style.display='none';
+  const pkg=hoursPackages.find(x=>x.id===_renewingHoursId); if(!pkg) return;
+  const nh=document.getElementById('hr-hours').value;
+  const nv=document.getElementById('hr-value').value;
+  const newPkg={
+    ...JSON.parse(JSON.stringify(pkg)),
+    id:nextHoursId++,
+    start,end,
+    hours:nh?parseFloat(nh):pkg.hours,
+    value:nv?parseFloat(nv):pkg.value,
+    usages:[],
+    parentId:pkg.id,
+    createdAt:Date.now(),
+  };
+  hoursPackages.push(newPkg);
+  if(window.saveToFirebase) saveToFirebase('hoursPackages',String(newPkg.id),newPkg);
+  closeModal('hours-renewal-overlay');
+  closeDetail('hours-detail-overlay');
+  renderHoursGrid();
+  setTimeout(()=>openHoursDetail(newPkg.id),200);
+}
+
+
 const COMMIT_TIERS = [1500,3000,6000,12000,24000];
 
 function commitBalance(cm){
@@ -3436,10 +4106,12 @@ window.confirmRenewal = function(){
   // Override values if provided
   const np=document.getElementById('ren-proposal').value;
   const nq=document.getElementById('ren-quote').value;
+  const nqty=document.getElementById('ren-qty').value;
   const nmp=document.getElementById('ren-monthly-proposal').value;
   const nmq=document.getElementById('ren-monthly-quote').value;
   if(np) newLic.proposal = parseFloat(np);
   if(nq) newLic.quote    = parseFloat(nq);
+  if(nqty) newLic.qty   = parseInt(nqty);
   if(nmp) newLic.monthlyProposal = parseFloat(nmp);
   if(nmq) newLic.monthlyQuote    = parseFloat(nmq);
 
@@ -4142,20 +4814,23 @@ _auth.onAuthStateChanged(async user=>{
     }catch(e){ console.error(e); }
 
     try{
-      const [cSnap,pSnap,lSnap,cmSnap]=await Promise.all([
+      const [cSnap,pSnap,lSnap,cmSnap,hSnap]=await Promise.all([
         _db.collection('clients').get(),
         _db.collection('projects').get(),
         _db.collection('licenses').get(),
         _db.collection('commitments').get(),
+        _db.collection('hoursPackages').get(),
       ]);
       clients=[]; cSnap.forEach(d=>clients.push(d.data()));
       projects=[]; pSnap.forEach(d=>projects.push(d.data()));
       licenses=[]; lSnap.forEach(d=>licenses.push(d.data()));
       commitments=[]; cmSnap.forEach(d=>commitments.push(d.data()));
+      hoursPackages=[]; hSnap.forEach(d=>hoursPackages.push(d.data()));
       if(clients.length) nextClientId=Math.max(...clients.map(x=>x.id||0))+1;
       if(projects.length) nextProjectId=Math.max(...projects.map(x=>x.id||0))+1;
       if(licenses.length) nextLicId=Math.max(...licenses.map(x=>x.id||0))+1;
       if(commitments.length) nextCommitId=Math.max(...commitments.map(x=>x.id||0))+1;
+      if(hoursPackages.length) nextHoursId=Math.max(...hoursPackages.map(x=>x.id||0))+1;
       const tids=projects.flatMap(p=>(p.tasks||[]).map(t=>t.id||0));
       if(tids.length) nextTaskId=Math.max(...tids)+1;
     }catch(e){ console.error('Error loading data:',e); }
@@ -4202,7 +4877,7 @@ _auth.onAuthStateChanged(async user=>{
     document.getElementById('app').classList.add('visible');
     applyRole();
     navigate('dashboard');
-    updateLicBadge(); updateCommitBadge();
+    updateLicBadge(); updateCommitBadge(); updateHoursBadge();
     const pwaBtn = document.getElementById('pwa-install-btn');
     if(pwaBtn) pwaBtn.style.display = _pwaPrompt ? 'flex' : 'none';
 
