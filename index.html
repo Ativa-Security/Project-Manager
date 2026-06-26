@@ -950,6 +950,25 @@ input,select,textarea{font-family:var(--font)}
         </div>
       </div>
 
+      <!-- Valores por qualificação de hora -->
+      <div class="form-group admin-only">
+        <label class="form-label">💰 Valores por tipo de hora (R$/h)</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:6px">
+          <div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px">🗓 Seg–Sex</div>
+            <input class="form-input" id="hp-rate-weekday" type="text" placeholder="0,00" oninput="_maskBRL(this)" inputmode="decimal">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--amber);margin-bottom:4px">🟡 Sábado</div>
+            <input class="form-input" id="hp-rate-saturday" type="text" placeholder="0,00" oninput="_maskBRL(this)" inputmode="decimal">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--red);margin-bottom:4px">🔴 Domingo/Feriado</div>
+            <input class="form-input" id="hp-rate-sunday" type="text" placeholder="0,00" oninput="_maskBRL(this)" inputmode="decimal">
+          </div>
+        </div>
+      </div>
+
       <div class="form-grid">
         <div class="form-group">
           <label class="form-label">Contratado em *</label>
@@ -989,7 +1008,24 @@ input,select,textarea{font-family:var(--font)}
         </div>
         <div class="form-group">
           <label class="form-label">Data</label>
-          <input class="form-input" id="hu-date" type="date">
+          <input class="form-input" id="hu-date" type="date" onchange="_autoQualificacao()">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Qualificação *</label>
+        <div style="display:flex;gap:10px;margin-top:4px">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px" id="hu-q-weekday-lbl">
+            <input type="radio" name="hu-qual" id="hu-q-weekday" value="weekday" style="accent-color:var(--accent2)" onchange="_updateQualLabel()">
+            <div><div style="font-size:12px;font-weight:600">🗓 Seg–Sex</div><div id="hu-rate-weekday-lbl" style="font-size:10px;color:var(--text3)">—</div></div>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px" id="hu-q-saturday-lbl">
+            <input type="radio" name="hu-qual" id="hu-q-saturday" value="saturday" style="accent-color:var(--amber)" onchange="_updateQualLabel()">
+            <div><div style="font-size:12px;font-weight:600">🟡 Sábado</div><div id="hu-rate-saturday-lbl" style="font-size:10px;color:var(--text3)">—</div></div>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px" id="hu-q-sunday-lbl">
+            <input type="radio" name="hu-qual" id="hu-q-sunday" value="sunday" style="accent-color:var(--red)" onchange="_updateQualLabel()">
+            <div><div style="font-size:12px;font-weight:600">🔴 Dom/Feriado</div><div id="hu-rate-sunday-lbl" style="font-size:10px;color:var(--text3)">—</div></div>
+          </label>
         </div>
       </div>
       <div class="form-group">
@@ -1656,7 +1692,7 @@ function switchClientDetailTab(tab,el,cid){
 }
 
 function renderClientHours(pkgs){
-  if(!pkgs.length) return `<div class="empty-state"><div class="empty-state-icon">⏱</div><div class="empty-state-text">Nenhum pacote de horas</div><button class="btn btn-accent btn-sm" onclick="openHoursModal()">+ Novo pacote</button></div>`;
+  if(!pkgs.length) return '<div class="empty-state"><div class="empty-state-icon">⏱</div><div class="empty-state-text">Nenhum pacote de horas</div><button class="btn btn-accent btn-sm" onclick="openHoursModal()">+ Novo pacote</button></div>';
   return pkgs.map(root=>{
     // Get active (latest in chain)
     function getActive(r){ let cur=r; while(true){ const n=hoursPackages.find(p=>p.parentId===cur.id); if(!n) break; cur=n; } return cur; }
@@ -1670,7 +1706,7 @@ function renderClientHours(pkgs){
         <span style="font-size:16px">${st.icon}</span>
         <div style="flex:1">
           <div style="font-size:13px;font-weight:600">${pkg.desc||'Pacote de horas'}</div>
-          <div style="font-size:11px;color:var(--text3)">${pkg.tipo==='mensal'?'📆 Mensal':'📅 Anual'} · ${fmtDate(pkg.start)} → ${fmtDate(pkg.end)}${expired?' · <span style="color:var(--red)">Expirado</span>':''}${renewals?` · 🔄 ${renewals} renov.`:''}</div>
+          <div style="font-size:11px;color:var(--text3)">${pkg.tipo==='mensal'?'📆 Mensal':'📅 Anual'} · ${fmtDate(pkg.start)} → ${fmtDate(pkg.end)}${expired?' · <span style="color:var(--red)">Expirado</span>':''}${renewals?' · 🔄 '+renewals+' renov.':''}</div>
         </div>
         <div style="text-align:right">
           <div style="font-size:11px;color:var(--text3)">Saldo</div>
@@ -2532,13 +2568,18 @@ function switchReport(tab,el){
 function renderReport(tab){
   currentReport=tab;
   const el=document.getElementById('reports-content'); if(!el) return;
-  if(tab==='overview')     el.innerHTML=repOverview();
-  else if(tab==='projects') el.innerHTML=repByProject();
-  else if(tab==='financial')  el.innerHTML=repFinancial();
-  else if(tab==='mrr')     el.innerHTML=repMRR();
-  else if(tab==='performance') el.innerHTML=repPerformance();
-  else if(tab==='licenses') el.innerHTML=repLicenses();
-  else if(tab==='hours')    el.innerHTML=repHours();
+  try{
+    if(tab==='overview')     el.innerHTML=repOverview();
+    else if(tab==='projects') el.innerHTML=repByProject();
+    else if(tab==='financial')  el.innerHTML=repFinancial();
+    else if(tab==='mrr')     el.innerHTML=repMRR();
+    else if(tab==='performance') el.innerHTML=repPerformance();
+    else if(tab==='licenses') el.innerHTML=repLicenses();
+    else if(tab==='hours')    el.innerHTML=repHours();
+  }catch(err){
+    el.innerHTML='<div class="empty-state"><div class="empty-state-icon">⚠️</div><div class="empty-state-text" style="color:var(--red)">Erro ao carregar relatório:<br><code style="font-size:11px">'+err.message+'</code></div></div>';
+    console.error('renderReport error:',err);
+  }
 }
 
 function periodFilter(){
@@ -3214,7 +3255,7 @@ function repHours(){
   const totOver=stats.reduce((s,x)=>s+x.over,0);
   const totRemaining=stats.reduce((s,x)=>s+x.remaining,0);
 
-  return `<div class="${REPORT_WRAPPER}">
+  return `<div class="rep-content">
     ${reportLogoHeader()}
     <div class="rep-section-title">⏱ Relatório de Horas Técnicas</div>
 
@@ -3223,7 +3264,7 @@ function repHours(){
       <div class="kpi-card"><div class="kpi-label">Total Clientes c/ Horas</div><div class="kpi-value">${roots.length}</div></div>
       <div class="kpi-card"><div class="kpi-label">Total Horas Contratadas</div><div class="kpi-value">${fmtH(totContracted)}</div></div>
       <div class="kpi-card"><div class="kpi-label">Total Horas Utilizadas</div><div class="kpi-value" style="color:var(--amber)">${fmtH(totUsed)}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Horas Excedentes</div><div class="kpi-value" style="color:${totOver>0?'var(--red)':'var(--green)'}">${totOver>0?'+'+totOver.toFixed(1):totRemaining.toFixed(1)+'h saldo'}${totOver>0?' horas':''}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Horas Excedentes</div><div class="kpi-value" style="color:${totOver>0?'var(--red)':'var(--green)'}">${totOver>0?'+'+fmtH(totOver)+' excesso':fmtH(totRemaining)+' saldo'}</div></div>
     </div>
 
     <!-- Anual ${year} -->
@@ -3276,14 +3317,16 @@ function repHours(){
     <div class="rep-section-title">📋 Todos os registros de horas</div>
     <div class="panel" style="overflow:hidden">
       <table class="data-table">
-        <thead><tr><th>Data</th><th>Cliente</th><th>Horas</th><th>Técnico</th><th>Serviço</th><th>Projeto</th></tr></thead>
-        <tbody>${stats.flatMap(x=>x.allUsages.map(u=>({...u,clientId:x.pkg.clientId})))
+        <thead><tr><th>Data</th><th>Cliente</th><th>Qualif.</th><th>Horas</th><th>Técnico</th><th>Serviço</th><th>Projeto</th></tr></thead>
+        <tbody>${stats.flatMap(x=>x.allUsages.map(u=>({...u,clientId:x.pkg.clientId,_root:x.root})))
           .sort((a,b)=>(b.date||'').localeCompare(a.date||''))
           .map(u=>{
             const proj=u.projectId?projects.find(p=>String(p.id)===String(u.projectId)):null;
+            const pkgOfU=hoursPackages.find(p=>p.id===u._pkgId)||u._root;
             return `<tr>
               <td style="font-family:var(--mono);font-size:11px">${fmtDate(u.date)}</td>
               <td style="font-weight:600">${clientName(u.clientId)}</td>
+              <td style="font-size:11px;white-space:nowrap">${_qualLabel(u.qual||'weekday')}</td>
               <td style="font-family:var(--mono);font-weight:700;color:var(--amber)">${fmtH(u.hours)}</td>
               <td>${u.tech||'—'}</td>
               <td style="font-size:12px">${u.desc||'—'}</td>
@@ -3293,6 +3336,23 @@ function repHours(){
         </tbody>
       </table>
     </div>
+
+    <!-- Breakdown por qualificação -->
+    ${(()=>{
+      const allU=stats.flatMap(x=>x.allUsages);
+      const wd=allU.filter(u=>!u.qual||u.qual==='weekday');
+      const sa=allU.filter(u=>u.qual==='saturday');
+      const su=allU.filter(u=>u.qual==='sunday');
+      const hwd=wd.reduce((s,u)=>s+(Number(u.hours)||0),0);
+      const hsa=sa.reduce((s,u)=>s+(Number(u.hours)||0),0);
+      const hsu=su.reduce((s,u)=>s+(Number(u.hours)||0),0);
+      return `<div class="rep-section-title" style="margin-top:20px">📊 Breakdown por qualificação</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px">
+        <div class="kpi-card"><div class="kpi-label">🗓 Seg–Sex</div><div class="kpi-value" style="color:var(--accent2)">${fmtH(hwd)}</div><div style="font-size:11px;color:var(--text3);margin-top:4px">${wd.length} registro${wd.length!==1?'s':''}</div></div>
+        <div class="kpi-card"><div class="kpi-label">🟡 Sábado</div><div class="kpi-value" style="color:var(--amber)">${fmtH(hsa)}</div><div style="font-size:11px;color:var(--text3);margin-top:4px">${sa.length} registro${sa.length!==1?'s':''}</div></div>
+        <div class="kpi-card"><div class="kpi-label">🔴 Dom/Feriado</div><div class="kpi-value" style="color:var(--red)">${fmtH(hsu)}</div><div style="font-size:11px;color:var(--text3);margin-top:4px">${su.length} registro${su.length!==1?'s':''}</div></div>
+      </div>`;
+    })()}
   </div>`;
 }
 
@@ -3318,32 +3378,35 @@ function repLicenses(){
   ].filter(s=>s.value>0);
 
   function licTable(lics){
-    return `<div class="panel" style="overflow:hidden"><div style="overflow-x:auto"><table class="data-table">
-      <thead><tr><th>Produto</th><th>Cliente</th><th>Fabricante</th><th>Vencimento</th><th>Dias</th>
-      ${isAdmin()?'<th>MRR</th><th>Receita acum.</th>':''}
-      <th>Suporte</th><th>H.usadas</th>
-      ${isAdmin()?'<th>Rec. suporte</th>':''}
-      <th>Status</th></tr></thead>
-      <tbody>${lics.map(l=>{
-        const st=getLicStatus(l); const d=daysUntil(l.end);
-        const mp=monthsPaid(l); const recAcum=(Number(l.monthlyProposal)||0)*mp;
-        const recSup=(Number(l.supportRateClient)||0)*(Number(l.supportUsed)||0);
-        const sOver=(l.supportUsed||0)>(l.supportHours||0)&&(l.supportHours||0)>0;
-        return `<tr onclick="openLicDetail(${l.id})" style="cursor:pointer">
-          <td style="font-weight:600">${l.product}</td>
-          <td style="color:var(--text2);font-size:12px">${clientName(l.clientId)}</td>
-          <td style="color:var(--text3);font-size:11px">${l.vendor||'—'}</td>
-          <td style="font-family:var(--mono);font-size:11px">${fmtDate(l.end)}</td>
-          <td><span style="font-family:var(--mono);font-size:11px;font-weight:700;color:${d!==null&&d<=75?'var(--red)':d!==null&&d<=150?'var(--amber)':'var(--green)'}">${d!==null?d+'d':'—'}</span></td>
-          ${isAdmin()?`<td style="color:var(--green);font-size:11px">${l.monthly?fmtCur(l.monthlyProposal)+'/m':'—'}</td>
-          <td style="font-family:var(--mono);font-size:11px;color:var(--green);font-weight:700">${l.monthly?fmtCur(recAcum):'—'}</td>`:''}
-          <td style="font-size:11px">${l.supportHours?l.supportHours+'h/m':'—'}</td>
-          <td style="font-size:11px;color:${sOver?'var(--red)':'var(--text2)'};font-weight:${sOver?700:400}">${l.supportUsed?l.supportUsed+'h':'—'}${sOver?' ⚠':''}</td>
-          ${isAdmin()?`<td style="font-size:11px;color:var(--green)">${recSup>0?fmtCur(recSup):'—'}</td>`:''}
-          <td><span class="badge ${st.cls}">${st.label}</span></td>
-        </tr>`;
-      }).join('')}</tbody>
-    </table></div></div>`;
+    const adminCols=isAdmin();
+    let rows=lics.map(function(l){
+      const st=getLicStatus(l); const d=daysUntil(l.end);
+      const mp=monthsPaid(l); const recAcum=(Number(l.monthlyProposal)||0)*mp;
+      const recSup=(Number(l.supportRateClient)||0)*(Number(l.supportUsed)||0);
+      const sOver=(l.supportUsed||0)>(l.supportHours||0)&&(l.supportHours||0)>0;
+      const dCol=d!==null&&d<=75?'var(--red)':d!==null&&d<=150?'var(--amber)':'var(--green)';
+      return '<tr onclick="openLicDetail('+l.id+')" style="cursor:pointer">'
+        +'<td style="font-weight:600">'+l.product+'</td>'
+        +'<td style="color:var(--text2);font-size:12px">'+clientName(l.clientId)+'</td>'
+        +'<td style="color:var(--text3);font-size:11px">'+(l.vendor||'—')+'</td>'
+        +'<td style="font-family:var(--mono);font-size:11px">'+fmtDate(l.end)+'</td>'
+        +'<td><span style="font-family:var(--mono);font-size:11px;font-weight:700;color:'+dCol+'">'+(d!==null?d+'d':'—')+'</span></td>'
+        +(adminCols?'<td style="color:var(--green);font-size:11px">'+(l.monthly?fmtCur(l.monthlyProposal)+'/m':'—')+'</td>'
+          +'<td style="font-family:var(--mono);font-size:11px;color:var(--green);font-weight:700">'+(l.monthly?fmtCur(recAcum):'—')+'</td>':'')
+        +'<td style="font-size:11px">'+(l.supportHours?fmtH(l.supportHours)+'/m':'—')+'</td>'
+        +'<td style="font-size:11px;color:'+(sOver?'var(--red)':'var(--text2)')+';font-weight:'+(sOver?700:400)+'">'+( l.supportUsed?fmtH(l.supportUsed):'—')+(sOver?' ⚠':'')+'</td>'
+        +(adminCols?'<td style="font-size:11px;color:var(--green)">'+(recSup>0?fmtCur(recSup):'—')+'</td>':'')
+        +'<td><span class="badge '+st.cls+'">'+st.label+'</span></td>'
+        +'</tr>';
+    }).join('');
+    return '<div class="panel" style="overflow:hidden"><div style="overflow-x:auto"><table class="data-table">'
+      +'<thead><tr><th>Produto</th><th>Cliente</th><th>Fabricante</th><th>Vencimento</th><th>Dias</th>'
+      +(adminCols?'<th>MRR</th><th>Receita acum.</th>':'')
+      +'<th>Suporte</th><th>H.usadas</th>'
+      +(adminCols?'<th>Rec. suporte</th>':'')
+      +'<th>Status</th></tr></thead>'
+      +'<tbody>'+rows+'</tbody>'
+      +'</table></div></div>';
   }
 
   let html=reportLogoHeader('Relatório de Licenciamentos')+`
@@ -3443,31 +3506,105 @@ window.removeSector=function(s){
 };
 
 function renderSettingsPermissions(panel){
+  // Load saved overrides from localStorage (admin can override tecnico column)
+  let overrides={};
+  try{ overrides=JSON.parse(localStorage.getItem('a360_perm_overrides')||'{}'); }catch(e){}
+
   const perms=[
-    {field:'Dados do cliente',admin:true,tecnico:false},
-    {field:'Valor proposta/cotação',admin:true,tecnico:false},
-    {field:'Custo de horas (valor/h)',admin:true,tecnico:false},
-    {field:'MRR / Financeiro',admin:true,tecnico:false},
-    {field:'Vendedor (licença)',admin:true,tecnico:false},
-    {field:'Criar/editar projetos',admin:true,tecnico:true},
-    {field:'Adicionar/editar tarefas',admin:true,tecnico:true},
-    {field:'Horas previstas/executadas (tarefas)',admin:true,tecnico:true},
-    {field:'Ver kanban/cronograma',admin:true,tecnico:true},
-    {field:'Ver licenciamentos',admin:true,tecnico:true},
-    {field:'Ver alertas de vencimento',admin:true,tecnico:true},
-    {field:'Relatórios de desempenho',admin:true,tecnico:true},
-    {field:'Relatórios financeiros/MRR',admin:true,tecnico:false},
-    {field:'Configurações',admin:true,tecnico:false},
-    {field:'Gerenciar usuários',admin:true,tecnico:false},
-    {field:'Modo claro/escuro',admin:true,tecnico:true},
+    {id:'client_data',      field:'Dados do cliente',                    admin:true, tecnicoDefault:false},
+    {id:'financials',       field:'Valor proposta/cotação',               admin:true, tecnicoDefault:false},
+    {id:'hourrate',         field:'Custo de horas (valor/h)',             admin:true, tecnicoDefault:false},
+    {id:'mrr',              field:'MRR / Financeiro',                     admin:true, tecnicoDefault:false},
+    {id:'lic_vendor',       field:'Vendedor (licença)',                   admin:true, tecnicoDefault:false},
+    {id:'proj_edit',        field:'Criar/editar projetos',               admin:true, tecnicoDefault:true},
+    {id:'task_edit',        field:'Adicionar/editar tarefas',            admin:true, tecnicoDefault:true},
+    {id:'task_hours',       field:'Horas previstas/executadas (tarefas)',admin:true, tecnicoDefault:true},
+    {id:'kanban',           field:'Ver kanban/cronograma',               admin:true, tecnicoDefault:true},
+    {id:'licenses_view',    field:'Ver licenciamentos',                  admin:true, tecnicoDefault:true},
+    {id:'lic_alerts',       field:'Ver alertas de vencimento',           admin:true, tecnicoDefault:true},
+    {id:'rep_perf',         field:'Relatórios de desempenho',            admin:true, tecnicoDefault:true},
+    {id:'rep_financial',    field:'Relatórios financeiros/MRR',          admin:true, tecnicoDefault:false},
+    {id:'settings',         field:'Configurações',                       admin:true, tecnicoDefault:false},
+    {id:'users_manage',     field:'Gerenciar usuários',                  admin:true, tecnicoDefault:false},
+    {id:'theme',            field:'Modo claro/escuro',                   admin:true, tecnicoDefault:true},
   ];
-  const ck=(v)=>v?`<span class="perm-check perm-yes">✓</span>`:`<span class="perm-check perm-no">✗</span>`;
-  panel.innerHTML=`<div style="font-size:14px;font-weight:600;margin-bottom:16px">🔒 Mapa de permissões</div>
-  <div class="panel" style="overflow:hidden"><table class="perm-table">
-    <thead><tr><th>Funcionalidade</th><th style="text-align:center">Admin</th><th style="text-align:center">Técnico</th></tr></thead>
-    <tbody>${perms.map(p=>`<tr><td>${p.field}</td><td style="text-align:center">${ck(p.admin)}</td><td style="text-align:center">${ck(p.tecnico)}</td></tr>`).join('')}</tbody>
-  </table></div>`;
+
+  function getVal(p, role){
+    if(role==='admin') return true; // admin always has everything
+    return overrides[p.id] !== undefined ? overrides[p.id] : p.tecnicoDefault;
+  }
+
+  function ckBtn(p){
+    const val=getVal(p,'tecnico');
+    const color=val?'var(--green)':'var(--red)';
+    const icon=val?'✓':'✗';
+    return `<button onclick="togglePermission('${p.id}')" style="background:${color}20;border:1.5px solid ${color};color:${color};border-radius:6px;padding:4px 14px;font-size:15px;font-weight:700;cursor:pointer;min-width:36px;transition:all .2s" title="Clique para ${val?'remover':'conceder'} acesso ao Técnico">${icon}</button>`;
+  }
+
+  panel.innerHTML=`<div style="font-size:14px;font-weight:600;margin-bottom:8px">🔒 Permissões por perfil</div>
+  <div style="font-size:12px;color:var(--text3);margin-bottom:16px">Clique em ✓/✗ na coluna Técnico para alterar a permissão. Admin sempre tem acesso total.</div>
+  <div class="panel" style="overflow:hidden">
+    <table class="perm-table">
+      <thead><tr><th>Funcionalidade</th><th style="text-align:center">Admin</th><th style="text-align:center">Técnico</th></tr></thead>
+      <tbody>${perms.map(p=>`<tr>
+        <td>${p.field}</td>
+        <td style="text-align:center"><span class="perm-check perm-yes">✓</span></td>
+        <td style="text-align:center">${ckBtn(p)}</td>
+      </tr>`).join('')}</tbody>
+    </table>
+  </div>
+  <div style="margin-top:12px;display:flex;gap:10px">
+    <button class="btn btn-ghost btn-sm" onclick="resetPermissions()">↩ Restaurar padrões</button>
+    <button class="btn btn-accent btn-sm" onclick="savePermissions()">💾 Salvar permissões</button>
+  </div>
+  <div id="perm-saved-msg" style="display:none;margin-top:8px;font-size:12px;color:var(--green)">✓ Permissões salvas!</div>`;
 }
+
+window.togglePermission=function(id){
+  let overrides={};
+  try{ overrides=JSON.parse(localStorage.getItem('a360_perm_overrides')||'{}'); }catch(e){}
+  // Find current value
+  const panel=document.getElementById('settings-panel');
+  const btn=panel.querySelector(`button[onclick="togglePermission('${id}')"]`);
+  const isCurrentlyGreen=btn&&btn.style.color.includes('34c9')||btn&&btn.title.includes('remover');
+  // Determine default
+  const perms={proj_edit:true,task_edit:true,task_hours:true,kanban:true,licenses_view:true,lic_alerts:true,rep_perf:true,theme:true};
+  const def=perms[id]||false;
+  const current=overrides[id]!==undefined?overrides[id]:def;
+  overrides[id]=!current;
+  localStorage.setItem('a360_perm_overrides',JSON.stringify(overrides));
+  renderSettingsPermissions(panel);
+};
+
+window.savePermissions=function(){
+  // Already saved to localStorage on each toggle — just show feedback
+  const msg=document.getElementById('perm-saved-msg');
+  if(msg){ msg.style.display='block'; setTimeout(()=>msg.style.display='none',2000); }
+  // Also apply immediately
+  applyPermissionOverrides();
+};
+
+window.resetPermissions=function(){
+  localStorage.removeItem('a360_perm_overrides');
+  const panel=document.getElementById('settings-panel');
+  renderSettingsPermissions(panel);
+  applyPermissionOverrides();
+};
+
+function applyPermissionOverrides(){
+  // Re-apply role-based visibility with overrides
+  if(!isAdmin()) applyRole();
+}
+
+function isPermitted(id){
+  if(isAdmin()) return true;
+  let overrides={};
+  try{ overrides=JSON.parse(localStorage.getItem('a360_perm_overrides')||'{}'); }catch(e){}
+  const defaults={proj_edit:true,task_edit:true,task_hours:true,kanban:true,licenses_view:true,lic_alerts:true,rep_perf:true,theme:true};
+  return overrides[id]!==undefined?overrides[id]:(defaults[id]||false);
+}
+
+
 
 function renderSettingsTheme(panel){
   const isLight=document.body.classList.contains('light');
@@ -3629,6 +3766,10 @@ function openHoursModal(id=null){
   document.getElementById('hp-end').value=pkg?pkg.end||'':'';
   document.getElementById('hp-value').value=pkg&&pkg.value?fmtBRL_input(pkg.value):'';
   document.getElementById('hp-notes').value=pkg?pkg.notes||'':'';
+  // Rate fields
+  document.getElementById('hp-rate-weekday').value =pkg&&pkg.rateWeekday ?fmtBRL_input(pkg.rateWeekday) :'';
+  document.getElementById('hp-rate-saturday').value=pkg&&pkg.rateSaturday?fmtBRL_input(pkg.rateSaturday):'';
+  document.getElementById('hp-rate-sunday').value  =pkg&&pkg.rateSunday  ?fmtBRL_input(pkg.rateSunday)  :'';
   // Monthly payment
   const hasMonthly=pkg&&pkg.monthly;
   document.getElementById('hp-monthly').checked=!!hasMonthly;
@@ -3678,6 +3819,9 @@ function saveHoursPackage(){
   const data={
     id:_editingHoursId||nextHoursId++,
     clientId,hours,tipo,
+    rateWeekday: parseBRL(document.getElementById('hp-rate-weekday').value)||0,
+    rateSaturday:parseBRL(document.getElementById('hp-rate-saturday').value)||0,
+    rateSunday:  parseBRL(document.getElementById('hp-rate-sunday').value)||0,
     monthly,
     monthlyProposal:monthly?parseBRL(document.getElementById('hp-monthly-proposal').value):0,
     monthlyQuote:monthly?parseBRL(document.getElementById('hp-monthly-quote').value):0,
@@ -3834,11 +3978,15 @@ function renderHoursDetail(){
     ${!allUsages.length?`<div class="empty-state" style="padding:24px"><div class="empty-state-icon">⏱</div><div class="empty-state-text">Nenhuma hora registrada</div></div>`:''}
 
     ${allUsages.length?`<div class="panel" style="overflow:hidden"><table class="data-table">
-      <thead><tr><th>Data</th><th>Horas</th><th>Técnico</th><th>Serviço</th><th>Projeto</th><th>Período</th><th></th></tr></thead>
+      <thead><tr><th>Data</th><th>Qualif.</th><th>Horas</th><th>Técnico</th><th>Serviço</th><th>Projeto</th><th>Período</th><th></th></tr></thead>
       <tbody>${allUsages.sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map((u,i)=>{
         const proj=u.projectId?projects.find(p=>String(p.id)===String(u.projectId)):null;
+        const pkgOfUsage=hoursPackages.find(x=>x.id===u._pkgId);
+        const rate=_qualRate(pkgOfUsage,u.qual);
         return `<tr>
           <td style="font-family:var(--mono);font-size:11px">${fmtDate(u.date)}</td>
+          <td style="font-size:11px;white-space:nowrap">${_qualLabel(u.qual||'weekday')}${rate&&isAdmin()?`<br><span style="color:var(--text3)">${fmtCur(rate)}/h</span>`:''}
+          </td>
           <td style="font-family:var(--mono);font-weight:700;color:var(--amber)">${fmtH(u.hours)}</td>
           <td>${u.tech||'—'}</td>
           <td style="font-size:12px;color:var(--text2)">${u.desc||'—'}</td>
@@ -3851,7 +3999,7 @@ function renderHoursDetail(){
         </tr>`;
       }).join('')}
       <tfoot><tr style="background:rgba(37,99,235,0.05)">
-        <td style="font-weight:700;padding:10px 14px">Total</td>
+        <td colspan="2" style="font-weight:700;padding:10px 14px">Total</td>
         <td style="font-family:var(--mono);font-weight:700;color:var(--amber);padding:10px 14px">${fmtH(totalUsedAll)}</td>
         <td colspan="5"></td>
       </tr></tfoot>
@@ -3865,6 +4013,55 @@ function renderHoursDetail(){
 
 // ── USAGE MODAL ──
 let _usageHoursPkgId=null, _editingUsageHoursIdx=null;
+function _autoQualFromDate(dateStr){
+  if(!dateStr) return 'weekday';
+  const d = new Date(dateStr+'T12:00:00');
+  const dow = d.getDay(); // 0=Sun,6=Sat
+  if(dow===0) return 'sunday';
+  if(dow===6) return 'saturday';
+  return 'weekday';
+}
+
+function _autoQualificacao(){
+  const dateVal = document.getElementById('hu-date').value;
+  const qual = _autoQualFromDate(dateVal);
+  if(qual==='saturday') document.getElementById('hu-q-saturday').checked=true;
+  else if(qual==='sunday') document.getElementById('hu-q-sunday').checked=true;
+  else document.getElementById('hu-q-weekday').checked=true;
+  _updateQualLabel();
+}
+
+let _currentUsagePkg = null;
+function _updateQualRates(pkg){
+  _currentUsagePkg = pkg;
+  const fmt = v => v ? fmtCur(v)+'/h' : '—';
+  const wd = document.getElementById('hu-rate-weekday-lbl');
+  const sa = document.getElementById('hu-rate-saturday-lbl');
+  const su = document.getElementById('hu-rate-sunday-lbl');
+  if(wd) wd.textContent = fmt(pkg?.rateWeekday);
+  if(sa) sa.textContent = fmt(pkg?.rateSaturday);
+  if(su) su.textContent = fmt(pkg?.rateSunday);
+}
+
+function _updateQualLabel(){
+  ['weekday','saturday','sunday'].forEach(q=>{
+    const lbl=document.getElementById('hu-q-'+q+'-lbl');
+    const inp=document.getElementById('hu-q-'+q);
+    if(lbl&&inp) lbl.style.borderColor=inp.checked?
+      (q==='saturday'?'var(--amber)':q==='sunday'?'var(--red)':'var(--accent2)'):'var(--border)';
+  });
+}
+
+function _qualLabel(q){
+  return q==='saturday'?'🟡 Sábado':q==='sunday'?'🔴 Dom/Feriado':'🗓 Seg–Sex';
+}
+function _qualRate(pkg,q){
+  if(!pkg) return 0;
+  if(q==='saturday') return pkg.rateSaturday||0;
+  if(q==='sunday')   return pkg.rateSunday||0;
+  return pkg.rateWeekday||0;
+}
+
 function openHoursUsageModal(pkgId,idx=null){
   _usageHoursPkgId=pkgId;
   _editingUsageHoursIdx=idx;
@@ -3878,10 +4075,19 @@ function openHoursUsageModal(pkgId,idx=null){
   const ps=document.getElementById('hu-project');
   ps.innerHTML='<option value="">Nenhum</option>'+projects.filter(p=>!p.parentId||true).map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
   document.getElementById('hu-hours').value=u&&u.hours?fmtH(u.hours):'';
-  document.getElementById('hu-date').value=u?u.date||todayStr():todayStr();
+  const dateVal=u?u.date||todayStr():todayStr();
+  document.getElementById('hu-date').value=dateVal;
   document.getElementById('hu-tech').value=u?u.tech||'':'';
   document.getElementById('hu-desc').value=u?u.desc||'':'';
   document.getElementById('hu-project').value=u?u.projectId||'':'';
+  // Show rates from package and auto-select qualificação
+  const _pkg=hoursPackages.find(x=>x.id===pkgId);
+  _updateQualRates(_pkg);
+  const qual=u?u.qual||_autoQualFromDate(dateVal):'';
+  if(qual==='saturday') document.getElementById('hu-q-saturday').checked=true;
+  else if(qual==='sunday') document.getElementById('hu-q-sunday').checked=true;
+  else document.getElementById('hu-q-weekday').checked=true;
+  _updateQualLabel();
   openModal('hours-usage-overlay');
 }
 
@@ -3890,9 +4096,11 @@ function saveHoursUsage(){
   if(!hours){alert('Informe as horas consumidas (Ex: 01:30)');return;}
   const pkg=hoursPackages.find(x=>x.id===_usageHoursPkgId); if(!pkg) return;
   if(!pkg.usages) pkg.usages=[];
+  const qual=document.querySelector('input[name="hu-qual"]:checked')?.value||'weekday';
   const entry={
     hours,
     date:document.getElementById('hu-date').value,
+    qual,
     tech:document.getElementById('hu-tech').value.trim(),
     desc:document.getElementById('hu-desc').value.trim(),
     projectId:document.getElementById('hu-project').value||null,
@@ -3973,6 +4181,9 @@ function confirmHoursRenewal(){
     hours:nhH!==null?nhH:pkg.hours,
     value:nv||pkg.value||0,
     tipo:nt||pkg.tipo||'anual',
+    rateWeekday: pkg.rateWeekday||0,
+    rateSaturday:pkg.rateSaturday||0,
+    rateSunday:  pkg.rateSunday||0,
     monthlyProposal:nmpH||pkg.monthlyProposal||0,
     monthlyQuote:nmqH||pkg.monthlyQuote||0,
     usages:[],
