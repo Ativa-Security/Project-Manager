@@ -2783,6 +2783,7 @@ window.exportFullReportPDF = function(){
     { fn: repByProject,   title:'Por Projeto',           icon:'📋' },
     { fn: repPerformance, title:'Desempenho',             icon:'🏆' },
     { fn: repLicenses,    title:'Licenciamentos',         icon:'🔑' },
+    { fn: repHours,       title:'Horas Técnicas',         icon:'⏱' },
   ];
 
   let body = cover;
@@ -3333,7 +3334,8 @@ function repPerformance(){
 
 function repHours(){
   const year=new Date().getFullYear();
-  const roots=hoursPackages.filter(p=>!p.parentId);
+  const fc=window._hoursRepClient||'';
+  const roots=hoursPackages.filter(p=>!p.parentId&&(!fc||String(p.clientId)===String(fc)));
 
   // Build stats per root
   const stats=roots.map(root=>{
@@ -3362,6 +3364,13 @@ function repHours(){
   return `<div class="rep-content">
     ${reportLogoHeader()}
     <div class="rep-section-title">⏱ Relatório de Horas Técnicas</div>
+    <div class="no-print" style="margin-bottom:16px">
+      <label class="form-label">Filtrar por cliente</label>
+      <select class="form-select" style="max-width:320px" onchange="window._hoursRepClient=this.value;renderReport('hours')">
+        <option value="">Todos os clientes</option>
+        ${clients.filter(c=>hoursPackages.some(p=>String(p.clientId)===String(c.id))).map(c=>`<option value="${c.id}"${String(fc)===String(c.id)?' selected':''}>${c.name}</option>`).join('')}
+      </select>
+    </div>
 
     <!-- KPIs globais -->
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">
