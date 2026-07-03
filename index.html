@@ -678,9 +678,14 @@ input,select,textarea{font-family:var(--font)}
     <div class="page" id="page-reports">
       <div class="section-header">
         <div class="section-title">Relatórios</div>
-        <button class="btn btn-accent" onclick="exportFullReportPDF()" style="display:flex;align-items:center;gap:6px">
-          <span>⬇</span> Exportar PDF completo
-        </button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-ghost" onclick="exportFullReportPDF(false)" style="display:flex;align-items:center;gap:6px">
+            <span>👤</span> PDF p/ cliente
+          </button>
+          <button class="btn btn-accent admin-only" onclick="exportFullReportPDF(true)" style="display:flex;align-items:center;gap:6px">
+            <span>⬇</span> PDF completo
+          </button>
+        </div>
       </div>
       <div class="rep-tabs" id="rep-tabs">
         <div class="rep-tab active" onclick="switchReport('overview',this)">📊 Visão Geral</div>
@@ -1387,7 +1392,7 @@ function licProgress(l){
   return Math.min(100,Math.max(0,((now-s)/(e-s))*100));
 }
 
-function isAdmin(){ return currentRole==='admin'; }
+function isAdmin(){ if(window._pdfNoFinancials) return false; return currentRole==='admin'; }
 function closeModal(id){ document.getElementById(id).classList.remove('open'); }
 function closeDetail(id){ document.getElementById(id).classList.remove('open'); }
 function openModal(id){ document.getElementById(id).classList.add('open'); }
@@ -1596,7 +1601,7 @@ function renderDashboard(){
     <div class="stat-card"><div class="stat-n" style="color:var(--accent2)">${totalClients}</div><div class="stat-l">Clientes ativos</div></div>
     <div class="stat-card"><div class="stat-n" style="color:var(--accent2)">${activeProjs}</div><div class="stat-l">Projetos em andamento</div><div class="stat-sub">${doneProjs} concluídos</div></div>
     <div class="stat-card"><div class="stat-n" style="color:${criticalCount>0?'var(--red)':'var(--green)'}">${criticalCount}</div><div class="stat-l">Licenças críticas</div><div class="stat-sub" style="color:var(--amber)">${warning.length} em atenção</div></div>
-    <div class="stat-card"><div class="stat-n" style="color:var(--green)">${fmtCurShort(mrrTotal)}</div><div class="stat-l">MRR Total</div><div class="stat-sub">Receita mensal recorrente</div></div>
+    ${isAdmin()?`<div class="stat-card"><div class="stat-n" style="color:var(--green)">${fmtCurShort(mrrTotal)}</div><div class="stat-l">MRR Total</div><div class="stat-sub">Receita mensal recorrente</div></div>`:''}
     <div class="stat-card"><div class="stat-n" style="color:${overdueTasks>0?'var(--red)':'var(--green)'}">${overdueTasks}</div><div class="stat-l">Tarefas em atraso</div></div>
   </div>`;
 
@@ -2729,8 +2734,11 @@ function reportLogoHeader(subtitle){
 // ══════════════════════════════════
 //   FULL PDF EXPORT
 // ══════════════════════════════════
-window.exportFullReportPDF = function(){
-  const btn = document.querySelector('[onclick="exportFullReportPDF()"]');
+window.exportFullReportPDF = function(withFinancials){
+  if(withFinancials===undefined) withFinancials=true;
+  window._pdfNoFinancials = !withFinancials;
+  const btn = document.querySelector(`[onclick="exportFullReportPDF(${withFinancials})"]`);
+  const _origBtnHtml = btn?btn.innerHTML:'';
   if(btn){ btn.textContent='⏳ Gerando...'; btn.disabled=true; }
 
   const now = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
@@ -2749,11 +2757,13 @@ window.exportFullReportPDF = function(){
 
   // Build cover page
   const cover = `
-    <div style="height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;page-break-after:always;background:linear-gradient(160deg,#070b14 0%,#0c1529 40%,#0d2260 100%);color:#fff;padding:40px">
-      <img src="${LOGO_DATA_URI_EXPORT}" style="height:120px;width:auto;margin-bottom:40px;filter:brightness(10)">
-      <div style="font-size:36px;font-weight:800;letter-spacing:-.02em;margin-bottom:8px">Relatório Completo</div>
+    <div style="height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;page-break-after:always;background:linear-gradient(160deg,#070b14 0%,#0c1529 40%,#0d2260 100%);color:#fff;padding:40px;position:relative;overflow:hidden">
+      <div style="position:absolute;inset:0;background:radial-gradient(ellipse 60% 50% at 25% 35%,rgba(37,99,235,0.25) 0%,transparent 70%),radial-gradient(ellipse 45% 45% at 80% 70%,rgba(96,165,250,0.15) 0%,transparent 70%);pointer-events:none"></div>
+      <div style="position:relative;z-index:2;display:flex;flex-direction:column;align-items:center">
+      <img src="${LOGO_DATA_URI_EXPORT}" style="height:120px;width:auto;margin-bottom:40px;filter:brightness(10) drop-shadow(0 0 30px rgba(96,165,250,0.5))">
+      <div style="font-size:36px;font-weight:800;letter-spacing:-.02em;margin-bottom:8px;background:linear-gradient(135deg,#fff,#93c5fd);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">${window._pdfNoFinancials?'Relatório de Serviços':'Relatório Completo'}</div>
       <div style="font-size:16px;opacity:.7;margin-bottom:40px">Ativa Security · Ativa360</div>
-      <div style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:20px 40px;display:inline-block">
+      <div style="background:rgba(255,255,255,0.08);border:1px solid rgba(96,165,250,0.3);border-radius:12px;padding:20px 40px;display:inline-block;backdrop-filter:blur(10px)">
         <div style="font-size:13px;opacity:.6;margin-bottom:4px">Gerado em</div>
         <div style="font-size:18px;font-weight:600">${now}</div>
       </div>
@@ -2763,11 +2773,12 @@ window.exportFullReportPDF = function(){
           ['📋', projects.length, 'Projetos'],
           ['🔑', licenses.length, 'Licenciamentos'],
         ].map(([icon,n,label])=>`
-          <div style="background:rgba(255,255,255,0.08);border-radius:10px;padding:16px 24px;text-align:center">
+          <div style="background:rgba(255,255,255,0.08);border:1px solid rgba(96,165,250,0.2);border-radius:10px;padding:16px 24px;text-align:center">
             <div style="font-size:24px;margin-bottom:4px">${icon}</div>
             <div style="font-size:28px;font-weight:700">${n}</div>
             <div style="font-size:11px;opacity:.6;text-transform:uppercase;letter-spacing:.06em">${label}</div>
           </div>`).join('')}
+      </div>
       </div>
     </div>`;
 
@@ -2789,7 +2800,7 @@ window.exportFullReportPDF = function(){
   let body = cover;
 
   sections.forEach((s, idx) => {
-    if(s.adminOnly && !isAdmin()) return;
+    if(s.adminOnly && (!isAdmin() || window._pdfNoFinancials)) return;
     const content = s.fn();
     body += `<div class="report-section">
       ${sectionHeader(s.title, s.icon)}
@@ -2901,7 +2912,8 @@ ${body}
 </html>`);
   w.document.close();
   // Re-enable export button
-  if(btn){ setTimeout(()=>{ btn.innerHTML='<span>⬇</span> Exportar PDF completo'; btn.disabled=false; }, 1000); }
+  window._pdfNoFinancials = false;
+  if(btn){ setTimeout(()=>{ btn.innerHTML=_origBtnHtml; btn.disabled=false; }, 1000); }
 };
 
 function repOverview(){
@@ -3346,7 +3358,14 @@ function repHours(){
       return chain.filter(Boolean);
     }
     const chain=buildChain(root.id);
-    const allUsages=chain.flatMap(p=>(p.usages||[]));
+    const _allUsagesRaw=chain.flatMap(p=>(p.usages||[]));
+    const allUsages=_allUsagesRaw.filter(u=>{
+      if(!repPeriod.start&&!repPeriod.end) return true;
+      if(!u.date) return false;
+      if(repPeriod.start&&u.date<repPeriod.start) return false;
+      if(repPeriod.end&&u.date>repPeriod.end) return false;
+      return true;
+    });
     const totalContracted=chain.reduce((s,p)=>s+(Number(p.hours)||0),0);
     const totalUsed=allUsages.reduce((s,u)=>s+(Number(u.hours)||0),0);
     const usedThisYear=allUsages.filter(u=>u.date&&u.date.startsWith(year+'')).reduce((s,u)=>s+(Number(u.hours)||0),0);
@@ -3364,6 +3383,7 @@ function repHours(){
   return `<div class="rep-content">
     ${reportLogoHeader()}
     <div class="rep-section-title">⏱ Relatório de Horas Técnicas</div>
+    ${periodBar()}
     <div class="no-print" style="margin-bottom:16px">
       <label class="form-label">Filtrar por cliente</label>
       <select class="form-select" style="max-width:320px" onchange="window._hoursRepClient=this.value;renderReport('hours')">
@@ -3971,6 +3991,71 @@ function openHoursDetail(rootId){
   document.getElementById('hours-detail-overlay').classList.add('open');
 }
 
+function exportHoursClientPDF(rootId){
+  const root=hoursPackages.find(x=>x.id===rootId); if(!root) return;
+  let chain=[root], cur=root;
+  while(true){ const n=hoursPackages.find(p=>p.parentId===cur.id); if(!n) break; chain.push(n); cur=n; }
+  const pkg=chain[chain.length-1];
+  const allU=chain.flatMap(p=>(p.usages||[]));
+  const totContr=chain.reduce((s,p)=>s+(Number(p.hours)||0),0);
+  const totUsed=allU.reduce((s,u)=>s+(Number(u.hours)||0),0);
+  const saldo=Math.max(0,totContr-totUsed);
+  const over=Math.max(0,totUsed-totContr);
+  const now=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+  const rows=allU.sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(u=>`
+    <tr>
+      <td style="padding:10px 12px;border-bottom:1px solid #e5e9f0;font-family:monospace;font-size:12px;white-space:nowrap">${fmtDate(u.date)}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #e5e9f0;font-family:monospace;font-weight:700;color:#c07c00">${fmtH(u.hours)}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #e5e9f0;font-size:13px">${u.desc||'—'}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #e5e9f0;font-size:12px;color:#555">${u.tech||'—'}</td>
+    </tr>`).join('');
+  const w=window.open('','_blank','width=1100,height=850');
+  w.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+<title>Relatório de Horas — ${clientName(pkg.clientId)}</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box;font-family:'DM Sans',sans-serif}body{color:#1a2e5c}@media print{.np{display:none}}</style>
+</head><body>
+<div style="background:linear-gradient(160deg,#070b14,#0c1529 40%,#0d2260);color:#fff;padding:40px 48px;position:relative;overflow:hidden">
+  <div style="position:absolute;inset:0;background:radial-gradient(ellipse 60% 60% at 20% 30%,rgba(37,99,235,.3),transparent 70%)"></div>
+  <div style="position:relative;display:flex;justify-content:space-between;align-items:center">
+    <div>
+      <img src="${LOGO_DATA_URI}" style="height:54px;filter:brightness(10);margin-bottom:14px">
+      <div style="font-size:26px;font-weight:800;background:linear-gradient(135deg,#fff,#93c5fd);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Relatório de Horas Técnicas</div>
+      <div style="opacity:.7;font-size:14px;margin-top:4px">${clientName(pkg.clientId)} · ${pkg.desc||'Pacote de horas'}</div>
+    </div>
+    <div style="text-align:right;font-size:12px;opacity:.7">Gerado em<br><strong style="font-size:15px;opacity:1">${now}</strong></div>
+  </div>
+</div>
+<div style="padding:32px 48px">
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px">
+    <div style="background:#f0f4ff;border:1px solid #d0dcff;border-radius:12px;padding:18px;text-align:center">
+      <div style="font-size:12px;color:#667;margin-bottom:6px">Horas Contratadas</div>
+      <div style="font-size:26px;font-weight:800;color:#2563eb">${fmtH(totContr)}</div></div>
+    <div style="background:#fff8ec;border:1px solid #ffe0b0;border-radius:12px;padding:18px;text-align:center">
+      <div style="font-size:12px;color:#667;margin-bottom:6px">Horas Utilizadas</div>
+      <div style="font-size:26px;font-weight:800;color:#c07c00">${fmtH(totUsed)}</div></div>
+    <div style="background:${over>0?'#fdecec':'#eefaf2'};border:1px solid ${over>0?'#f5c0c0':'#b8e6cc'};border-radius:12px;padding:18px;text-align:center">
+      <div style="font-size:12px;color:#667;margin-bottom:6px">${over>0?'Excedente':'Saldo Disponível'}</div>
+      <div style="font-size:26px;font-weight:800;color:${over>0?'#d33':'#0a9d54'}">${over>0?'+'+fmtH(over):fmtH(saldo)}</div></div>
+  </div>
+  <div style="font-size:16px;font-weight:700;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #2563eb">Registros de Atividades</div>
+  <table style="width:100%;border-collapse:collapse">
+    <thead><tr style="background:#f5f7fc">
+      <th style="padding:10px 12px;text-align:left;font-size:12px;color:#556">Data</th>
+      <th style="padding:10px 12px;text-align:left;font-size:12px;color:#556">Horas</th>
+      <th style="padding:10px 12px;text-align:left;font-size:12px;color:#556">Descrição da Atividade</th>
+      <th style="padding:10px 12px;text-align:left;font-size:12px;color:#556">Técnico</th>
+    </tr></thead>
+    <tbody>${rows||'<tr><td colspan="4" style="padding:20px;text-align:center;color:#999">Nenhum registro</td></tr>'}</tbody>
+    <tfoot><tr style="background:#f0f4ff;font-weight:700"><td style="padding:12px">Total</td><td style="padding:12px;font-family:monospace;color:#c07c00">${fmtH(totUsed)}</td><td colspan="2"></td></tr></tfoot>
+  </table>
+  <div style="margin-top:32px;text-align:center;color:#99a;font-size:11px">Ativa Security · Ativa360 · Documento gerado automaticamente</div>
+</div>
+<div class="np" style="position:fixed;bottom:20px;right:20px"><button onclick="window.print()" style="background:#2563eb;color:#fff;border:none;padding:12px 24px;border-radius:8px;font-weight:700;cursor:pointer;font-family:'DM Sans'">🖨 Imprimir / Salvar PDF</button></div>
+</body></html>`);
+  w.document.close();
+}
+
 function renderHoursDetail(){
   const root=hoursPackages.find(x=>x.id===_currentHoursPkg); if(!root) return;
 
@@ -3984,6 +4069,16 @@ function renderHoursDetail(){
   const chain=buildChain(root.id);
   const pkg=chain[chain.length-1]; // active = latest
   const allUsages=chain.flatMap((p,pi)=>(p.usages||[]).map(u=>({...u,_pkgId:p.id,_pkgIdx:pi})));
+  const _hf=window._hoursDetailFilter||'all';
+  const filteredUsages=allUsages.filter(u=>{
+    if(_hf==='all'||!u.date) return _hf==='all';
+    if(_hf.length===7) return u.date.startsWith(_hf); // YYYY-MM
+    if(_hf.length===4) return u.date.startsWith(_hf); // YYYY
+    return true;
+  });
+  // months/years present
+  const periodSet=new Set(allUsages.filter(u=>u.date).map(u=>u.date.slice(0,7)));
+  const yearSet=new Set(allUsages.filter(u=>u.date).map(u=>u.date.slice(0,4)));
 
   // Totals across all periods
   const totalHoursAll=chain.reduce((s,p)=>s+(Number(p.hours)||0),0);
@@ -4002,6 +4097,7 @@ function renderHoursDetail(){
       <div style="font-size:17px;font-weight:700">${clientName(pkg.clientId)}</div>
       <div style="font-size:12px;color:var(--text3)">${pkg.desc||'Pacote de horas'}</div>
     </div>
+    <button class="btn btn-ghost btn-sm" onclick="exportHoursClientPDF(${pkg.id})">📄 PDF cliente</button>
     <button class="btn btn-ghost btn-sm" onclick="openHoursModal(${pkg.id})">✏️ Editar</button>
     <button class="btn btn-accent btn-sm" onclick="openHoursRenewal(${pkg.id})">🔄 Renovar</button>
     <button onclick="closeDetail('hours-detail-overlay')" style="color:var(--text3);font-size:20px;padding:4px 8px">✕</button>
@@ -4083,14 +4179,21 @@ function renderHoursDetail(){
     </div>`:''}
 
     <!-- Registros de uso -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <div style="font-size:13px;font-weight:600">Horas registradas (${allUsages.length})</div>
-      <button class="btn btn-accent btn-sm" onclick="openHoursUsageModal(${pkg.id})">+ Registrar horas</button>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:13px;font-weight:600">Horas registradas (${filteredUsages.length})</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select class="form-select" style="max-width:180px;padding:6px 10px;font-size:12px" onchange="window._hoursDetailFilter=this.value;renderHoursDetail()">
+          <option value="all"${_hf==='all'?' selected':''}>Todos</option>
+          ${[...yearSet].sort().reverse().map(y=>`<option value="${y}"${_hf===y?' selected':''}>Ano ${y}</option>`).join('')}
+          ${[...periodSet].sort().reverse().map(p=>{const[y,m]=p.split('-');const mn=['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(m)];return `<option value="${p}"${_hf===p?' selected':''}>${mn}/${y}</option>`;}).join('')}
+        </select>
+        <button class="btn btn-accent btn-sm" onclick="openHoursUsageModal(${pkg.id})">+ Registrar horas</button>
+      </div>
     </div>
 
-    ${!allUsages.length?`<div class="empty-state" style="padding:24px"><div class="empty-state-icon">⏱</div><div class="empty-state-text">Nenhuma hora registrada</div></div>`:''}
+    ${!filteredUsages.length?`<div class="empty-state" style="padding:24px"><div class="empty-state-icon">⏱</div><div class="empty-state-text">Nenhuma hora registrada${_hf!=='all'?' no período':''}</div></div>`:''}
 
-    ${allUsages.length?`<div class="hours-usage-list">${allUsages.sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map((u,i)=>{
+    ${filteredUsages.length?`<div class="hours-usage-list">${filteredUsages.sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map((u,i)=>{
         const proj=u.projectId?projects.find(p=>String(p.id)===String(u.projectId)):null;
         const pkgOfUsage=hoursPackages.find(x=>x.id===u._pkgId);
         const rate=_qualRate(pkgOfUsage,u.qual);
@@ -4116,8 +4219,8 @@ function renderHoursDetail(){
         </div>`;
       }).join('')}
       <div class="panel" style="padding:12px 16px;background:rgba(37,99,235,0.05);display:flex;justify-content:space-between;align-items:center">
-        <span style="font-weight:700">Total utilizado</span>
-        <span style="font-family:var(--mono);font-weight:700;color:var(--amber);font-size:16px">${fmtH(totalUsedAll)}</span>
+        <span style="font-weight:700">Total${_hf!=='all'?' no período':''}</span>
+        <span style="font-family:var(--mono);font-weight:700;color:var(--amber);font-size:16px">${fmtH(filteredUsages.reduce((s,u)=>s+(Number(u.hours)||0),0))}</span>
       </div>
     </div>`:''}
 
