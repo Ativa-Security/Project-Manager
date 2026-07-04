@@ -3872,7 +3872,7 @@ function renderHoursGrid(){
       <div style="font-size:10px;color:var(--text3);display:flex;gap:12px;flex-wrap:wrap">
         <span>${pkg.tipo==='mensal'?'📆 Mensal':'📅 Anual'}</span>
         <span>📅 ${fmtDate(pkg.start)} → ${fmtDate(pkg.end)}</span>
-        ${pkg.monthly?`<span style="color:var(--green)">💰 MRR ${fmtCur(pkg.monthlyProposal)}/mês</span>`:''}
+        ${isAdmin()&&pkg.monthly?`<span style="color:var(--green)">💰 MRR ${fmtCur(pkg.monthlyProposal)}/mês</span>`:''}
         ${expired?'<span style="color:var(--red)">⬛ Expirado</span>':''}
         ${renewals?`<span style="color:var(--accent2)">🔄 ${renewals} renovação${renewals>1?'s':''}</span>`:''}
       </div>
