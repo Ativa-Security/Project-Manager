@@ -5445,7 +5445,6 @@ window.doLogin=async function(){
   const btn=document.getElementById('login-btn');
   const err=document.getElementById('login-error');
   err.style.display='none';
-  if(!email.endsWith('@ativait.com.br')){err.textContent='⚠ Acesso restrito a e-mails @ativait.com.br';err.style.display='block';return;}
   btn.disabled=true; btn.textContent='Entrando…';
   try{ await _auth.signInWithEmailAndPassword(email,pass); }
   catch(e){ err.textContent='E-mail ou senha incorretos.'; err.style.display='block'; btn.disabled=false; btn.textContent='Entrar'; }
@@ -5614,7 +5613,6 @@ window.addUser=async function(){
   const role=document.getElementById('nu-role').value;
   const err=document.getElementById('nu-err'); err.style.display='none';
   if(!name||!email||!pass){err.textContent='Preencha todos os campos.';err.style.display='block';return;}
-  if(!email.endsWith('@ativait.com.br')){err.textContent='E-mail deve ser @ativait.com.br';err.style.display='block';return;}
   try{
     const cred=await _auth.createUserWithEmailAndPassword(email,pass);
     await _db.collection('Users').doc(cred.user.uid).set({name,email,role,active:true,mfaEnabled:false,createdAt:Date.now()});
