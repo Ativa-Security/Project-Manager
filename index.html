@@ -992,6 +992,13 @@ input,select,textarea{font-family:var(--font)}
               <div style="font-size:11px;color:var(--text3)">Ex: 10h/ano — acumulam o ano todo</div>
             </div>
           </label>
+          <label style="display:flex;align-items:center;gap:7px;cursor:pointer;flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;transition:all .15s" id="hp-tipo-trimestral-lbl">
+            <input type="radio" name="hp-tipo" id="hp-tipo-trimestral" value="trimestral" style="accent-color:var(--accent2)" onchange="_updateHoursHint()">
+            <div>
+              <div style="font-size:13px;font-weight:600">🗓️ Trimestral</div>
+              <div style="font-size:11px;color:var(--text3)">Ex: 15h/trim — zeram a cada 3 meses</div>
+            </div>
+          </label>
           <label style="display:flex;align-items:center;gap:7px;cursor:pointer;flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;transition:all .15s" id="hp-tipo-mensal-lbl">
             <input type="radio" name="hp-tipo" id="hp-tipo-mensal" value="mensal" style="accent-color:var(--accent2)" onchange="_updateHoursHint()">
             <div>
@@ -1159,6 +1166,9 @@ input,select,textarea{font-family:var(--font)}
           </label>
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:var(--text2)">
             <input type="radio" name="hr-tipo" id="hr-tipo-anual" value="anual" style="accent-color:var(--accent2)"> 📅 Anual
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:var(--text2)">
+            <input type="radio" name="hr-tipo" id="hr-tipo-trimestral" value="trimestral" style="accent-color:var(--accent2)"> 🗓️ Trimestral
           </label>
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:var(--text2)">
             <input type="radio" name="hr-tipo" id="hr-tipo-mensal" value="mensal" style="accent-color:var(--accent2)"> 📆 Mensal
@@ -1798,7 +1808,7 @@ function renderClientHours(pkgs){
         <span style="font-size:16px">${st.icon}</span>
         <div style="flex:1">
           <div style="font-size:13px;font-weight:600">${pkg.desc||'Pacote de horas'}</div>
-          <div style="font-size:11px;color:var(--text3)">${pkg.tipo==='mensal'?'📆 Mensal':'📅 Anual'} · ${fmtDate(pkg.start)} → ${fmtDate(pkg.end)}${expired?' · <span style="color:var(--red)">Expirado</span>':''}${renewals?' · 🔄 '+renewals+' renov.':''}</div>
+          <div style="font-size:11px;color:var(--text3)">${pkg.tipo==='mensal'?'📆 Mensal':pkg.tipo==='trimestral'?'🗓️ Trimestral':'📅 Anual'} · ${fmtDate(pkg.start)} → ${fmtDate(pkg.end)}${expired?' · <span style="color:var(--red)">Expirado</span>':''}${renewals?' · 🔄 '+renewals+' renov.':''}</div>
         </div>
         <div style="text-align:right">
           <div style="font-size:11px;color:var(--text3)">Saldo</div>
@@ -3770,12 +3780,22 @@ function hoursStatus(pkg){
   if(tipo === 'mensal' && pkg.start && pkg.end){
     const now      = new Date();
     const mStart   = new Date(now.getFullYear(), now.getMonth(), 1);
-    const mEnd     = new Date(now.getFullYear(), now.getMonth()+1, 0); // last day of month
+    const mEnd     = new Date(now.getFullYear(), now.getMonth()+1, 0);
     const fmt      = d => d.toISOString().split('T')[0];
-    // Only apply monthly window if today is within the contracted period
     if(today >= pkg.start && today <= pkg.end){
       windowStart = fmt(mStart);
       windowEnd   = fmt(mEnd);
+    }
+  } else if(tipo === 'trimestral' && pkg.start && pkg.end){
+    const fmt = d => d.toISOString().split('T')[0];
+    const now = new Date(today+'T12:00:00');
+    if(today >= pkg.start && today <= pkg.end){
+      let bs = new Date(pkg.start+'T12:00:00');
+      while(true){
+        const be = new Date(bs.getFullYear(), bs.getMonth()+3, 0);
+        if(now <= be){ windowStart = fmt(bs); windowEnd = fmt(be); break; }
+        bs = new Date(bs.getFullYear(), bs.getMonth()+3, 1);
+      }
     }
   }
 
@@ -3870,7 +3890,7 @@ function renderHoursGrid(){
         </div>
       </div>
       <div style="font-size:10px;color:var(--text3);display:flex;gap:12px;flex-wrap:wrap">
-        <span>${pkg.tipo==='mensal'?'📆 Mensal':'📅 Anual'}</span>
+        <span>${pkg.tipo==='mensal'?'📆 Mensal':pkg.tipo==='trimestral'?'🗓️ Trimestral':'📅 Anual'}</span>
         <span>📅 ${fmtDate(pkg.start)} → ${fmtDate(pkg.end)}</span>
         ${isAdmin()&&pkg.monthly?`<span style="color:var(--green)">💰 MRR ${fmtCur(pkg.monthlyProposal)}/mês</span>`:''}
         ${expired?'<span style="color:var(--red)">⬛ Expirado</span>':''}
@@ -3913,6 +3933,7 @@ function openHoursModal(id=null){
   const tipo=pkg?pkg.tipo||'anual':'anual';
   document.getElementById('hp-tipo-anual').checked  = tipo==='anual';
   document.getElementById('hp-tipo-mensal').checked = tipo==='mensal';
+  document.getElementById('hp-tipo-trimestral').checked = tipo==='trimestral';
   _updateHoursHint();
   document.querySelectorAll('input[name="hp-tipo"]').forEach(r=>r.onchange=_updateHoursHint);
   openModal('hours-modal-overlay');
@@ -3920,18 +3941,23 @@ function openHoursModal(id=null){
 
 function _updateHoursHint(){
   const isMensal=document.getElementById('hp-tipo-mensal').checked;
+  const isTri=document.getElementById('hp-tipo-trimestral').checked;
   const hint=document.getElementById('hp-tipo-hint');
-  // Highlight selected card
   const anlbl=document.getElementById('hp-tipo-anual-lbl');
   const mnlbl=document.getElementById('hp-tipo-mensal-lbl');
-  if(anlbl) anlbl.style.borderColor=!isMensal?'var(--accent2)':'var(--border)';
+  const trlbl=document.getElementById('hp-tipo-trimestral-lbl');
+  if(anlbl) anlbl.style.borderColor=(!isMensal&&!isTri)?'var(--accent2)':'var(--border)';
   if(mnlbl) mnlbl.style.borderColor= isMensal?'var(--accent2)':'var(--border)';
+  if(trlbl) trlbl.style.borderColor= isTri?'var(--accent2)':'var(--border)';
   if(!hint) return;
   if(isMensal){
-    hint.innerHTML='📆 <strong>Mensal:</strong> o cliente tem <em>X horas por mês</em>. Conta apenas os registros do mês corrente. Horas não usadas <strong>não acumulam</strong> para o mês seguinte — zeram automaticamente a cada virada de mês.';
+    hint.innerHTML='📆 <strong>Mensal:</strong> horas por mês, não cumulativas — zeram a cada virada de mês.';
     hint.style.borderLeftColor='var(--purple)';
+  } else if(isTri){
+    hint.innerHTML='🗓️ <strong>Trimestral:</strong> horas por trimestre — zeram a cada 3 meses a partir da contratação.';
+    hint.style.borderLeftColor='var(--amber)';
   } else {
-    hint.innerHTML='📅 <strong>Anual:</strong> o cliente tem <em>X horas por ano</em>. Todos os registros do período contratado (início → validade) são somados. Zeram somente ao renovar o pacote.';
+    hint.innerHTML='📅 <strong>Anual:</strong> horas somadas no período contratado. Zeram somente ao renovar.';
     hint.style.borderLeftColor='var(--accent2)';
   }
 }
@@ -3947,7 +3973,7 @@ function saveHoursPackage(){
   const start=document.getElementById('hp-start').value;
   const end=document.getElementById('hp-end').value;
   if(!clientId||!hours||!start||!end){alert('Preencha cliente, horas, data de contratação e validade');return;}
-  const tipo=document.getElementById('hp-tipo-mensal').checked?'mensal':'anual';
+  const tipo=document.getElementById('hp-tipo-mensal').checked?'mensal':document.getElementById('hp-tipo-trimestral').checked?'trimestral':'anual';
   const monthly=document.getElementById('hp-monthly').checked;
   const data={
     id:_editingHoursId||nextHoursId++,
@@ -4111,9 +4137,9 @@ function renderHoursDetail(){
         <div>
           <div style="font-weight:700;color:${st.color}">${st.label}</div>
           <div style="font-size:11px;color:var(--text3)">
-            ${pkg.tipo==='mensal'?'📆 Mensal — saldo conta apenas horas do mês corrente':'📅 Anual — saldo acumula todo o período'}
+            ${pkg.tipo==='mensal'?'📆 Mensal — saldo conta apenas horas do mês corrente':pkg.tipo==='trimestral'?'🗓️ Trimestral — saldo conta o trimestre corrente':'📅 Anual — saldo acumula todo o período'}
             · Contratado ${fmtDate(pkg.start)} · Válido até ${fmtDate(pkg.end)}${expired?' · <span style="color:var(--red)">EXPIRADO</span>':''}
-            ${pkg.tipo==='mensal'?`<br>🗓 Janela ativa: ${fmtDate(st2.windowStart)} → ${fmtDate(st2.windowEnd)}`:''}
+            ${(pkg.tipo==='mensal'||pkg.tipo==='trimestral')?`<br>🗓 Janela ativa: ${fmtDate(st2.windowStart)} → ${fmtDate(st2.windowEnd)}`:''}
           </div>
         </div>
       </div>
