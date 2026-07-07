@@ -1506,30 +1506,54 @@ function getAllProducts(){ return [...DEFAULT_PRODUCTS,...customProducts.filter(
 
 function saveCustomList(key, arr){ try{ localStorage.setItem('a360_'+key, JSON.stringify(arr)); }catch(e){} }
 
-function populateDynSelect(selId, items, currentVal, placeholder, onAddNew){
+function populateDynSelect(selId, items, currentVal, placeholder, onAddNew, listKey){
   const sel = document.getElementById(selId); if(!sel) return;
   sel.innerHTML = `<option value="">${placeholder}</option>` +
     items.map(s=>`<option value="${s}">${s}</option>`).join('') +
-    `<option value="__add__" style="color:var(--accent2);font-weight:600">+ Adicionar novo...</option>`;
+    `<option value="__add__" style="color:var(--accent2);font-weight:600">+ Adicionar novo...</option>` +
+    (isAdmin()&&listKey?`<option value="__manage__" style="color:var(--amber);font-weight:600">⚙ Gerenciar itens...</option>`:'');
   if(currentVal) sel.value = currentVal;
   sel.onchange = function(){
     if(this.value === '__add__'){
       const name = prompt('Digite o novo item:');
       if(name && name.trim()){
         onAddNew(name.trim());
-        populateDynSelect(selId, items.includes(name.trim())?items:[...items,name.trim()], name.trim(), placeholder, onAddNew);
+        populateDynSelect(selId, items.includes(name.trim())?items:[...items,name.trim()], name.trim(), placeholder, onAddNew, listKey);
       } else { this.value = currentVal||''; }
+    } else if(this.value === '__manage__'){
+      manageDynList(listKey, ()=>{ const fresh=getDynItems(listKey); populateDynSelect(selId, fresh, (fresh.includes(currentVal)?currentVal:''), placeholder, onAddNew, listKey); });
+      this.value=currentVal||'';
     } else { currentVal = this.value; }
   };
 }
+function getDynItems(key){ return key==='owners'?getAllOwners():key==='segments'?getAllSegments():key==='products'?getAllProducts():key==='sectors'?getAllSectors():[]; }
+function getCustomList(key){ return key==='owners'?customOwners:key==='segments'?customSegments:key==='products'?customProducts:key==='sectors'?customSectors:[]; }
+function setCustomList(key,arr){ if(key==='owners')customOwners=arr;else if(key==='segments')customSegments=arr;else if(key==='products')customProducts=arr;else if(key==='sectors')customSectors=arr; saveCustomList(key,arr); }
+function manageDynList(key, done){
+  const items=getDynItems(key);
+  if(!items.length){ alert('Nenhum item para gerenciar'); return; }
+  const idx=prompt('Itens:\n'+items.map((s,i)=>`${i+1}. ${s}`).join('\n')+'\n\nDigite o NÚMERO para editar/excluir:');
+  const n=parseInt(idx); if(!n||n<1||n>items.length) return;
+  const val=items[n-1];
+  const act=prompt(`"${val}"\n\nDigite:\n- novo nome para EDITAR\n- deixe vazio e confirme para EXCLUIR`, val);
+  if(act===null) return;
+  let cl=getCustomList(key).slice();
+  if(act.trim()===''){ // delete
+    if(!confirm(`Excluir "${val}"?`)) return;
+    cl=cl.filter(x=>x!==val); setCustomList(key,cl);
+  } else if(act.trim()!==val){ // rename
+    cl=cl.map(x=>x===val?act.trim():x); if(!cl.includes(act.trim())) cl.push(act.trim()); setCustomList(key,cl);
+  }
+  if(done) done();
+}
 
 function loadClientModalSelects(currentSeg, currentOwner){
-  populateDynSelect('c-segment', getAllSegments(), currentSeg, 'Selecione o segmento...', (v)=>{ if(!customSegments.includes(v)){customSegments.push(v); saveCustomList('segments',customSegments);} });
-  populateDynSelect('c-owner',   getAllOwners(),   currentOwner, 'Selecione o responsável...', (v)=>{ if(!customOwners.includes(v)){customOwners.push(v); saveCustomList('owners',customOwners);} });
+  populateDynSelect('c-segment', getAllSegments(), currentSeg, 'Selecione o segmento...', (v)=>{ if(!customSegments.includes(v)){customSegments.push(v); saveCustomList('segments',customSegments);} }, 'segments');
+  populateDynSelect('c-owner',   getAllOwners(),   currentOwner, 'Selecione o responsável...', (v)=>{ if(!customOwners.includes(v)){customOwners.push(v); saveCustomList('owners',customOwners);} }, 'owners');
 }
 
 function loadLicenseProductSelect(currentVal){
-  populateDynSelect('l-product', getAllProducts(), currentVal, 'Selecione o produto...', (v)=>{ if(!customProducts.includes(v)){customProducts.push(v); saveCustomList('products',customProducts);} });
+  populateDynSelect('l-product', getAllProducts(), currentVal, 'Selecione o produto...', (v)=>{ if(!customProducts.includes(v)){customProducts.push(v); saveCustomList('products',customProducts);} }, 'products');
 }
 
 // ══════════════════════════════════
