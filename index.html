@@ -3645,11 +3645,22 @@ function repHours(){
     if(fc.startsWith('c:')){const cid=fc.slice(2);const grp=cGroupOf(cid);return grp?String(r.pkg.groupId||'')===String(grp.id):String(r.pkg.clientId||'')===cid;}
     return true;
   });
-  // Contratadas = current active-period pool (per quarter/month for cyclic models),
-  // Saldo/Excesso = pool − uses in the CURRENT active window (always up to date, ignores period filter).
+  // Contratadas = pool of the package(s) whose validity overlaps the SELECTED period
+  //   (active package when no period is set). Not the sum of all past renewals.
+  // Saldo/Excesso = still based on the CURRENT active window (always up to date).
+  function pkgsForPeriod(chain){
+    if(!repPeriod.start&&!repPeriod.end) return [chain[chain.length-1]];
+    const sel=chain.filter(p=>{const ps=p.start||'',pe=p.end||'';if(repPeriod.start&&pe&&pe<repPeriod.start)return false;if(repPeriod.end&&ps&&ps>repPeriod.end)return false;return true;});
+    return sel.length?sel:[chain[chain.length-1]];
+  }
   let totContracted=0,saldoRem=0,saldoOver=0;
-  relRoots.forEach(r=>{const st=hoursStatus(r.pkg);totContracted+=st.total;saldoRem+=st.remaining;saldoOver+=st.over;});
+  const tipoSet=new Set();
+  relRoots.forEach(r=>{
+    const st=hoursStatus(r.pkg);saldoRem+=st.remaining;saldoOver+=st.over;
+    pkgsForPeriod(r.chain).forEach(p=>{totContracted+=(Number(p.hours)||0);tipoSet.add(p.tipo||'anual');});
+  });
   const totOver=saldoOver, totRemaining=saldoRem;
+  const tipoLbl=tipoSet.size===1?({anual:'📅 Anual',mensal:'📆 Mensal',trimestral:'🗓️ Trimestral'})[[...tipoSet][0]]:(tipoSet.size?'Modelos mistos':'—');
 
   // selector options
   const groupOpts=clientGroups.map(g=>`<option value="g:${g.id}"${fc==='g:'+g.id?' selected':''}>👥 ${g.name}</option>`).join('');
@@ -3687,7 +3698,10 @@ function repHours(){
 
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">
       <div class="kpi-card"><div class="kpi-label">Clientes no relatório</div><div class="kpi-value">${clientRows.length}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Horas Contratadas${relRoots.some(r=>r.pkg.tipo==='trimestral'||r.pkg.tipo==='mensal')?' (período vigente)':''}</div><div class="kpi-value">${fmtH(totContracted)}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Horas Contratadas${(repPeriod.start||repPeriod.end)?' (período selec.)':''}</div>
+        <div class="kpi-value">${fmtH(totContracted)}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">${tipoLbl} · pool ${fmtH(totContracted)}</div>
+      </div>
       <div class="kpi-card"><div class="kpi-label">Horas Utilizadas${triBox?' (trimestre)':''}</div>
         <div class="kpi-value" style="color:var(--amber)">${fmtH(triBox?triBox.cumTotal:totUsed)}</div>
         ${triBox?`<div style="margin-top:6px;padding:5px 8px;background:rgba(245,166,35,0.14);border:1px solid rgba(245,166,35,0.35);border-radius:6px;font-size:12px;font-weight:700;color:var(--amber);text-transform:capitalize">▶ ${triBox.mName}: ${fmtH(triBox.monthTotal)}</div><div style="font-size:10px;color:var(--text3);margin-top:4px">Trimestre ${fmtDate(triBox.ws)}–${fmtDate(triBox.we)}</div>`:''}
