@@ -3645,19 +3645,24 @@ function repHours(){
     if(fc.startsWith('c:')){const cid=fc.slice(2);const grp=cGroupOf(cid);return grp?String(r.pkg.groupId||'')===String(grp.id):String(r.pkg.clientId||'')===cid;}
     return true;
   });
-  // Contratadas = pool of the package(s) whose validity overlaps the SELECTED period
-  //   (active package when no period is set). Not the sum of all past renewals.
-  // Saldo/Excesso = still based on the CURRENT active window (always up to date).
-  function pkgsForPeriod(chain){
-    if(!repPeriod.start&&!repPeriod.end) return [chain[chain.length-1]];
-    const sel=chain.filter(p=>{const ps=p.start||'',pe=p.end||'';if(repPeriod.start&&pe&&pe<repPeriod.start)return false;if(repPeriod.end&&ps&&ps>repPeriod.end)return false;return true;});
-    return sel.length?sel:[chain[chain.length-1]];
+  // Contratadas = pool of ONE package per contrato: the one valid na data de
+  //   referência do período selecionado (fim do período; senão início; senão o ativo).
+  function pkgForPeriod(chain){
+    const ref=repPeriod.end||repPeriod.start;
+    if(!ref) return chain[chain.length-1];
+    // package whose validity contains ref
+    let hit=chain.filter(p=>{const ps=p.start||'0000',pe=p.end||'9999';return ps<=ref&&ref<=pe;});
+    if(hit.length) return hit[hit.length-1];
+    // fallback: closest one overlapping the period at all
+    hit=chain.filter(p=>{const ps=p.start||'0000',pe=p.end||'9999';if(repPeriod.start&&pe<repPeriod.start)return false;if(repPeriod.end&&ps>repPeriod.end)return false;return true;});
+    return hit.length?hit[hit.length-1]:chain[chain.length-1];
   }
   let totContracted=0,saldoRem=0,saldoOver=0;
   const tipoSet=new Set();
   relRoots.forEach(r=>{
     const st=hoursStatus(r.pkg);saldoRem+=st.remaining;saldoOver+=st.over;
-    pkgsForPeriod(r.chain).forEach(p=>{totContracted+=(Number(p.hours)||0);tipoSet.add(p.tipo||'anual');});
+    const p=pkgForPeriod(r.chain);
+    totContracted+=(Number(p.hours)||0);tipoSet.add(p.tipo||'anual');
   });
   const totOver=saldoOver, totRemaining=saldoRem;
   const tipoLbl=tipoSet.size===1?({anual:'📅 Anual',mensal:'📆 Mensal',trimestral:'🗓️ Trimestral'})[[...tipoSet][0]]:(tipoSet.size?'Modelos mistos':'—');
