@@ -683,6 +683,9 @@ input,select,textarea{font-family:var(--font)}
       <div class="section-header">
         <div class="section-title">Relatórios</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-accent" onclick="exportReportTab()" style="display:flex;align-items:center;gap:6px">
+            <span>🖨</span> Exportar esta aba
+          </button>
           <button class="btn btn-ghost" onclick="exportFullReportPDF(false)" style="display:flex;align-items:center;gap:6px">
             <span>👤</span> PDF p/ cliente
           </button>
@@ -2904,90 +2907,12 @@ function reportLogoHeader(subtitle){
 // ══════════════════════════════════
 //   FULL PDF EXPORT
 // ══════════════════════════════════
-window.exportFullReportPDF = function(withFinancials){
-  if(withFinancials===undefined) withFinancials=true;
-  window._pdfNoFinancials = !withFinancials;
-  const btn = document.querySelector(`[onclick="exportFullReportPDF(${withFinancials})"]`);
-  const _origBtnHtml = btn?btn.innerHTML:'';
-  if(btn){ btn.textContent='⏳ Gerando...'; btn.disabled=true; }
-
-  const now = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
-  const LOGO_DATA_URI_EXPORT = LOGO_DATA_URI; // blue logo for print (white bg)
-
-  // Page break helper
-  const pageBreak = '<div style="page-break-after:always;height:0;margin:0;padding:0"></div>';
-
-  // Section divider
-  function sectionHeader(title, icon){
-    return `<div style="display:flex;align-items:center;gap:10px;margin:32px 0 16px;padding-bottom:10px;border-bottom:2px solid #2563eb">
-      <span style="font-size:20px">${icon}</span>
-      <span style="font-size:16px;font-weight:700;color:#1a2e5c">${title}</span>
-    </div>`;
-  }
-
-  // Build cover page
-  const cover = `
-    <div style="height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;page-break-after:always;background:linear-gradient(160deg,#070b14 0%,#0c1529 40%,#0d2260 100%);color:#fff;padding:40px;position:relative;overflow:hidden">
-      <div style="position:absolute;inset:0;background:radial-gradient(ellipse 60% 50% at 25% 35%,rgba(37,99,235,0.25) 0%,transparent 70%),radial-gradient(ellipse 45% 45% at 80% 70%,rgba(96,165,250,0.15) 0%,transparent 70%);pointer-events:none"></div>
-      <div style="position:relative;z-index:2;display:flex;flex-direction:column;align-items:center">
-      <img src="${LOGO_DATA_URI_EXPORT}" style="height:120px;width:auto;margin-bottom:40px;filter:brightness(10) drop-shadow(0 0 30px rgba(96,165,250,0.5))">
-      <div style="font-size:36px;font-weight:800;letter-spacing:-.02em;margin-bottom:8px;background:linear-gradient(135deg,#fff,#93c5fd);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">${window._pdfNoFinancials?'Relatório de Serviços':'Relatório Completo'}</div>
-      <div style="font-size:16px;opacity:.7;margin-bottom:40px">Ativa Security · Ativa360</div>
-      <div style="background:rgba(255,255,255,0.08);border:1px solid rgba(96,165,250,0.3);border-radius:12px;padding:20px 40px;display:inline-block;backdrop-filter:blur(10px)">
-        <div style="font-size:13px;opacity:.6;margin-bottom:4px">Gerado em</div>
-        <div style="font-size:18px;font-weight:600">${now}</div>
-      </div>
-      <div style="margin-top:40px;display:flex;gap:20px;flex-wrap:wrap;justify-content:center">
-        ${[
-          ['👥', clients.length, 'Clientes'],
-          ['📋', projects.length, 'Projetos'],
-          ['🔑', licenses.length, 'Licenciamentos'],
-        ].map(([icon,n,label])=>`
-          <div style="background:rgba(255,255,255,0.08);border:1px solid rgba(96,165,250,0.2);border-radius:10px;padding:16px 24px;text-align:center">
-            <div style="font-size:24px;margin-bottom:4px">${icon}</div>
-            <div style="font-size:28px;font-weight:700">${n}</div>
-            <div style="font-size:11px;opacity:.6;text-transform:uppercase;letter-spacing:.06em">${label}</div>
-          </div>`).join('')}
-      </div>
-      </div>
-    </div>`;
-
-  // Temporarily switch to light mode for clean print rendering
-  const wasLight = document.body.classList.contains('light');
-  document.body.classList.add('light');
-
-  // Generate all sections (use a temp container to render SVGs)
-  const sections = [
-    { fn: repOverview,    title:'Visão Geral',           icon:'📊' },
-    { fn: repFinancial,   title:'Financeiro — Projetos', icon:'💰', adminOnly:true },
-    { fn: repMRR,         title:'MRR',                   icon:'📈', adminOnly:true },
-    { fn: repByProject,   title:'Por Projeto',           icon:'📋' },
-    { fn: repPerformance, title:'Desempenho',             icon:'🏆' },
-    { fn: repLicenses,    title:'Licenciamentos',         icon:'🔑' },
-    { fn: repHours,       title:'Horas Técnicas',         icon:'⏱' },
-  ];
-
-  let body = cover;
-
-  sections.forEach((s, idx) => {
-    if(s.adminOnly && (!isAdmin() || window._pdfNoFinancials)) return;
-    const content = s.fn();
-    body += `<div class="report-section">
-      ${sectionHeader(s.title, s.icon)}
-      <div class="report-section-body">${content}</div>
-    </div>`;
-    if(idx < sections.length - 1) body += pageBreak;
-  });
-
-  if(!wasLight) document.body.classList.remove('light');
-
-  // Build print window with self-contained styles
-  const w = window.open('','_blank','width=1200,height=900');
-  w.document.write(`<!DOCTYPE html>
+function _reportPrintShell(title,now,body){
+  return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Relatório Completo — Ativa Security — ${now}</title>
+<title>${title} — Ativa Security — ${now}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -3079,7 +3004,116 @@ ${body}
     ✕ Fechar
   </button>
 </div></body>
-</html>`);
+</html>`;
+}
+
+// ── EXPORT SINGLE (current) REPORT TAB ──
+window.exportReportTab = function(){
+  const map={overview:['Visão Geral','📊',repOverview],projects:['Projetos','📋',repByProject],financial:['Financeiro — Projetos','💰',repFinancial],mrr:['MRR','📈',repMRR],performance:['Desempenho','🏆',repPerformance],licenses:['Licenciamentos','🔑',repLicenses],hours:['Horas Técnicas','⏱',repHours]};
+  const cur=map[currentReport]||map.overview;
+  const [title,icon,fn]=cur;
+  const now=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+  const wasLight=document.body.classList.contains('light');
+  document.body.classList.add('light');
+  let content;
+  try{ content=fn(); }catch(e){ content='<div style="padding:40px;color:#dc2626">Erro: '+e.message+'</div>'; }
+  if(!wasLight) document.body.classList.remove('light');
+  const cover=`<div style="height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;page-break-after:always;background:linear-gradient(160deg,#070b14 0%,#0c1529 40%,#0d2260 100%);color:#fff;padding:40px;position:relative;overflow:hidden">
+    <div style="position:absolute;inset:0;background:radial-gradient(ellipse 60% 50% at 25% 35%,rgba(37,99,235,0.25) 0%,transparent 70%);pointer-events:none"></div>
+    <div style="position:relative;z-index:2;display:flex;flex-direction:column;align-items:center">
+    <img src="${LOGO_DATA_URI}" style="height:110px;margin-bottom:36px;filter:brightness(10) drop-shadow(0 0 30px rgba(96,165,250,0.5))">
+    <div style="font-size:20px;opacity:.6;margin-bottom:6px">${icon} Relatório</div>
+    <div style="font-size:34px;font-weight:800;margin-bottom:8px;background:linear-gradient(135deg,#fff,#93c5fd);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">${title}</div>
+    <div style="font-size:15px;opacity:.7;margin-bottom:36px">Ativa Security · Ativa360</div>
+    <div style="background:rgba(255,255,255,0.08);border:1px solid rgba(96,165,250,0.3);border-radius:12px;padding:16px 36px;backdrop-filter:blur(10px)">
+      <div style="font-size:12px;opacity:.6;margin-bottom:4px">Gerado em</div><div style="font-size:17px;font-weight:600">${now}</div></div>
+    </div></div>`;
+  const body=cover+'<div class="report-section"><div class="report-section-body">'+content+'</div></div>';
+  const w=window.open('','_blank','width=1200,height=900');
+  w.document.write(_reportPrintShell(title,now,body));
+  w.document.close();
+};
+
+window.exportFullReportPDF = function(withFinancials){
+  if(withFinancials===undefined) withFinancials=true;
+  window._pdfNoFinancials = !withFinancials;
+  const btn = document.querySelector(`[onclick="exportFullReportPDF(${withFinancials})"]`);
+  const _origBtnHtml = btn?btn.innerHTML:'';
+  if(btn){ btn.textContent='⏳ Gerando...'; btn.disabled=true; }
+
+  const now = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+  const LOGO_DATA_URI_EXPORT = LOGO_DATA_URI; // blue logo for print (white bg)
+
+  // Page break helper
+  const pageBreak = '<div style="page-break-after:always;height:0;margin:0;padding:0"></div>';
+
+  // Section divider
+  function sectionHeader(title, icon){
+    return `<div style="display:flex;align-items:center;gap:10px;margin:32px 0 16px;padding-bottom:10px;border-bottom:2px solid #2563eb">
+      <span style="font-size:20px">${icon}</span>
+      <span style="font-size:16px;font-weight:700;color:#1a2e5c">${title}</span>
+    </div>`;
+  }
+
+  // Build cover page
+  const cover = `
+    <div style="height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;page-break-after:always;background:linear-gradient(160deg,#070b14 0%,#0c1529 40%,#0d2260 100%);color:#fff;padding:40px;position:relative;overflow:hidden">
+      <div style="position:absolute;inset:0;background:radial-gradient(ellipse 60% 50% at 25% 35%,rgba(37,99,235,0.25) 0%,transparent 70%),radial-gradient(ellipse 45% 45% at 80% 70%,rgba(96,165,250,0.15) 0%,transparent 70%);pointer-events:none"></div>
+      <div style="position:relative;z-index:2;display:flex;flex-direction:column;align-items:center">
+      <img src="${LOGO_DATA_URI_EXPORT}" style="height:120px;width:auto;margin-bottom:40px;filter:brightness(10) drop-shadow(0 0 30px rgba(96,165,250,0.5))">
+      <div style="font-size:36px;font-weight:800;letter-spacing:-.02em;margin-bottom:8px;background:linear-gradient(135deg,#fff,#93c5fd);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">${window._pdfNoFinancials?'Relatório de Serviços':'Relatório Completo'}</div>
+      <div style="font-size:16px;opacity:.7;margin-bottom:40px">Ativa Security · Ativa360</div>
+      <div style="background:rgba(255,255,255,0.08);border:1px solid rgba(96,165,250,0.3);border-radius:12px;padding:20px 40px;display:inline-block;backdrop-filter:blur(10px)">
+        <div style="font-size:13px;opacity:.6;margin-bottom:4px">Gerado em</div>
+        <div style="font-size:18px;font-weight:600">${now}</div>
+      </div>
+      <div style="margin-top:40px;display:flex;gap:20px;flex-wrap:wrap;justify-content:center">
+        ${[
+          ['👥', clients.length, 'Clientes'],
+          ['📋', projects.length, 'Projetos'],
+          ['🔑', licenses.length, 'Licenciamentos'],
+        ].map(([icon,n,label])=>`
+          <div style="background:rgba(255,255,255,0.08);border:1px solid rgba(96,165,250,0.2);border-radius:10px;padding:16px 24px;text-align:center">
+            <div style="font-size:24px;margin-bottom:4px">${icon}</div>
+            <div style="font-size:28px;font-weight:700">${n}</div>
+            <div style="font-size:11px;opacity:.6;text-transform:uppercase;letter-spacing:.06em">${label}</div>
+          </div>`).join('')}
+      </div>
+      </div>
+    </div>`;
+
+  // Temporarily switch to light mode for clean print rendering
+  const wasLight = document.body.classList.contains('light');
+  document.body.classList.add('light');
+
+  // Generate all sections (use a temp container to render SVGs)
+  const sections = [
+    { fn: repOverview,    title:'Visão Geral',           icon:'📊' },
+    { fn: repFinancial,   title:'Financeiro — Projetos', icon:'💰', adminOnly:true },
+    { fn: repMRR,         title:'MRR',                   icon:'📈', adminOnly:true },
+    { fn: repByProject,   title:'Por Projeto',           icon:'📋' },
+    { fn: repPerformance, title:'Desempenho',             icon:'🏆' },
+    { fn: repLicenses,    title:'Licenciamentos',         icon:'🔑' },
+    { fn: repHours,       title:'Horas Técnicas',         icon:'⏱' },
+  ];
+
+  let body = cover;
+
+  sections.forEach((s, idx) => {
+    if(s.adminOnly && (!isAdmin() || window._pdfNoFinancials)) return;
+    const content = s.fn();
+    body += `<div class="report-section">
+      ${sectionHeader(s.title, s.icon)}
+      <div class="report-section-body">${content}</div>
+    </div>`;
+    if(idx < sections.length - 1) body += pageBreak;
+  });
+
+  if(!wasLight) document.body.classList.remove('light');
+
+  // Build print window with self-contained styles
+  const w = window.open('','_blank','width=1200,height=900');
+  w.document.write(_reportPrintShell("Relatório Completo — Ativa Security", now, body));
   w.document.close();
   // Re-enable export button
   window._pdfNoFinancials = false;
@@ -3517,155 +3551,157 @@ function repPerformance(){
 function repHours(){
   const year=new Date().getFullYear();
   const fc=window._hoursRepClient||'';
-  // fc formats: '' all | 'c:ID' client | 'g:ID' group (all pkgs of group) | 'gc:GID:CID' client within group's member companies
-  const roots=hoursPackages.filter(p=>{
-    if(p.parentId) return false;
-    if(!fc) return true;
-    if(fc.startsWith('g:')) return String(p.groupId)===fc.slice(2);
-    if(fc.startsWith('gc:')){ const cid=fc.split(':')[2]; return String(p.clientId)===cid; }
-    if(fc.startsWith('c:')) return String(p.clientId)===fc.slice(2);
-    return String(p.clientId)===fc;
-  });
+  const multi=Array.isArray(window._hoursRepClients)?window._hoursRepClients.map(String):[];
 
-  // Build stats per root
-  const stats=roots.map(root=>{
-    function buildChain(id){
-      const chain=[hoursPackages.find(x=>x.id===id)];
-      let cur=chain[0];
-      while(cur){ const next=hoursPackages.find(p=>p.parentId===cur.id); if(!next) break; chain.push(next); cur=next; }
-      return chain.filter(Boolean);
-    }
+  // ── Flatten ALL usages with effective client identity ──
+  // effClientId = usage.companyId (group member) OR pkg.clientId (standalone)
+  const roots=hoursPackages.filter(p=>!p.parentId);
+  function buildChain(id){const chain=[hoursPackages.find(x=>x.id===id)];let cur=chain[0];while(cur){const n=hoursPackages.find(p=>p.parentId===cur.id);if(!n)break;chain.push(n);cur=n;}return chain.filter(Boolean);}
+  const rootInfo=roots.map(root=>{
     const chain=buildChain(root.id);
-    const _allUsagesRaw=chain.flatMap(p=>(p.usages||[]));
-    const allUsages=_allUsagesRaw.filter(u=>{
-      if(!repPeriod.start&&!repPeriod.end) return true;
-      if(!u.date) return false;
-      if(repPeriod.start&&u.date<repPeriod.start) return false;
-      if(repPeriod.end&&u.date>repPeriod.end) return false;
-      return true;
-    });
-    const totalContracted=chain.reduce((s,p)=>s+(Number(p.hours)||0),0);
-    const totalUsed=allUsages.reduce((s,u)=>s+(Number(u.hours)||0),0);
-    const usedThisYear=allUsages.filter(u=>u.date&&u.date.startsWith(year+'')).reduce((s,u)=>s+(Number(u.hours)||0),0);
-    const contractedThisYear=chain.filter(p=>p.start&&p.start.startsWith(year+'')).reduce((s,p)=>s+(Number(p.hours)||0),0);
-    const pkg=chain[chain.length-1]; // active
-    const over=Math.max(0,totalUsed-totalContracted);
-    return {root,chain,pkg,allUsages,totalContracted,totalUsed,usedThisYear,contractedThisYear,over,remaining:Math.max(0,totalContracted-totalUsed)};
+    const pkg=chain[chain.length-1];
+    const contracted=chain.reduce((s,p)=>s+(Number(p.hours)||0),0);
+    const usages=chain.flatMap(p=>(p.usages||[]).map(u=>({...u,
+      effClientId:String(u.companyId||pkg.clientId||''),
+      groupId:pkg.groupId?String(pkg.groupId):null,
+      rootId:root.id})));
+    return {root,chain,pkg,contracted,usages};
   });
+  const inPeriod=u=>{if(!repPeriod.start&&!repPeriod.end)return true;if(!u.date)return false;if(repPeriod.start&&u.date<repPeriod.start)return false;if(repPeriod.end&&u.date>repPeriod.end)return false;return true;};
 
-  const totContracted=stats.reduce((s,x)=>s+x.totalContracted,0);
-  const totUsed=stats.reduce((s,x)=>s+x.totalUsed,0);
-  const totOver=stats.reduce((s,x)=>s+x.over,0);
-  const totRemaining=stats.reduce((s,x)=>s+x.remaining,0);
+  let allU=rootInfo.flatMap(r=>r.usages).filter(inPeriod);
+  // apply filter
+  if(multi.length){ allU=allU.filter(u=>multi.includes(u.effClientId)); }
+  else if(fc.startsWith('g:')){ const gid=fc.slice(2); allU=allU.filter(u=>u.groupId===gid); }
+  else if(fc.startsWith('gc:')){ const cid=fc.split(':')[2]; allU=allU.filter(u=>u.effClientId===cid); }
+  else if(fc.startsWith('c:')){ const cid=fc.slice(2); allU=allU.filter(u=>u.effClientId===cid); }
+
+  // clients that appear (for detail rows + selectors)
+  const clientIdsInUse=[...new Set(rootInfo.flatMap(r=>r.usages).map(u=>u.effClientId).filter(Boolean))];
+  const cName=id=>{const c=clients.find(x=>String(x.id)===String(id));return c?c.name:'—';};
+  const cGroupOf=id=>{const g=clientGroups.find(g=>(g.clientIds||[]).map(String).includes(String(id)));return g||null;};
+
+  // per-client aggregation of filtered usages
+  const byClient={};
+  allU.forEach(u=>{const k=u.effClientId||'?';(byClient[k]=byClient[k]||[]).push(u);});
+  const clientRows=Object.keys(byClient).map(cid=>{
+    const us=byClient[cid];
+    const used=us.reduce((s,u)=>s+(Number(u.hours)||0),0);
+    const usedYear=us.filter(u=>u.date&&u.date.startsWith(year+'')).reduce((s,u)=>s+(Number(u.hours)||0),0);
+    const grp=cGroupOf(cid);
+    // contracted pool: group pool if member, else own standalone chain
+    let contracted=0,poolShared=false;
+    if(grp){ const gr=rootInfo.find(r=>r.pkg.groupId&&String(r.pkg.groupId)===String(grp.id)); contracted=gr?gr.contracted:0; poolShared=true; }
+    else { const r=rootInfo.find(r=>String(r.pkg.clientId)===String(cid)); contracted=r?r.contracted:0; }
+    return {cid,used,usedYear,contracted,poolShared,grp,n:us.length};
+  }).sort((a,b)=>b.used-a.used);
+
+  const totUsed=allU.reduce((s,u)=>s+(Number(u.hours)||0),0);
+  const usedYearTot=allU.filter(u=>u.date&&u.date.startsWith(year+'')).reduce((s,u)=>s+(Number(u.hours)||0),0);
+  // contracted total = sum of unique root packages present in filtered set
+  const rootsPresent=[...new Set(allU.map(u=>u.rootId))];
+  const totContracted=rootsPresent.reduce((s,rid)=>{const r=rootInfo.find(x=>x.root.id===rid);return s+(r?r.contracted:0);},0);
+  const totOver=Math.max(0,totUsed-totContracted);
+  const totRemaining=Math.max(0,totContracted-totUsed);
+
+  // selector options
+  const groupOpts=clientGroups.map(g=>`<option value="g:${g.id}"${fc==='g:'+g.id?' selected':''}>👥 ${g.name}</option>`).join('');
+  const memberOpts=clientGroups.map(g=>{const membs=(g.clientIds||[]).map(id=>clients.find(c=>String(c.id)===String(id))).filter(Boolean);return membs.length?'<optgroup label="↳ '+g.name+' — empresas">'+membs.map(c=>`<option value="gc:${g.id}:${c.id}"${fc==='gc:'+g.id+':'+c.id?' selected':''}>${c.name}</option>`).join('')+'</optgroup>':'';}).join('');
+  const standaloneOpts=clientIdsInUse.filter(id=>!cGroupOf(id)).map(id=>`<option value="c:${id}"${fc==='c:'+id?' selected':''}>${cName(id)}</option>`).join('');
+
+  const multiOn=!!window._hoursMultiOpen||multi.length>0;
+  const multiChecklist=multiOn?`<div class="panel no-print" style="padding:12px 14px;margin-bottom:16px">
+    <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:8px">☑ Comparar clientes (singular, dentro ou fora de grupo)</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+    ${clientIdsInUse.map(id=>{const g=cGroupOf(id);const ck=multi.includes(String(id));return `<label style="display:flex;align-items:center;gap:5px;font-size:12px;background:var(--bg3);border:1px solid ${ck?'var(--accent)':'var(--border)'};border-radius:8px;padding:5px 10px;cursor:pointer">
+      <input type="checkbox" ${ck?'checked':''} onchange="(function(cb){window._hoursRepClient='';let a=Array.isArray(window._hoursRepClients)?window._hoursRepClients.slice():[];const v='${id}';if(cb.checked){if(!a.includes(v))a.push(v);}else{a=a.filter(x=>x!==v);}window._hoursRepClients=a;renderReport('hours');})(this)">
+      ${cName(id)}${g?` <span style="color:var(--text3);font-size:10px">(👥 ${g.name})</span>`:''}</label>`;}).join('')}
+    </div>
+    ${multi.length?`<button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="window._hoursRepClients=[];renderReport('hours')">✕ Limpar seleção</button>`:''}
+  </div>`:'';
 
   return `<div class="rep-content">
     ${reportLogoHeader()}
     <div class="rep-section-title">⏱ Relatório de Horas Técnicas</div>
     ${periodBar()}
-    <div class="no-print" style="margin-bottom:16px">
-      <label class="form-label">Filtrar por cliente / grupo</label>
-      <select class="form-select" style="max-width:360px" onchange="window._hoursRepClient=this.value;renderReport('hours')">
-        <option value="">Todos</option>
-        ${clientGroups.length?'<optgroup label="👥 Grupos">'+clientGroups.map(g=>`<option value="g:${g.id}"${fc==='g:'+g.id?' selected':''}>👥 ${g.name}</option>`).join('')+'</optgroup>':''}
-        ${clientGroups.map(g=>{const membs=(g.clientIds||[]).map(cid=>clients.find(c=>c.id===cid)).filter(Boolean);return membs.length?'<optgroup label="↳ '+g.name+' — empresas">'+membs.map(c=>`<option value="gc:${g.id}:${c.id}"${fc==='gc:'+g.id+':'+c.id?' selected':''}>${c.name}</option>`).join('')+'</optgroup>':'';}).join('')}
-        <optgroup label="🏢 Clientes">
-        ${clients.filter(c=>hoursPackages.some(p=>String(p.clientId)===String(c.id))).map(c=>`<option value="c:${c.id}"${fc==='c:'+c.id?' selected':''}>${c.name}</option>`).join('')}
-        </optgroup>
-      </select>
+    <div class="no-print" style="margin-bottom:12px;display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+      <div>
+        <label class="form-label">Filtrar por cliente / grupo</label>
+        <select class="form-select" style="max-width:360px" onchange="window._hoursRepClients=[];window._hoursRepClient=this.value;renderReport('hours')">
+          <option value="">Todos</option>
+          ${clientGroups.length?'<optgroup label="👥 Grupos (pacote inteiro)">'+groupOpts+'</optgroup>':''}
+          ${memberOpts}
+          ${standaloneOpts?'<optgroup label="🏢 Clientes">'+standaloneOpts+'</optgroup>':''}
+        </select>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="window._hoursMultiOpen=!(${multiOn});window._hoursRepClient='';renderReport('hours')">${multiOn?'✕ Fechar comparação':'☑ Comparar 2+ clientes'}</button>
     </div>
+    ${multiChecklist}
 
-    <!-- KPIs globais -->
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">
-      <div class="kpi-card"><div class="kpi-label">Total Clientes c/ Horas</div><div class="kpi-value">${roots.length}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Total Horas Contratadas</div><div class="kpi-value">${fmtH(totContracted)}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Total Horas Utilizadas</div><div class="kpi-value" style="color:var(--amber)">${fmtH(totUsed)}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Horas Excedentes</div><div class="kpi-value" style="color:${totOver>0?'var(--red)':'var(--green)'}">${totOver>0?'+'+fmtH(totOver)+' excesso':fmtH(totRemaining)+' saldo'}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Clientes no relatório</div><div class="kpi-value">${clientRows.length}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Horas Contratadas</div><div class="kpi-value">${fmtH(totContracted)}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Horas Utilizadas</div><div class="kpi-value" style="color:var(--amber)">${fmtH(totUsed)}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Saldo / Excesso</div><div class="kpi-value" style="color:${totOver>0?'var(--red)':'var(--green)'}">${totOver>0?'+'+fmtH(totOver)+' excesso':fmtH(totRemaining)+' saldo'}</div></div>
     </div>
 
-    <!-- Anual ${year} -->
     <div class="rep-section-title">📅 Resumo ${year}</div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px">
-      ${(()=>{
-        const cy=stats.reduce((s,x)=>s+x.contractedThisYear,0);
-        const uy=stats.reduce((s,x)=>s+x.usedThisYear,0);
-        const oy=Math.max(0,uy-cy);
-        return `<div class="kpi-card"><div class="kpi-label">Contratadas em ${year}</div><div class="kpi-value">${cy}h</div></div>
-        <div class="kpi-card"><div class="kpi-label">Utilizadas em ${year}</div><div class="kpi-value" style="color:var(--amber)">${fmtH(uy)}</div></div>
-        <div class="kpi-card"><div class="kpi-label">${oy>0?'Excesso em '+year:'Saldo em '+year}</div><div class="kpi-value" style="color:${oy>0?'var(--red)':'var(--green)'}">${oy>0?'+'+fmtH(oy):fmtH(Math.max(0,cy-uy))}</div></div>`;
-      })()}
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:24px">
+      <div class="kpi-card"><div class="kpi-label">Utilizadas em ${year}</div><div class="kpi-value" style="color:var(--amber)">${fmtH(usedYearTot)}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Registros no período</div><div class="kpi-value">${allU.length}</div></div>
     </div>
 
-    <!-- Tabela por cliente -->
-    <div class="rep-section-title">👥 Detalhamento por cliente</div>
-    <div class="panel" style="overflow:hidden;margin-bottom:24px">
+    <div class="rep-section-title">👥 Detalhamento por cliente (singular)</div>
+    <div class="panel" style="overflow:hidden;margin-bottom:24px"><div style="overflow-x:auto">
       <table class="data-table">
-        <thead><tr>
-          <th>Cliente</th><th>Pacote</th><th>Contratadas</th><th>Utilizadas</th><th>Saldo / Excesso</th>
-          <th>Renov.</th><th>Contratado em ${year}</th><th>Utilizado em ${year}</th><th>Status</th>
-        </tr></thead>
-        <tbody>${stats.sort((a,b)=>b.totalUsed-a.totalUsed).map(x=>{
-          const st=hoursBadgeStatus(x.pkg);
-          const bal=x.over>0?`<span style="color:var(--red)">+${fmtH(x.over)} excesso</span>`:`<span style="color:var(--green)">${fmtH(x.remaining)} saldo</span>`;
-          return `<tr>
-            <td style="font-weight:600">${hoursOwnerName(x.pkg)}</td>
-            <td style="font-size:12px;color:var(--text3)">${x.pkg.desc||'—'}</td>
-            <td style="font-family:var(--mono);color:var(--accent2);font-weight:600">${fmtH(x.totalContracted)}</td>
-            <td style="font-family:var(--mono);color:var(--amber);font-weight:600">${fmtH(x.totalUsed)}</td>
-            <td>${bal}</td>
-            <td style="font-family:var(--mono)">${x.chain.length-1}</td>
-            <td style="font-family:var(--mono)">${fmtH(x.contractedThisYear)}</td>
-            <td style="font-family:var(--mono)">${fmtH(x.usedThisYear)}</td>
-            <td><span class="badge" style="background:${st.color}20;color:${st.color};border:1px solid ${st.color}40">${st.icon} ${st.label}</span></td>
-          </tr>`;
-        }).join('')}
-        <tfoot><tr style="background:rgba(37,99,235,0.05)">
-          <td colspan="2" style="font-weight:700;padding:10px 14px">TOTAL</td>
-          <td style="font-family:var(--mono);font-weight:700;color:var(--accent2);padding:10px 14px">${fmtH(totContracted)}</td>
+        <thead><tr><th>Cliente</th><th>Grupo</th><th>Registros</th><th>Utilizadas</th><th>Utilizado em ${year}</th><th>Pacote (pool)</th></tr></thead>
+        <tbody>${clientRows.map(r=>`<tr>
+            <td style="font-weight:600">${cName(r.cid)}</td>
+            <td style="font-size:12px;color:var(--text3)">${r.grp?'👥 '+r.grp.name:'—'}</td>
+            <td style="font-family:var(--mono)">${r.n}</td>
+            <td style="font-family:var(--mono);color:var(--amber);font-weight:700">${fmtH(r.used)}</td>
+            <td style="font-family:var(--mono)">${fmtH(r.usedYear)}</td>
+            <td style="font-family:var(--mono);color:var(--accent2)">${fmtH(r.contracted)}${r.poolShared?' <span style="font-size:9px;color:var(--text3)">compart.</span>':''}</td>
+          </tr>`).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">Sem registros</td></tr>'}
+        <tr style="background:rgba(37,99,235,0.05)"><td colspan="3" style="font-weight:700;padding:10px 14px">TOTAL</td>
           <td style="font-family:var(--mono);font-weight:700;color:var(--amber);padding:10px 14px">${fmtH(totUsed)}</td>
-          <td style="padding:10px 14px">${totOver>0?`<span style="color:var(--red)">+${fmtH(totOver)}h excesso</span>`:`<span style="color:var(--green)">${fmtH(totRemaining)} saldo</span>`}</td>
-          <td colspan="4"></td>
-        </tr></tfoot>
-      </tbody></table>
-    </div>
+          <td style="font-family:var(--mono);font-weight:700;padding:10px 14px">${fmtH(usedYearTot)}</td>
+          <td style="font-family:var(--mono);font-weight:700;color:var(--accent2);padding:10px 14px">${fmtH(totContracted)}</td></tr>
+        </tbody></table>
+    </div></div>
 
-    <!-- Todos os registros de horas -->
     <div class="rep-section-title">📋 Todos os registros de horas</div>
-    <div class="panel" style="overflow:hidden">
+    <div class="panel" style="overflow:hidden"><div style="overflow-x:auto">
       <table class="data-table">
-        <thead><tr><th>Data</th><th>Cliente</th><th>Qualif.</th><th>Horas</th><th>Técnico</th><th>Serviço</th><th>Projeto</th></tr></thead>
-        <tbody>${stats.flatMap(x=>x.allUsages.map(u=>({...u,clientId:x.pkg.clientId,_root:x.root})))
-          .sort((a,b)=>(b.date||'').localeCompare(a.date||''))
-          .map(u=>{
+        <thead><tr><th>Data</th><th>Cliente</th><th>Grupo</th><th>Qualif.</th><th>Horas</th><th>Técnico</th><th>Serviço</th><th>Projeto</th></tr></thead>
+        <tbody>${allU.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(u=>{
             const proj=u.projectId?projects.find(p=>String(p.id)===String(u.projectId)):null;
-            const pkgOfU=hoursPackages.find(p=>p.id===u._pkgId)||u._root;
+            const g=cGroupOf(u.effClientId);
             return `<tr>
               <td style="font-family:var(--mono);font-size:11px">${fmtDate(u.date)}</td>
-              <td style="font-weight:600">${clientName(u.clientId)}</td>
+              <td style="font-weight:600">${cName(u.effClientId)}</td>
+              <td style="font-size:11px;color:var(--text3)">${g?'👥 '+g.name:'—'}</td>
               <td style="font-size:11px;white-space:nowrap">${_qualLabel(u.qual||'weekday')}</td>
               <td style="font-family:var(--mono);font-weight:700;color:var(--amber)">${fmtH(u.hours)}</td>
               <td>${u.tech||'—'}</td>
               <td style="font-size:12px">${u.desc||'—'}</td>
               <td style="font-size:11px;color:var(--purple)">${proj?proj.name:'—'}</td>
-            </tr>`;
-          }).join('')}
-        </tbody>
-      </table>
-    </div>
+            </tr>`;}).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">Sem registros</td></tr>'}
+        </tbody></table>
+    </div></div>
 
-    <!-- Breakdown por qualificação -->
     ${(()=>{
-      const allU=stats.flatMap(x=>x.allUsages);
       const wd=allU.filter(u=>!u.qual||u.qual==='weekday');
+      const ah=allU.filter(u=>u.qual==='afterhours');
       const sa=allU.filter(u=>u.qual==='saturday');
       const su=allU.filter(u=>u.qual==='sunday');
-      const hwd=wd.reduce((s,u)=>s+(Number(u.hours)||0),0);
-      const hsa=sa.reduce((s,u)=>s+(Number(u.hours)||0),0);
-      const hsu=su.reduce((s,u)=>s+(Number(u.hours)||0),0);
+      const H=arr=>fmtH(arr.reduce((s,u)=>s+(Number(u.hours)||0),0));
       return `<div class="rep-section-title" style="margin-top:20px">📊 Breakdown por qualificação</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px">
-        <div class="kpi-card"><div class="kpi-label">🗓 Seg–Sex</div><div class="kpi-value" style="color:var(--accent2)">${fmtH(hwd)}</div><div style="font-size:11px;color:var(--text3);margin-top:4px">${wd.length} registro${wd.length!==1?'s':''}</div></div>
-        <div class="kpi-card"><div class="kpi-label">🟡 Sábado</div><div class="kpi-value" style="color:var(--amber)">${fmtH(hsa)}</div><div style="font-size:11px;color:var(--text3);margin-top:4px">${sa.length} registro${sa.length!==1?'s':''}</div></div>
-        <div class="kpi-card"><div class="kpi-label">🔴 Dom/Feriado</div><div class="kpi-value" style="color:var(--red)">${fmtH(hsu)}</div><div style="font-size:11px;color:var(--text3);margin-top:4px">${su.length} registro${su.length!==1?'s':''}</div></div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">
+        <div class="kpi-card"><div class="kpi-label">🗓 Seg–Sex</div><div class="kpi-value" style="color:var(--accent2)">${H(wd)}</div><div style="font-size:11px;color:var(--text3);margin-top:4px">${wd.length} reg.</div></div>
+        <div class="kpi-card"><div class="kpi-label">🌙 Fora comercial</div><div class="kpi-value" style="color:var(--purple)">${H(ah)}</div><div style="font-size:11px;color:var(--text3);margin-top:4px">${ah.length} reg.</div></div>
+        <div class="kpi-card"><div class="kpi-label">🟡 Sábado</div><div class="kpi-value" style="color:var(--amber)">${H(sa)}</div><div style="font-size:11px;color:var(--text3);margin-top:4px">${sa.length} reg.</div></div>
+        <div class="kpi-card"><div class="kpi-label">🔴 Dom/Feriado</div><div class="kpi-value" style="color:var(--red)">${H(su)}</div><div style="font-size:11px;color:var(--text3);margin-top:4px">${su.length} reg.</div></div>
       </div>`;
     })()}
   </div>`;
