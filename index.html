@@ -721,6 +721,14 @@ input,select,textarea{font-family:var(--font)}
 <!-- ══════ MODALS ══════ -->
 
 <!-- CLIENT GROUPS MODAL -->
+<div class="modal-overlay" id="dynmgr-modal-overlay" onclick="if(event.target===this)closeModal('dynmgr-modal-overlay')">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header"><div class="modal-title" id="dynmgr-title">⚙ Gerenciar itens</div><button class="modal-close" onclick="closeModal('dynmgr-modal-overlay')">✕</button></div>
+    <div class="modal-body"><div id="dynmgr-list"></div>
+      <div style="display:flex;gap:8px;margin-top:12px"><input class="form-input" id="dynmgr-new" placeholder="Novo item..." style="flex:1"><button class="btn btn-accent" onclick="dynmgrAdd()">+ Add</button></div>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="groups-modal-overlay" onclick="if(event.target===this)closeModal('groups-modal-overlay')">
   <div class="modal">
     <div class="modal-header">
@@ -1531,21 +1539,25 @@ function getCustomList(key){ return key==='owners'?customOwners:key==='segments'
 function setCustomList(key,arr){ if(key==='owners')customOwners=arr;else if(key==='segments')customSegments=arr;else if(key==='products')customProducts=arr;else if(key==='sectors')customSectors=arr; saveCustomList(key,arr); }
 function manageDynList(key, done){
   const items=getDynItems(key);
-  if(!items.length){ alert('Nenhum item para gerenciar'); return; }
-  const idx=prompt('Itens:\n'+items.map((s,i)=>`${i+1}. ${s}`).join('\n')+'\n\nDigite o NÚMERO para editar/excluir:');
-  const n=parseInt(idx); if(!n||n<1||n>items.length) return;
-  const val=items[n-1];
-  const act=prompt(`"${val}"\n\nDigite:\n- novo nome para EDITAR\n- deixe vazio e confirme para EXCLUIR`, val);
-  if(act===null) return;
-  let cl=getCustomList(key).slice();
-  if(act.trim()===''){ // delete
-    if(!confirm(`Excluir "${val}"?`)) return;
-    cl=cl.filter(x=>x!==val); setCustomList(key,cl);
-  } else if(act.trim()!==val){ // rename
-    cl=cl.map(x=>x===val?act.trim():x); if(!cl.includes(act.trim())) cl.push(act.trim()); setCustomList(key,cl);
-  }
-  if(done) done();
+  window._dynmgrKey=key; window._dynmgrDone=done;
+  document.getElementById('dynmgr-title').textContent='⚙ Gerenciar itens';
+  renderDynmgr();
+  openModal('dynmgr-modal-overlay');
 }
+function renderDynmgr(){
+  const key=window._dynmgrKey; const items=getDynItems(key);
+  const cl=getCustomList(key);
+  document.getElementById('dynmgr-list').innerHTML=items.length?items.map(v=>{
+    const custom=cl.includes(v);
+    return `<div class="panel" style="padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px">
+      <input class="form-input" value="${v.replace(/"/g,'&quot;')}" ${custom?'':'disabled'} style="flex:1;padding:6px 8px;font-size:13px" onchange="dynmgrRename('${v.replace(/'/g,"\\'")}',this.value)">
+      ${custom?`<button class="icon-btn" style="color:var(--red)" onclick="dynmgrDel('${v.replace(/'/g,"\\'")}')">🗑</button>`:'<span style="font-size:10px;color:var(--text3)">padrão</span>'}
+    </div>`;
+  }).join(''):'<div style="font-size:12px;color:var(--text3);padding:8px">Nenhum item</div>';
+}
+function dynmgrAdd(){ const el=document.getElementById('dynmgr-new'); const v=el.value.trim(); if(!v)return; const key=window._dynmgrKey; const cl=getCustomList(key).slice(); if(!cl.includes(v)){cl.push(v);setCustomList(key,cl);} el.value=''; renderDynmgr(); if(window._dynmgrDone)window._dynmgrDone(); }
+function dynmgrRename(old,nv){ nv=nv.trim(); if(!nv||nv===old)return; const key=window._dynmgrKey; let cl=getCustomList(key).map(x=>x===old?nv:x); if(!cl.includes(nv))cl.push(nv); setCustomList(key,cl); renderDynmgr(); if(window._dynmgrDone)window._dynmgrDone(); }
+function dynmgrDel(v){ if(!confirm('Excluir "'+v+'"?'))return; const key=window._dynmgrKey; const cl=getCustomList(key).filter(x=>x!==v); setCustomList(key,cl); renderDynmgr(); if(window._dynmgrDone)window._dynmgrDone(); }
 
 function loadClientModalSelects(currentSeg, currentOwner){
   populateDynSelect('c-segment', getAllSegments(), currentSeg, 'Selecione o segmento...', (v)=>{ if(!customSegments.includes(v)){customSegments.push(v); saveCustomList('segments',customSegments);} }, 'segments');
