@@ -3651,6 +3651,21 @@ function repHours(){
       <div class="kpi-card"><div class="kpi-label">Registros no período</div><div class="kpi-value">${allU.length}</div></div>
     </div>
 
+    ${(()=>{
+      const wd=allU.filter(u=>!u.qual||u.qual==='weekday');
+      const ah=allU.filter(u=>u.qual==='afterhours');
+      const sa=allU.filter(u=>u.qual==='saturday');
+      const su=allU.filter(u=>u.qual==='sunday');
+      const H=arr=>fmtH(arr.reduce((s,u)=>s+(Number(u.hours)||0),0));
+      return `<div class="rep-section-title" style="margin-top:20px">📊 Breakdown por qualificação</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">
+        <div class="kpi-card"><div class="kpi-label">🗓 Seg–Sex</div><div class="kpi-value" style="color:var(--accent2)">${H(wd)}</div><div style="font-size:11px;color:var(--text3);margin-top:4px">${wd.length} reg.</div></div>
+        <div class="kpi-card"><div class="kpi-label">🌙 Fora comercial</div><div class="kpi-value" style="color:var(--purple)">${H(ah)}</div><div style="font-size:11px;color:var(--text3);margin-top:4px">${ah.length} reg.</div></div>
+        <div class="kpi-card"><div class="kpi-label">🟡 Sábado</div><div class="kpi-value" style="color:var(--amber)">${H(sa)}</div><div style="font-size:11px;color:var(--text3);margin-top:4px">${sa.length} reg.</div></div>
+        <div class="kpi-card"><div class="kpi-label">🔴 Dom/Feriado</div><div class="kpi-value" style="color:var(--red)">${H(su)}</div><div style="font-size:11px;color:var(--text3);margin-top:4px">${su.length} reg.</div></div>
+      </div>`;
+    })()}
+
     <div class="rep-section-title">👥 Detalhamento por cliente (singular)</div>
     <div class="panel" style="overflow:hidden;margin-bottom:24px"><div style="overflow-x:auto">
       <table class="data-table">
@@ -3690,20 +3705,6 @@ function repHours(){
         </tbody></table>
     </div></div>
 
-    ${(()=>{
-      const wd=allU.filter(u=>!u.qual||u.qual==='weekday');
-      const ah=allU.filter(u=>u.qual==='afterhours');
-      const sa=allU.filter(u=>u.qual==='saturday');
-      const su=allU.filter(u=>u.qual==='sunday');
-      const H=arr=>fmtH(arr.reduce((s,u)=>s+(Number(u.hours)||0),0));
-      return `<div class="rep-section-title" style="margin-top:20px">📊 Breakdown por qualificação</div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">
-        <div class="kpi-card"><div class="kpi-label">🗓 Seg–Sex</div><div class="kpi-value" style="color:var(--accent2)">${H(wd)}</div><div style="font-size:11px;color:var(--text3);margin-top:4px">${wd.length} reg.</div></div>
-        <div class="kpi-card"><div class="kpi-label">🌙 Fora comercial</div><div class="kpi-value" style="color:var(--purple)">${H(ah)}</div><div style="font-size:11px;color:var(--text3);margin-top:4px">${ah.length} reg.</div></div>
-        <div class="kpi-card"><div class="kpi-label">🟡 Sábado</div><div class="kpi-value" style="color:var(--amber)">${H(sa)}</div><div style="font-size:11px;color:var(--text3);margin-top:4px">${sa.length} reg.</div></div>
-        <div class="kpi-card"><div class="kpi-label">🔴 Dom/Feriado</div><div class="kpi-value" style="color:var(--red)">${H(su)}</div><div style="font-size:11px;color:var(--text3);margin-top:4px">${su.length} reg.</div></div>
-      </div>`;
-    })()}
   </div>`;
 }
 
