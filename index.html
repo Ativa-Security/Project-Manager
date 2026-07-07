@@ -3569,12 +3569,16 @@ function repHours(){
   });
   const inPeriod=u=>{if(!repPeriod.start&&!repPeriod.end)return true;if(!u.date)return false;if(repPeriod.start&&u.date<repPeriod.start)return false;if(repPeriod.end&&u.date>repPeriod.end)return false;return true;};
 
-  let allU=rootInfo.flatMap(r=>r.usages).filter(inPeriod);
-  // apply filter
-  if(multi.length){ allU=allU.filter(u=>multi.includes(u.effClientId)); }
-  else if(fc.startsWith('g:')){ const gid=fc.slice(2); allU=allU.filter(u=>u.groupId===gid); }
-  else if(fc.startsWith('gc:')){ const cid=fc.split(':')[2]; allU=allU.filter(u=>u.effClientId===cid); }
-  else if(fc.startsWith('c:')){ const cid=fc.slice(2); allU=allU.filter(u=>u.effClientId===cid); }
+  // scoped = client/group/multi filter, NO period (used for year totals)
+  const clientFilter=u=>{
+    if(multi.length) return multi.includes(u.effClientId);
+    if(fc.startsWith('g:')) return u.groupId===fc.slice(2);
+    if(fc.startsWith('gc:')) return u.effClientId===fc.split(':')[2];
+    if(fc.startsWith('c:')) return u.effClientId===fc.slice(2);
+    return true;
+  };
+  const scopedU=rootInfo.flatMap(r=>r.usages).filter(clientFilter);
+  let allU=scopedU.filter(inPeriod);
 
   // clients that appear (for detail rows + selectors)
   const clientIdsInUse=[...new Set(rootInfo.flatMap(r=>r.usages).map(u=>u.effClientId).filter(Boolean))];
@@ -3587,7 +3591,8 @@ function repHours(){
   const clientRows=Object.keys(byClient).map(cid=>{
     const us=byClient[cid];
     const used=us.reduce((s,u)=>s+(Number(u.hours)||0),0);
-    const usedYear=us.filter(u=>u.date&&u.date.startsWith(year+'')).reduce((s,u)=>s+(Number(u.hours)||0),0);
+    // year total ignores the period filter (full calendar year)
+    const usedYear=scopedU.filter(u=>u.effClientId===cid&&u.date&&u.date.startsWith(year+'')).reduce((s,u)=>s+(Number(u.hours)||0),0);
     const grp=cGroupOf(cid);
     // contracted pool: group pool if member, else own standalone chain
     let contracted=0,poolShared=false;
@@ -3597,7 +3602,40 @@ function repHours(){
   }).sort((a,b)=>b.used-a.used);
 
   const totUsed=allU.reduce((s,u)=>s+(Number(u.hours)||0),0);
-  const usedYearTot=allU.filter(u=>u.date&&u.date.startsWith(year+'')).reduce((s,u)=>s+(Number(u.hours)||0),0);
+  // year total ignores the period filter (fixes shrinking by period)
+  const usedYearTot=scopedU.filter(u=>u.date&&u.date.startsWith(year+'')).reduce((s,u)=>s+(Number(u.hours)||0),0);
+
+  // ── Trimestral: when a single client is selected + a period is set,
+  //    "Utilizadas" shows the cumulative sum within the active quarter window
+  //    (e.g. Abr+Mai+Jun), emphasizing the current month.
+  let triBox=null;
+  const singleCid=(fc.startsWith('c:')?fc.slice(2):fc.startsWith('gc:')?fc.split(':')[2]:(clientRows.length===1?clientRows[0].cid:null));
+  if(singleCid&&(repPeriod.start||repPeriod.end)){
+    const grp=cGroupOf(singleCid);
+    const rel=grp?rootInfo.find(r=>r.pkg.groupId&&String(r.pkg.groupId)===String(grp.id))
+                 :rootInfo.find(r=>String(r.pkg.clientId)===String(singleCid));
+    const pkg=rel&&rel.pkg;
+    if(pkg&&pkg.tipo==='trimestral'&&pkg.start){
+      const fmt=d=>d.toISOString().split('T')[0];
+      const refDate=repPeriod.end||repPeriod.start;
+      let bs=new Date(pkg.start+'T12:00:00'),qw=null;
+      const ref=new Date(refDate+'T12:00:00');
+      for(let i=0;i<40;i++){const be=new Date(bs.getFullYear(),bs.getMonth()+3,0);if(ref<=be){qw={ws:fmt(bs),we:fmt(be)};break;}bs=new Date(bs.getFullYear(),bs.getMonth()+3,1);}
+      if(qw){
+        const cliU=scopedU.filter(u=>u.effClientId===singleCid&&u.date);
+        // cumulative from quarter start to end of selected period (capped at quarter end)
+        const cumEnd=(repPeriod.end&&repPeriod.end<qw.we)?repPeriod.end:qw.we;
+        const inQ=cliU.filter(u=>u.date>=qw.ws&&u.date<=cumEnd);
+        const cumTotal=inQ.reduce((s,u)=>s+(Number(u.hours)||0),0);
+        // current-month portion (month of the selected period end, within quarter)
+        const mKey=(refDate||'').slice(0,7);
+        const monthU=inQ.filter(u=>u.date.startsWith(mKey));
+        const monthTotal=monthU.reduce((s,u)=>s+(Number(u.hours)||0),0);
+        const mName=new Date(mKey+'-15T12:00:00').toLocaleDateString('pt-BR',{month:'long'});
+        triBox={cumTotal,monthTotal,mName,ws:qw.ws,we:qw.we,n:inQ.length};
+      }
+    }
+  }
   // contracted total = sum of unique root packages present in filtered set
   const rootsPresent=[...new Set(allU.map(u=>u.rootId))];
   const totContracted=rootsPresent.reduce((s,rid)=>{const r=rootInfo.find(x=>x.root.id===rid);return s+(r?r.contracted:0);},0);
@@ -3641,7 +3679,10 @@ function repHours(){
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">
       <div class="kpi-card"><div class="kpi-label">Clientes no relatório</div><div class="kpi-value">${clientRows.length}</div></div>
       <div class="kpi-card"><div class="kpi-label">Horas Contratadas</div><div class="kpi-value">${fmtH(totContracted)}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Horas Utilizadas</div><div class="kpi-value" style="color:var(--amber)">${fmtH(totUsed)}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Horas Utilizadas${triBox?' (trimestre)':''}</div>
+        <div class="kpi-value" style="color:var(--amber)">${fmtH(triBox?triBox.cumTotal:totUsed)}</div>
+        ${triBox?`<div style="margin-top:6px;padding:5px 8px;background:rgba(245,166,35,0.14);border:1px solid rgba(245,166,35,0.35);border-radius:6px;font-size:12px;font-weight:700;color:var(--amber);text-transform:capitalize">▶ ${triBox.mName}: ${fmtH(triBox.monthTotal)}</div><div style="font-size:10px;color:var(--text3);margin-top:4px">Trimestre ${fmtDate(triBox.ws)}–${fmtDate(triBox.we)}</div>`:''}
+      </div>
       <div class="kpi-card"><div class="kpi-label">Saldo / Excesso</div><div class="kpi-value" style="color:${totOver>0?'var(--red)':'var(--green)'}">${totOver>0?'+'+fmtH(totOver)+' excesso':fmtH(totRemaining)+' saldo'}</div></div>
     </div>
 
