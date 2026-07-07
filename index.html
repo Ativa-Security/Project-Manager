@@ -3637,10 +3637,19 @@ function repHours(){
     }
   }
   // contracted total = sum of unique root packages present in filtered set
-  const rootsPresent=[...new Set(allU.map(u=>u.rootId))];
-  const totContracted=rootsPresent.reduce((s,rid)=>{const r=rootInfo.find(x=>x.root.id===rid);return s+(r?r.contracted:0);},0);
-  const totOver=Math.max(0,totUsed-totContracted);
-  const totRemaining=Math.max(0,totContracted-totUsed);
+  // relevant root packages for the current scope (period-independent)
+  const relRoots=rootInfo.filter(r=>{
+    if(multi.length) return r.usages.some(u=>multi.includes(u.effClientId));
+    if(fc.startsWith('g:')) return String(r.pkg.groupId||'')===fc.slice(2);
+    if(fc.startsWith('gc:')) return String(r.pkg.groupId||'')===fc.split(':')[1];
+    if(fc.startsWith('c:')){const cid=fc.slice(2);const grp=cGroupOf(cid);return grp?String(r.pkg.groupId||'')===String(grp.id):String(r.pkg.clientId||'')===cid;}
+    return true;
+  });
+  // Contratadas = current active-period pool (per quarter/month for cyclic models),
+  // Saldo/Excesso = pool − uses in the CURRENT active window (always up to date, ignores period filter).
+  let totContracted=0,saldoRem=0,saldoOver=0;
+  relRoots.forEach(r=>{const st=hoursStatus(r.pkg);totContracted+=st.total;saldoRem+=st.remaining;saldoOver+=st.over;});
+  const totOver=saldoOver, totRemaining=saldoRem;
 
   // selector options
   const groupOpts=clientGroups.map(g=>`<option value="g:${g.id}"${fc==='g:'+g.id?' selected':''}>👥 ${g.name}</option>`).join('');
@@ -3678,7 +3687,7 @@ function repHours(){
 
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">
       <div class="kpi-card"><div class="kpi-label">Clientes no relatório</div><div class="kpi-value">${clientRows.length}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Horas Contratadas</div><div class="kpi-value">${fmtH(totContracted)}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Horas Contratadas${relRoots.some(r=>r.pkg.tipo==='trimestral'||r.pkg.tipo==='mensal')?' (período vigente)':''}</div><div class="kpi-value">${fmtH(totContracted)}</div></div>
       <div class="kpi-card"><div class="kpi-label">Horas Utilizadas${triBox?' (trimestre)':''}</div>
         <div class="kpi-value" style="color:var(--amber)">${fmtH(triBox?triBox.cumTotal:totUsed)}</div>
         ${triBox?`<div style="margin-top:6px;padding:5px 8px;background:rgba(245,166,35,0.14);border:1px solid rgba(245,166,35,0.35);border-radius:6px;font-size:12px;font-weight:700;color:var(--amber);text-transform:capitalize">▶ ${triBox.mName}: ${fmtH(triBox.monthTotal)}</div><div style="font-size:10px;color:var(--text3);margin-top:4px">Trimestre ${fmtDate(triBox.ws)}–${fmtDate(triBox.we)}</div>`:''}
