@@ -3646,24 +3646,29 @@ function repHours(){
     return true;
   });
   // ── Horas Contratadas 2.0 ────────────────────────────────────────────────
-  // Regra: para cada contrato, considera SOMENTE o pacote vigente na data de
-  //   referência (fim do período selecionado; senão início; senão hoje).
-  //   Pacote cíclico (mensal/trimestral): pkg.hours já é o pool do ciclo.
-  //   Contratos expirados/futuros (janela não contém a data de ref.) são
-  //   ignorados — não soma renovações anteriores nem pacotes vencidos.
+  // SEM período selecionado: por contrato, só o pacote vigente HOJE
+  //   (expirado/futuro ignorado — não soma renovações nem vencidos).
+  // COM período selecionado: soma o pool de TODOS os pacotes cuja validade
+  //   se sobrepõe ao período (ex.: 150 do trimestral + 30 do anual = 180).
+  //   Pacote cíclico conta o pool do ciclo (pkg.hours).
+  const hasPeriod=!!(repPeriod.start||repPeriod.end);
   const refDate=repPeriod.end||repPeriod.start||todayStr();
+  const overlapsPeriod=p=>{
+    const ps=p.start||'0000-00-00',pe=p.end||'9999-12-31';
+    if(repPeriod.start&&pe<repPeriod.start)return false;
+    if(repPeriod.end&&ps>repPeriod.end)return false;
+    return true;
+  };
   function vigentePkg(chain){
     const hit=chain.filter(p=>{const ps=p.start||'0000-00-00',pe=p.end||'9999-12-31';return ps<=refDate&&refDate<=pe;});
-    return hit.length?hit[hit.length-1]:null; // null = contrato não vigente
+    return hit.length?hit[hit.length-1]:null;
   }
   let totContracted=0,saldoRem=0,saldoOver=0;
   const tipoSet=new Set();
+  const _acc=p=>{const st=hoursStatus(p);saldoRem+=st.remaining;saldoOver+=st.over;totContracted+=(Number(p.hours)||0);tipoSet.add(p.tipo||'anual');};
   relRoots.forEach(r=>{
-    const p=vigentePkg(r.chain);
-    if(!p) return;                 // ignora contrato não vigente na data de ref.
-    const st=hoursStatus(p);
-    saldoRem+=st.remaining;saldoOver+=st.over;
-    totContracted+=(Number(p.hours)||0);tipoSet.add(p.tipo||'anual');
+    if(hasPeriod){ r.chain.forEach(p=>{ if(overlapsPeriod(p)) _acc(p); }); }
+    else { const p=vigentePkg(r.chain); if(p) _acc(p); }
   });
   const totOver=saldoOver, totRemaining=saldoRem;
   const tipoLbl=tipoSet.size===1?({anual:'📅 Anual',mensal:'📆 Mensal',trimestral:'🗓️ Trimestral'})[[...tipoSet][0]]:(tipoSet.size?'Modelos mistos':'—');
