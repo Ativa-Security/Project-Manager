@@ -3655,17 +3655,17 @@ function repHours(){
   const refDate=repPeriod.end||repPeriod.start||todayStr();
   const overlapsPeriod=p=>{
     const ps=p.start||'0000-00-00',pe=p.end||'9999-12-31';
-    if(repPeriod.start&&pe<repPeriod.start)return false;
-    if(repPeriod.end&&ps>repPeriod.end)return false;
+    if(repPeriod.start&&pe<=repPeriod.start)return false; // termina no/antes do início → fora
+    if(repPeriod.end&&ps>=repPeriod.end)return false;     // começa no/depois do fim → fora
     return true;
   };
   function vigentePkg(chain){
     const hit=chain.filter(p=>{const ps=p.start||'0000-00-00',pe=p.end||'9999-12-31';return ps<=refDate&&refDate<=pe;});
     return hit.length?hit[hit.length-1]:null;
   }
-  let totContracted=0,saldoRem=0,saldoOver=0;
+  let totContracted=0,saldoRem=0,saldoOver=0,usedVig=0;
   const tipoSet=new Set();
-  const _acc=p=>{const st=hoursStatus(p);saldoRem+=st.remaining;saldoOver+=st.over;totContracted+=(Number(p.hours)||0);tipoSet.add(p.tipo||'anual');};
+  const _acc=p=>{const st=hoursStatus(p);saldoRem+=st.remaining;saldoOver+=st.over;usedVig+=st.used;totContracted+=(Number(p.hours)||0);tipoSet.add(p.tipo||'anual');};
   relRoots.forEach(r=>{
     if(hasPeriod){ r.chain.forEach(p=>{ if(overlapsPeriod(p)) _acc(p); }); }
     else { const p=vigentePkg(r.chain); if(p) _acc(p); }
@@ -3713,8 +3713,8 @@ function repHours(){
         <div class="kpi-value">${fmtH(totContracted)}</div>
         <div style="font-size:11px;color:var(--text3);margin-top:4px">${tipoLbl} · pool ${fmtH(totContracted)}</div>
       </div>
-      <div class="kpi-card"><div class="kpi-label">Horas Utilizadas${triBox?' (trimestre)':''}</div>
-        <div class="kpi-value" style="color:var(--amber)">${fmtH(triBox?triBox.cumTotal:totUsed)}</div>
+      <div class="kpi-card"><div class="kpi-label">Horas Utilizadas${triBox?' (trimestre)':(!(repPeriod.start||repPeriod.end)?' (vigente)':'')}</div>
+        <div class="kpi-value" style="color:var(--amber)">${fmtH(triBox?triBox.cumTotal:((repPeriod.start||repPeriod.end)?totUsed:usedVig))}</div>
         ${triBox?`<div style="margin-top:6px;padding:5px 8px;background:rgba(245,166,35,0.14);border:1px solid rgba(245,166,35,0.35);border-radius:6px;font-size:12px;font-weight:700;color:var(--amber);text-transform:capitalize">▶ ${triBox.mName}: ${fmtH(triBox.monthTotal)}</div><div style="font-size:10px;color:var(--text3);margin-top:4px">Trimestre ${fmtDate(triBox.ws)}–${fmtDate(triBox.we)}</div>`:''}
       </div>
       <div class="kpi-card"><div class="kpi-label">Saldo / Excesso</div><div class="kpi-value" style="color:${totOver>0?'var(--red)':'var(--green)'}">${totOver>0?'+'+fmtH(totOver)+' excesso':fmtH(totRemaining)+' saldo'}</div></div>
