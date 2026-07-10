@@ -3653,14 +3653,19 @@ function repHours(){
   //   Pacote cíclico conta o pool do ciclo (pkg.hours).
   const hasPeriod=!!(repPeriod.start||repPeriod.end);
   const refDate=repPeriod.end||repPeriod.start||todayStr();
+  // normaliza 'dd/mm/aaaa' ou ISO c/ hora → 'aaaa-mm-dd'
+  const _nd=(s,fb)=>{if(!s)return fb;s=String(s).trim();const br=s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);if(br)return br[3]+'-'+br[2]+'-'+br[1];return s.slice(0,10);};
+  // fim efetivo: se há renovação na mesma cadeia, termina quando a próxima começa
+  const _effEnd=p=>{const nx=hoursPackages.find(x=>x.parentId===p.id);const e=_nd(p.end,'9999-12-31');if(nx&&nx.start){const ns=_nd(nx.start,'');if(ns&&ns<e)return ns;}return e;};
   const overlapsPeriod=p=>{
-    const ps=p.start||'0000-00-00',pe=p.end||'9999-12-31';
-    if(repPeriod.start&&pe<=repPeriod.start)return false; // termina no/antes do início → fora
-    if(repPeriod.end&&ps>=repPeriod.end)return false;     // começa no/depois do fim → fora
+    const ps=_nd(p.start,'0000-00-00'),pe=_effEnd(p);
+    if(repPeriod.start&&pe<=_nd(repPeriod.start,''))return false; // termina no/antes do início → fora
+    if(repPeriod.end&&ps>=_nd(repPeriod.end,''))return false;     // começa no/depois do fim → fora
     return true;
   };
   function vigentePkg(chain){
-    const hit=chain.filter(p=>{const ps=p.start||'0000-00-00',pe=p.end||'9999-12-31';return ps<=refDate&&refDate<=pe;});
+    const rd=_nd(refDate,'');
+    const hit=chain.filter(p=>{const ps=_nd(p.start,'0000-00-00'),pe=_nd(p.end,'9999-12-31');return ps<=rd&&rd<=pe;});
     return hit.length?hit[hit.length-1]:null;
   }
   let totContracted=0,saldoRem=0,saldoOver=0,usedVig=0;
