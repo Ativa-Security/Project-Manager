@@ -3645,23 +3645,24 @@ function repHours(){
     if(fc.startsWith('c:')){const cid=fc.slice(2);const grp=cGroupOf(cid);return grp?String(r.pkg.groupId||'')===String(grp.id):String(r.pkg.clientId||'')===cid;}
     return true;
   });
-  // Contratadas = pool of ONE package per contrato: the one valid na data de
-  //   referência do período selecionado (fim do período; senão início; senão o ativo).
-  function pkgForPeriod(chain){
-    const ref=repPeriod.end||repPeriod.start;
-    if(!ref) return chain[chain.length-1];
-    // package whose validity contains ref
-    let hit=chain.filter(p=>{const ps=p.start||'0000',pe=p.end||'9999';return ps<=ref&&ref<=pe;});
-    if(hit.length) return hit[hit.length-1];
-    // fallback: closest one overlapping the period at all
-    hit=chain.filter(p=>{const ps=p.start||'0000',pe=p.end||'9999';if(repPeriod.start&&pe<repPeriod.start)return false;if(repPeriod.end&&ps>repPeriod.end)return false;return true;});
-    return hit.length?hit[hit.length-1]:chain[chain.length-1];
+  // ── Horas Contratadas 2.0 ────────────────────────────────────────────────
+  // Regra: para cada contrato, considera SOMENTE o pacote vigente na data de
+  //   referência (fim do período selecionado; senão início; senão hoje).
+  //   Pacote cíclico (mensal/trimestral): pkg.hours já é o pool do ciclo.
+  //   Contratos expirados/futuros (janela não contém a data de ref.) são
+  //   ignorados — não soma renovações anteriores nem pacotes vencidos.
+  const refDate=repPeriod.end||repPeriod.start||todayStr();
+  function vigentePkg(chain){
+    const hit=chain.filter(p=>{const ps=p.start||'0000-00-00',pe=p.end||'9999-12-31';return ps<=refDate&&refDate<=pe;});
+    return hit.length?hit[hit.length-1]:null; // null = contrato não vigente
   }
   let totContracted=0,saldoRem=0,saldoOver=0;
   const tipoSet=new Set();
   relRoots.forEach(r=>{
-    const st=hoursStatus(r.pkg);saldoRem+=st.remaining;saldoOver+=st.over;
-    const p=pkgForPeriod(r.chain);
+    const p=vigentePkg(r.chain);
+    if(!p) return;                 // ignora contrato não vigente na data de ref.
+    const st=hoursStatus(p);
+    saldoRem+=st.remaining;saldoOver+=st.over;
     totContracted+=(Number(p.hours)||0);tipoSet.add(p.tipo||'anual');
   });
   const totOver=saldoOver, totRemaining=saldoRem;
@@ -3703,7 +3704,7 @@ function repHours(){
 
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">
       <div class="kpi-card"><div class="kpi-label">Clientes no relatório</div><div class="kpi-value">${clientRows.length}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Horas Contratadas${(repPeriod.start||repPeriod.end)?' (período selec.)':''}</div>
+      <div class="kpi-card"><div class="kpi-label">Horas Contratadas${(repPeriod.start||repPeriod.end)?' (período selec.)':' (vigente)'}</div>
         <div class="kpi-value">${fmtH(totContracted)}</div>
         <div style="font-size:11px;color:var(--text3);margin-top:4px">${tipoLbl} · pool ${fmtH(totContracted)}</div>
       </div>
