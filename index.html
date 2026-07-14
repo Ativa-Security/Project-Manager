@@ -323,7 +323,7 @@ input,select,textarea{font-family:var(--font)}
 .search-input:focus{border-color:var(--accent)}
 
 /* ── TASK ITEMS ── */
-.task-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--r);background:var(--bg3);margin-bottom:6px;cursor:pointer;transition:background .15s}
+.task-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:var(--r);background:var(--bg3);margin-bottom:6px;cursor:pointer;transition:background .15s}
 .task-item:hover{background:var(--bg4)}
 .task-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 
@@ -923,6 +923,7 @@ input,select,textarea{font-family:var(--font)}
       <div class="form-group" id="t-waiting-wrap" style="display:none"><label class="form-label">Motivo do aguardo</label><input class="form-input" id="t-waiting-reason" placeholder="Ex: Aguardando acesso do cliente"></div>
       <div class="form-group" id="t-concluded-wrap" style="display:none"><label class="form-label">Data de conclusão</label><input class="form-input" id="t-concluded" type="date"></div>
       <div class="form-group" style="display:flex;align-items:center;gap:10px"><input type="checkbox" id="t-na" style="width:16px;height:16px"><label for="t-na" style="font-size:13px;cursor:pointer">Horas N/A (tarefa gerencial/comercial)</label></div>
+      <div class="form-group"><label class="form-label">📝 Observação</label><textarea class="form-textarea" id="t-obs" rows="3" placeholder="Informações sobre esta tarefa..."></textarea></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-danger" id="t-delete-btn" onclick="deleteTask()" style="margin-right:auto;display:none">Excluir</button>
@@ -2338,10 +2339,11 @@ function renderProjDetail(){
       gt.forEach(t=>{
         const tLate=t.status!=='done'&&t.status!=='waiting'&&isOverdue(t.due,false);
         html+=`<div class="task-item" onclick="openTaskModal(${p.id},${t.id})">
-          <div class="task-dot" style="background:${tLate?'var(--red)':grp.color}"></div>
+          <div class="task-dot" style="margin-top:5px;background:${tLate?'var(--red)':grp.color}"></div>
           <div style="flex:1;min-width:0">
             <div style="font-size:13px;font-weight:500;${t.status==='done'?'text-decoration:line-through;color:var(--text3)':''}">${t.name}</div>
             <div style="font-size:11px;color:var(--text3);margin-top:2px">${t.owner?'👤 '+t.owner+' · ':''} ${t.due?'📅 '+fmtDate(t.due):''}${t.waitingReason?' · ⏸ '+t.waitingReason:''}${t.status==='done'&&t.concludedDate?' · ✓ '+fmtDate(t.concludedDate):''}</div>
+            ${t.obs?`<div style="font-size:11px;color:var(--text2);margin-top:5px;padding:6px 8px;background:var(--bg2);border-left:2px solid var(--accent2);border-radius:4px;white-space:pre-wrap">📝 ${t.obs}</div>`:''}
           </div>
           ${!t.na&&(t.estimated||t.doneHours)?`<div style="font-size:11px;font-family:var(--mono);color:var(--text3)">${fmtH(t.doneHours||0)}/${fmtH(t.estimated||0)}</div>`:''}
           ${tLate?`<span class="badge badge-red" style="font-size:10px">Atrasado</span>`:''}
@@ -2489,6 +2491,7 @@ function openTaskModal(projId, taskId){
   document.getElementById('t-na').checked=t?t.na||false:false;
   document.getElementById('t-waiting-reason').value=t?t.waitingReason||'':'';
   document.getElementById('t-concluded').value=t?t.concludedDate||'':'';
+  document.getElementById('t-obs').value=t?t.obs||'':'';
   document.getElementById('t-concluded-wrap').style.display=(t&&t.status==='done')?'block':'none';
   document.getElementById('t-waiting-wrap').style.display=(t&&t.status==='waiting')?'block':'none';
   document.getElementById('t-status').onchange=function(){
@@ -2515,6 +2518,7 @@ function saveTask(){
     waitingReason:status==='waiting'?document.getElementById('t-waiting-reason').value.trim():'',
     concludedFromWaiting:editingTaskId?((p.tasks.find(x=>x.id===editingTaskId)||{}).status==='waiting'&&status==='done'):false,
     concludedDate:status==='done'?document.getElementById('t-concluded').value||todayStr():'',
+    obs:document.getElementById('t-obs').value.trim(),
   };
   if(editingTaskId){ const i=p.tasks.findIndex(x=>x.id===editingTaskId); p.tasks[i]=data; }
   else p.tasks.push(data);
