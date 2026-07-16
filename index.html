@@ -1543,6 +1543,7 @@ function closeMobileMenu(){
 
 function navTo(page, el){
   if(!isAdmin() && page==='commitments') page='dashboard';
+  if(!isAdmin() && page==='reports') page='dashboard';
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   if(!el){ el=[...document.querySelectorAll('.nav-item')].find(n=>(n.getAttribute('onclick')||'').includes("navTo('"+page+"'")); }
   if(el) el.classList.add('active');
@@ -3129,8 +3130,12 @@ function repProductivity(){
   let list=activities.slice();
   if(!admin) list=list.filter(a=>a.userId===(currentUser&&currentUser.uid));
   const {start,end,type,user,client}=prodFilter;
-  if(start) list=list.filter(a=>a.date>=start);
-  if(end)   list=list.filter(a=>a.date<=end);
+  // Sem período escolhido → padrão: últimos 30 dias
+  const custom=!!(start||end);
+  const _d30=new Date(); _d30.setDate(_d30.getDate()-29);
+  const effStart=start||_d30.toISOString().split('T')[0];
+  const effEnd=end||todayStr();
+  list=list.filter(a=>a.date>=effStart&&a.date<=effEnd);
   if(type)  list=list.filter(a=>a.type===type);
   if(user)  list=list.filter(a=>a.userId===user);
   if(client)list=list.filter(a=>a.clientRef===client);
@@ -3145,17 +3150,18 @@ function repProductivity(){
     ${admin?`<select class="form-select" style="width:auto;padding:6px 10px;font-size:12px" onchange="setProdFilter('user',this.value)"><option value="">Todos os responsáveis</option>${userOpts.map(([id,nm])=>`<option value="${id}" ${user===id?'selected':''}>${nm||'—'}</option>`).join('')}</select>`:''}
     <select class="form-select" style="width:auto;padding:6px 10px;font-size:12px" onchange="setProdFilter('client',this.value)"><option value="">Todos os clientes</option>${cliOpts.map(([v,nm])=>`<option value="${v}" ${client===v?'selected':''}>${nm}</option>`).join('')}</select>
     <button class="btn btn-ghost btn-sm" onclick="prodFilter={start:'',end:'',type:'',user:'',client:''};renderReport('productivity')">✕ Limpar</button>
-  </div>`;
+  </div>
+  <div style="font-size:12px;color:var(--text2);margin:-6px 0 16px;padding:6px 10px;background:var(--bg3);border-radius:6px;display:inline-block">📅 Período: <strong>${custom?'personalizado':'últimos 30 dias'}</strong> · ${fmtDate(effStart)} → ${fmtDate(effEnd)}</div>`;
 
   if(!list.length) return filters+`<div class="empty-state" style="padding:30px 0"><div class="empty-state-icon">📝</div><div class="empty-state-text">Nenhuma atividade no filtro</div></div>`;
 
   const totH=list.reduce((s,a)=>s+(Number(a.hours)||0),0);
   const days=[...new Set(list.map(a=>a.date))].length;
   const avg=days?totH/days:0;
-  // Taxa de ocupação (só com período definido): horas ÷ (dias úteis × 8h)
+  // Taxa de ocupação: horas ÷ (dias úteis do período × 8h)
   let occ='';
-  if(start&&end){
-    let bd=0; const d0=new Date(start+'T12:00:00'),d1=new Date(end+'T12:00:00');
+  {
+    let bd=0; const d0=new Date(effStart+'T12:00:00'),d1=new Date(effEnd+'T12:00:00');
     for(let d=new Date(d0);d<=d1;d.setDate(d.getDate()+1)){ const w=d.getDay(); if(w!==0&&w!==6) bd++; }
     const exp=bd*8; occ=exp>0?Math.round(totH/exp*100)+'%':'—';
   }
@@ -6028,6 +6034,7 @@ function applyRole(){
   document.querySelectorAll('.admin-only').forEach(el=>{ el.style.display=admin?'':'none'; });
   document.getElementById('nav-settings').style.display=admin?'':'none';
   document.getElementById('nav-commitments').style.display=admin?'':'none';
+  document.getElementById('nav-reports').style.display=admin?'':'none';
   // Relatórios: técnico enxerga (versão operacional), mas sem as abas financeiras
   document.querySelectorAll('#rep-tabs .rep-tab').forEach(t=>{
     const oc=t.getAttribute('onclick')||'';
@@ -6070,7 +6077,7 @@ window.addEventListener('appinstalled', () => {
 // Register inline service worker for offline support
 if('serviceWorker' in navigator){
   const swCode = `
-const CACHE = 'ativa360-v7';
+const CACHE = 'ativa360-v9';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
