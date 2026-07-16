@@ -720,6 +720,7 @@ input,select,textarea{font-family:var(--font)}
         <div class="rep-tab" onclick="switchReport('performance',this)">🏆 Desempenho</div>
         <div class="rep-tab" onclick="switchReport('licenses',this)">🔑 Licenciamentos</div>
         <div class="rep-tab" onclick="switchReport('hours',this)">⏱ Horas Técnicas</div>
+        <div class="rep-tab" onclick="switchReport('productivity',this)">📝 Produtividade</div>
       </div>
       <div id="reports-content"></div>
     </div>
@@ -3102,10 +3103,85 @@ function renderReport(tab){
     else if(tab==='performance') el.innerHTML=repPerformance();
     else if(tab==='licenses') el.innerHTML=repLicenses();
     else if(tab==='hours')    el.innerHTML=repHours();
+    else if(tab==='productivity') el.innerHTML=repProductivity();
   }catch(err){
     el.innerHTML='<div class="empty-state"><div class="empty-state-icon">⚠️</div><div class="empty-state-text" style="color:var(--red)">Erro ao carregar relatório:<br><code style="font-size:11px">'+err.message+'</code></div></div>';
     console.error('renderReport error:',err);
   }
+}
+
+// ── Relatório de Produtividade ────────────────────────────────────────────
+let prodFilter={start:'',end:'',type:'',user:'',client:''};
+function setProdFilter(k,v){ prodFilter[k]=v; renderReport('productivity'); }
+function _prodBars(rows,color){
+  const max=Math.max(1,...rows.map(r=>r.h));
+  return rows.map(r=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+    <div style="width:150px;font-size:12px;color:var(--text2);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.label}</div>
+    <div style="flex:1;background:var(--bg3);border-radius:4px;height:16px;position:relative">
+      <div style="width:${(r.h/max*100).toFixed(1)}%;background:${color};height:100%;border-radius:4px;min-width:2px"></div>
+    </div>
+    <div style="width:60px;font-size:11px;font-family:var(--mono);color:var(--text3)">${fmtH(r.h)}</div>
+  </div>`).join('');
+}
+function repProductivity(){
+  const admin=isAdmin();
+  // Filtros
+  let list=activities.slice();
+  if(!admin) list=list.filter(a=>a.userId===(currentUser&&currentUser.uid));
+  const {start,end,type,user,client}=prodFilter;
+  if(start) list=list.filter(a=>a.date>=start);
+  if(end)   list=list.filter(a=>a.date<=end);
+  if(type)  list=list.filter(a=>a.type===type);
+  if(user)  list=list.filter(a=>a.userId===user);
+  if(client)list=list.filter(a=>a.clientRef===client);
+
+  const userOpts=admin?[...new Map(activities.map(a=>[a.userId,a.userName])).entries()]:[];
+  const cliOpts=clientGroups.map(g=>[`g:${g.id}`,'👥 '+g.name]).concat(clients.map(c=>[`c:${c.id}`,c.name]));
+
+  const filters=`<div style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;align-items:center">
+    <div style="display:flex;align-items:center;gap:6px"><label style="font-size:11px;color:var(--text3)">De:</label><input type="date" class="form-input" style="padding:5px 8px;font-size:12px;width:140px" value="${start}" onchange="setProdFilter('start',this.value)"></div>
+    <div style="display:flex;align-items:center;gap:6px"><label style="font-size:11px;color:var(--text3)">Até:</label><input type="date" class="form-input" style="padding:5px 8px;font-size:12px;width:140px" value="${end}" onchange="setProdFilter('end',this.value)"></div>
+    <select class="form-select" style="width:auto;padding:6px 10px;font-size:12px" onchange="setProdFilter('type',this.value)"><option value="">Todos os tipos</option>${Object.keys(ACT_TYPES).map(k=>`<option value="${k}" ${type===k?'selected':''}>${ACT_TYPES[k]}</option>`).join('')}</select>
+    ${admin?`<select class="form-select" style="width:auto;padding:6px 10px;font-size:12px" onchange="setProdFilter('user',this.value)"><option value="">Todos os responsáveis</option>${userOpts.map(([id,nm])=>`<option value="${id}" ${user===id?'selected':''}>${nm||'—'}</option>`).join('')}</select>`:''}
+    <select class="form-select" style="width:auto;padding:6px 10px;font-size:12px" onchange="setProdFilter('client',this.value)"><option value="">Todos os clientes</option>${cliOpts.map(([v,nm])=>`<option value="${v}" ${client===v?'selected':''}>${nm}</option>`).join('')}</select>
+    <button class="btn btn-ghost btn-sm" onclick="prodFilter={start:'',end:'',type:'',user:'',client:''};renderReport('productivity')">✕ Limpar</button>
+  </div>`;
+
+  if(!list.length) return filters+`<div class="empty-state" style="padding:30px 0"><div class="empty-state-icon">📝</div><div class="empty-state-text">Nenhuma atividade no filtro</div></div>`;
+
+  const totH=list.reduce((s,a)=>s+(Number(a.hours)||0),0);
+  const days=[...new Set(list.map(a=>a.date))].length;
+  const avg=days?totH/days:0;
+  // Taxa de ocupação (só com período definido): horas ÷ (dias úteis × 8h)
+  let occ='';
+  if(start&&end){
+    let bd=0; const d0=new Date(start+'T12:00:00'),d1=new Date(end+'T12:00:00');
+    for(let d=new Date(d0);d<=d1;d.setDate(d.getDate()+1)){ const w=d.getDay(); if(w!==0&&w!==6) bd++; }
+    const exp=bd*8; occ=exp>0?Math.round(totH/exp*100)+'%':'—';
+  }
+  // Agregações
+  const byType={},byUser={},byClient={};
+  list.forEach(a=>{
+    byType[a.type]=(byType[a.type]||0)+(Number(a.hours)||0);
+    if(admin) byUser[a.userId]=(byUser[a.userId]||0)+(Number(a.hours)||0);
+    const cn=_actClientName(a)||'Sem cliente'; byClient[cn]=(byClient[cn]||0)+(Number(a.hours)||0);
+  });
+  const typeRows=Object.keys(byType).map(k=>({label:ACT_TYPES[k]||k,h:byType[k]})).sort((a,b)=>b.h-a.h);
+  const uName=id=>{const e=activities.find(a=>a.userId===id);return e?e.userName:'—';};
+  const userRows=Object.keys(byUser).map(k=>({label:uName(k),h:byUser[k]})).sort((a,b)=>b.h-a.h);
+  const cliRows=Object.keys(byClient).map(k=>({label:k,h:byClient[k]})).sort((a,b)=>b.h-a.h);
+
+  let html=filters;
+  html+=`<div class="kpi-grid" style="grid-template-columns:repeat(${occ?4:3},1fr);margin-bottom:20px">
+    <div class="kpi-card"><div class="kpi-l">Atividades</div><div class="kpi-n">${list.length}</div></div>
+    <div class="kpi-card"><div class="kpi-l">Total de horas</div><div class="kpi-n" style="color:var(--accent2)">${fmtH(totH)}</div></div>
+    <div class="kpi-card"><div class="kpi-l">Média por dia</div><div class="kpi-n">${fmtH(avg)}</div></div>
+    ${occ?`<div class="kpi-card"><div class="kpi-l">Taxa de ocupação</div><div class="kpi-n" style="color:var(--green)">${occ}</div><div class="kpi-sub">vs 8h/dia útil</div></div>`:''}
+  </div>`;
+  html+=`<div class="panel" style="padding:16px;margin-bottom:16px"><div style="font-size:13px;font-weight:600;margin-bottom:12px">Horas por tipo de atividade</div>${_prodBars(typeRows,'#2563eb')}</div>`;
+  if(admin&&userRows.length) html+=`<div class="panel" style="padding:16px;margin-bottom:16px"><div style="font-size:13px;font-weight:600;margin-bottom:12px">Horas por responsável</div>${_prodBars(userRows,'#8b5cf6')}</div>`;
+  html+=`<div class="panel" style="padding:16px"><div style="font-size:13px;font-weight:600;margin-bottom:12px">Horas por cliente</div>${_prodBars(cliRows,'#34c97e')}</div>`;
+  return html;
 }
 
 function periodFilter(){
@@ -5994,7 +6070,7 @@ window.addEventListener('appinstalled', () => {
 // Register inline service worker for offline support
 if('serviceWorker' in navigator){
   const swCode = `
-const CACHE = 'ativa360-v6';
+const CACHE = 'ativa360-v7';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
