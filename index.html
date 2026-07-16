@@ -563,6 +563,7 @@ input,select,textarea{font-family:var(--font)}
       <div class="nav-item active" onclick="navTo('dashboard',this)" title="Dashboard"><span class="nav-icon">🏠</span><span class="nav-label">Dashboard</span></div>
       <div class="nav-item" onclick="navTo('clients',this)" title="Clientes"><span class="nav-icon">👥</span><span class="nav-label">Clientes</span></div>
       <div class="nav-item" onclick="navTo('projects',this)" title="Projetos"><span class="nav-icon">📋</span><span class="nav-label">Projetos</span></div>
+      <div class="nav-item" onclick="navTo('activities',this)" title="Atividades"><span class="nav-icon">📝</span><span class="nav-label">Atividades</span></div>
       <div class="nav-item" onclick="navTo('licenses',this)" title="Licenciamentos"><span class="nav-icon">🔑</span><span class="nav-label">Licenciamentos</span><span class="nav-badge" id="lic-alert-badge" style="display:none">!</span></div>
       <div class="nav-item" id="nav-commitments" onclick="navTo('commitments',this)" title="Commitment Acronis"><span class="nav-icon">💳</span><span class="nav-label">Commitment</span><span class="nav-badge" id="commit-alert-badge" style="display:none">!</span></div>
       <div class="nav-item" onclick="navTo('hours',this)" title="Horas Técnicas"><span class="nav-icon">⏱</span><span class="nav-label">Horas Técnicas</span><span class="nav-badge" id="hours-alert-badge" style="display:none">!</span></div>
@@ -639,6 +640,23 @@ input,select,textarea{font-family:var(--font)}
         </select>
       </div>
       <div id="projects-content"></div>
+    </div>
+
+    <!-- ── ATIVIDADES ── -->
+    <div class="page" id="page-activities">
+      <div class="section-header">
+        <div class="section-title">Atividades</div>
+        <button class="btn btn-accent" onclick="openActivityModal()">+ Nova atividade</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+        <div style="display:flex;align-items:center;gap:6px"><label style="font-size:11px;color:var(--text3)">De:</label><input type="date" id="act-f-start" class="form-input" style="padding:6px 8px;font-size:12px;width:140px" onchange="renderActivities()"></div>
+        <div style="display:flex;align-items:center;gap:6px"><label style="font-size:11px;color:var(--text3)">Até:</label><input type="date" id="act-f-end" class="form-input" style="padding:6px 8px;font-size:12px;width:140px" onchange="renderActivities()"></div>
+        <select class="form-select" id="act-f-type" style="width:auto;padding:7px 12px;font-size:12px" onchange="renderActivities()"><option value="">Todos os tipos</option></select>
+        <select class="form-select" id="act-f-user" style="width:auto;padding:7px 12px;font-size:12px" onchange="renderActivities()"><option value="">Todos os responsáveis</option></select>
+        <select class="form-select" id="act-f-client" style="width:auto;padding:7px 12px;font-size:12px" onchange="renderActivities()"><option value="">Todos os clientes</option></select>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('act-f-start').value='';document.getElementById('act-f-end').value='';document.getElementById('act-f-type').value='';document.getElementById('act-f-user').value='';document.getElementById('act-f-client').value='';renderActivities()">✕ Limpar</button>
+      </div>
+      <div id="activities-content"></div>
     </div>
 
     <!-- ── LICENSES ── -->
@@ -929,6 +947,44 @@ input,select,textarea{font-family:var(--font)}
       <button class="btn btn-danger" id="t-delete-btn" onclick="deleteTask()" style="margin-right:auto;display:none">Excluir</button>
       <button class="btn btn-ghost" onclick="closeModal('task-modal-overlay')">Cancelar</button>
       <button class="btn btn-accent" onclick="saveTask()">Salvar tarefa</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="activity-modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="activity-modal-title">Nova Atividade</div>
+      <button class="modal-close" onclick="closeModal('activity-modal-overlay')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group"><label class="form-label">Tipo *</label>
+          <select class="form-select" id="a-type" onchange="_actTypeChange()">
+            <option value="chamado">🎫 Chamado</option>
+            <option value="estudo">📚 Estudo / Certificação</option>
+            <option value="projeto">🗂 Tarefa de projeto</option>
+            <option value="interno">🛠 Interno</option>
+            <option value="reuniao">👥 Reunião</option>
+            <option value="outro">• Outro</option>
+          </select>
+        </div>
+        <div class="form-group" id="a-user-wrap"><label class="form-label">Responsável</label>
+          <select class="form-select" id="a-user"></select>
+        </div>
+        <div class="form-group"><label class="form-label">Data *</label><input class="form-input" id="a-date" type="date" onchange="_actQualUpdate()"></div>
+        <div class="form-group"><label class="form-label">Duração (HH:MM) *</label><input class="form-input" id="a-hours" placeholder="Ex: 01:30" oninput="_fmtHInput(this)"></div>
+        <div class="form-group"><label class="form-label">Cliente / Grupo</label><select class="form-select" id="a-client"><option value="">Sem cliente</option></select></div>
+        <div class="form-group" id="a-project-wrap"><label class="form-label">Projeto</label><select class="form-select" id="a-project" onchange="_actLoadTasks()"><option value="">Nenhum</option></select></div>
+      </div>
+      <div class="form-group" id="a-task-wrap" style="display:none"><label class="form-label">Tarefa (soma nas horas executadas)</label><select class="form-select" id="a-task"><option value="">Nenhuma</option></select></div>
+      <div class="form-group"><label class="form-label">Descrição</label><textarea class="form-textarea" id="a-desc" rows="3" placeholder="O que foi feito..."></textarea></div>
+      <div style="font-size:11px;color:var(--text3)">Qualificação: <span id="a-qual-lbl" style="font-weight:600;color:var(--accent2)">—</span> <span>(detectada pela data)</span></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger" id="a-delete-btn" onclick="deleteActivity()" style="margin-right:auto;display:none">Excluir</button>
+      <button class="btn btn-ghost" onclick="closeModal('activity-modal-overlay')">Cancelar</button>
+      <button class="btn btn-accent" onclick="saveActivity()">Salvar atividade</button>
     </div>
   </div>
 </div>
@@ -1352,6 +1408,9 @@ let nextGroupId   = 1;
 let nextTaskId    = 1000;
 
 let currentUser = null;
+let activities=[]; let nextActivityId=1; let _editingActId=null; let _actUsers=[];
+const ACT_TYPES={chamado:'🎫 Chamado',estudo:'📚 Estudo / Certificação',projeto:'🗂 Tarefa de projeto',interno:'🛠 Interno',reuniao:'👥 Reunião',outro:'• Outro'};
+const QUAL_LBL={weekday:'Seg-Sex',afterhours:'Seg-Sex fora do horário',saturday:'Sábado',sunday:'Domingo/Feriado'};
 let currentRole = 'tecnico'; // 'admin' | 'tecnico'
 
 const DEFAULT_SECTORS = ['Técnico','Comercial','Governança'];
@@ -1488,11 +1547,12 @@ function navTo(page, el){
   if(el) el.classList.add('active');
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
-  const titles={dashboard:'Dashboard',clients:'Clientes',projects:'Projetos',licenses:'Licenciamentos',commitments:'Commitment',hours:'Horas Técnicas',reports:'Relatórios',settings:'Configurações'};
+  const titles={dashboard:'Dashboard',clients:'Clientes',projects:'Projetos',activities:'Atividades',licenses:'Licenciamentos',commitments:'Commitment',hours:'Horas Técnicas',reports:'Relatórios',settings:'Configurações'};
   document.getElementById('topbar-title').textContent = titles[page]||page;
   if(page==='dashboard') renderDashboard();
   if(page==='clients')   renderClients();
   if(page==='projects')  renderProjects();
+  if(page==='activities') renderActivities();
   if(page==='licenses')  renderLicenses();
   if(page==='commitments') renderCommitments();
   if(page==='hours')       renderHoursGrid();
@@ -2476,6 +2536,183 @@ window.removeExtra=function(projId,idx){
   if(window.saveToFirebase) saveToFirebase('projects',String(p.id),p);
   renderProjDetail();
 };
+
+// ══════════════════════════════════
+//   ATIVIDADES
+// ══════════════════════════════════
+function _actQualUpdate(){
+  const q=_autoQualFromDate(document.getElementById('a-date').value);
+  document.getElementById('a-qual-lbl').textContent=QUAL_LBL[q]||'—';
+}
+function _actTypeChange(){
+  const isProj=document.getElementById('a-type').value==='projeto';
+  document.getElementById('a-project-wrap').style.display=isProj?'':'none';
+  document.getElementById('a-task-wrap').style.display=(isProj&&document.getElementById('a-project').value)?'':'none';
+}
+function _actLoadTasks(){
+  const pid=document.getElementById('a-project').value;
+  const sel=document.getElementById('a-task');
+  const p=projects.find(x=>String(x.id)===String(pid));
+  sel.innerHTML='<option value="">Nenhuma</option>'+((p&&p.tasks||[]).map(t=>`<option value="${t.id}">${t.name}</option>`).join(''));
+  document.getElementById('a-task-wrap').style.display=(document.getElementById('a-type').value==='projeto'&&pid)?'':'none';
+}
+async function _actEnsureUsers(){
+  if(!isAdmin()) return;
+  try{
+    let snap=await _db.collection('Users').get();
+    _actUsers=[]; snap.forEach(d=>{const u=d.data(); if(u.active!==false) _actUsers.push({uid:u.uid||d.id,name:u.name||u.email});});
+  }catch(e){ _actUsers=[]; }
+}
+async function openActivityModal(id){
+  _editingActId=id||null;
+  const a=id?activities.find(x=>x.id===id):null;
+  document.getElementById('activity-modal-title').textContent=a?'Editar Atividade':'Nova Atividade';
+  document.getElementById('a-delete-btn').style.display=a?'':'none';
+  // Responsável
+  await _actEnsureUsers();
+  const uWrap=document.getElementById('a-user-wrap'), uSel=document.getElementById('a-user');
+  if(isAdmin()){
+    uWrap.style.display='';
+    const opts=_actUsers.length?_actUsers:[{uid:currentUser.uid,name:currentUser.name}];
+    uSel.innerHTML=opts.map(u=>`<option value="${u.uid}">${u.name}</option>`).join('');
+    uSel.value=a?a.userId||currentUser.uid:currentUser.uid;
+  } else {
+    uWrap.style.display='none';
+    uSel.innerHTML=`<option value="${currentUser.uid}">${currentUser.name}</option>`;
+    uSel.value=currentUser.uid;
+  }
+  // Cliente / grupo
+  const cSel=document.getElementById('a-client');
+  const grpOpts=clientGroups.map(g=>`<option value="g:${g.id}">👥 ${g.name}</option>`).join('');
+  const cliOpts=clients.map(c=>`<option value="c:${c.id}">${c.name}</option>`).join('');
+  cSel.innerHTML='<option value="">Sem cliente</option>'+grpOpts+cliOpts;
+  cSel.value=a?a.clientRef||'':'';
+  // Projeto
+  const pSel=document.getElementById('a-project');
+  pSel.innerHTML='<option value="">Nenhum</option>'+projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  pSel.value=a?a.projectId||'':'';
+  document.getElementById('a-type').value=a?a.type||'chamado':'chamado';
+  document.getElementById('a-date').value=a?a.date||todayStr():todayStr();
+  document.getElementById('a-hours').value=a&&a.hours?fmtH(a.hours):'';
+  document.getElementById('a-desc').value=a?a.desc||'':'';
+  _actTypeChange(); _actLoadTasks();
+  document.getElementById('a-task').value=a?a.taskId||'':'';
+  document.getElementById('a-task-wrap').style.display=(document.getElementById('a-type').value==='projeto'&&pSel.value)?'':'none';
+  _actQualUpdate();
+  openModal('activity-modal-overlay');
+}
+function saveActivity(){
+  const hours=parseHM(document.getElementById('a-hours').value);
+  const date=document.getElementById('a-date').value;
+  if(!date){alert('Informe a data');return;}
+  if(!hours){alert('Informe a duração (Ex: 01:30)');return;}
+  const type=document.getElementById('a-type').value;
+  // Responsável: técnico só pode lançar pra si
+  let userId=currentUser.uid, userName=currentUser.name;
+  if(isAdmin()){
+    userId=document.getElementById('a-user').value||currentUser.uid;
+    const u=_actUsers.find(x=>x.uid===userId); userName=u?u.name:currentUser.name;
+  }
+  const clientRef=document.getElementById('a-client').value||'';
+  const projectId=type==='projeto'?(document.getElementById('a-project').value||null):null;
+  const taskId=type==='projeto'?(document.getElementById('a-task').value||null):null;
+  const prev=_editingActId?activities.find(x=>x.id===_editingActId):null;
+  const data={
+    id:_editingActId||nextActivityId++,
+    userId,userName,date,hours,type,
+    clientRef,
+    clientId: clientRef.startsWith('c:')?clientRef.slice(2):null,
+    groupId:  clientRef.startsWith('g:')?clientRef.slice(2):null,
+    projectId, taskId:taskId?Number(taskId):null,
+    desc:document.getElementById('a-desc').value.trim(),
+    qual:_autoQualFromDate(date),
+    source:'manual', externalId:prev?prev.externalId||null:null,
+    createdAt:prev?prev.createdAt||Date.now():Date.now(),
+    updatedAt:Date.now(),
+  };
+  // Sincroniza horas executadas da tarefa (delta em relação ao valor anterior)
+  if(data.taskId){
+    const p=projects.find(x=>String(x.id)===String(data.projectId));
+    const t=p&&(p.tasks||[]).find(x=>x.id===data.taskId);
+    if(t){
+      const oldContrib=(prev&&prev.taskId===data.taskId)?(Number(prev.hours)||0):0;
+      t.doneHours=Math.max(0,(Number(t.doneHours)||0)-oldContrib+(Number(data.hours)||0));
+      p.updatedAt=Date.now(); saveToFirebase('projects',String(p.id),p);
+    }
+  }
+  if(_editingActId){ const i=activities.findIndex(x=>x.id===_editingActId); activities[i]=data; }
+  else activities.push(data);
+  saveToFirebase('activities',String(data.id),data);
+  closeModal('activity-modal-overlay');
+  renderActivities();
+}
+function deleteActivity(){
+  if(!_editingActId||!confirm('Excluir esta atividade?')) return;
+  const a=activities.find(x=>x.id===_editingActId);
+  if(a&&a.taskId){
+    const p=projects.find(x=>String(x.id)===String(a.projectId));
+    const t=p&&(p.tasks||[]).find(x=>x.id===a.taskId);
+    if(t){ t.doneHours=Math.max(0,(Number(t.doneHours)||0)-(Number(a.hours)||0)); p.updatedAt=Date.now(); saveToFirebase('projects',String(p.id),p); }
+  }
+  activities=activities.filter(x=>x.id!==_editingActId);
+  deleteFromFirebase('activities',String(_editingActId));
+  closeModal('activity-modal-overlay');
+  renderActivities();
+}
+function _actClientName(a){
+  if(a.groupId){ const g=clientGroups.find(x=>String(x.id)===String(a.groupId)); return g?'👥 '+g.name:'—'; }
+  if(a.clientId){ const c=clients.find(x=>String(x.id)===String(a.clientId)); return c?c.name:'—'; }
+  return '';
+}
+function renderActivities(){
+  const el=document.getElementById('activities-content'); if(!el) return;
+  // Popula filtros (tipo/responsável/cliente) uma vez
+  const tSel=document.getElementById('act-f-type');
+  if(tSel && tSel.options.length<=1) tSel.innerHTML='<option value="">Todos os tipos</option>'+Object.keys(ACT_TYPES).map(k=>`<option value="${k}">${ACT_TYPES[k]}</option>`).join('');
+  const uSel=document.getElementById('act-f-user');
+  if(isAdmin()){
+    const names=[...new Map(activities.map(a=>[a.userId,a.userName])).entries()];
+    uSel.style.display=''; uSel.innerHTML='<option value="">Todos os responsáveis</option>'+names.map(([id,nm])=>`<option value="${id}">${nm||'—'}</option>`).join('');
+  } else { uSel.style.display='none'; }
+  const cSel=document.getElementById('act-f-client');
+  if(cSel && cSel.options.length<=1) cSel.innerHTML='<option value="">Todos os clientes</option>'+clientGroups.map(g=>`<option value="g:${g.id}">👥 ${g.name}</option>`).join('')+clients.map(c=>`<option value="c:${c.id}">${c.name}</option>`).join('');
+
+  const fStart=document.getElementById('act-f-start').value, fEnd=document.getElementById('act-f-end').value;
+  const fType=document.getElementById('act-f-type').value, fUser=document.getElementById('act-f-user').value, fClient=document.getElementById('act-f-client').value;
+  let list=activities.slice();
+  if(!isAdmin()) list=list.filter(a=>a.userId===currentUser.uid); // técnico só as suas
+  if(fStart) list=list.filter(a=>a.date>=fStart);
+  if(fEnd)   list=list.filter(a=>a.date<=fEnd);
+  if(fType)  list=list.filter(a=>a.type===fType);
+  if(fUser)  list=list.filter(a=>a.userId===fUser);
+  if(fClient)list=list.filter(a=>a.clientRef===fClient);
+  list.sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||0)-(a.createdAt||0));
+
+  const totH=list.reduce((s,a)=>s+(Number(a.hours)||0),0);
+  let html=`<div class="kpi-grid" style="grid-template-columns:repeat(2,1fr);margin-bottom:16px">
+    <div class="kpi-card"><div class="kpi-l">Atividades</div><div class="kpi-n">${list.length}</div></div>
+    <div class="kpi-card"><div class="kpi-l">Total de horas</div><div class="kpi-n" style="color:var(--accent2)">${fmtH(totH)}</div></div>
+  </div>`;
+  if(!list.length){ el.innerHTML=html+`<div class="empty-state" style="padding:30px 0"><div class="empty-state-icon">📝</div><div class="empty-state-text">Nenhuma atividade</div><button class="btn btn-accent btn-sm" onclick="openActivityModal()">+ Nova atividade</button></div>`; return; }
+  // Agrupa por data
+  const byDate={}; list.forEach(a=>{(byDate[a.date]=byDate[a.date]||[]).push(a);});
+  Object.keys(byDate).sort((a,b)=>b.localeCompare(a)).forEach(dt=>{
+    const dayH=byDate[dt].reduce((s,a)=>s+(Number(a.hours)||0),0);
+    html+=`<div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 6px"><div style="font-size:12px;font-weight:700;color:var(--text2)">${fmtDate(dt)}</div><div style="font-size:11px;color:var(--text3);font-family:var(--mono)">${fmtH(dayH)}</div></div>`;
+    byDate[dt].forEach(a=>{
+      const cli=_actClientName(a);
+      const proj=a.projectId?(projects.find(p=>String(p.id)===String(a.projectId))||{}).name:'';
+      html+=`<div class="task-item" onclick="openActivityModal(${a.id})" style="align-items:flex-start">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:500">${ACT_TYPES[a.type]||a.type}${a.desc?' — '+a.desc:''}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">${isAdmin()?'👤 '+(a.userName||'—')+' · ':''}${cli?cli+' · ':''}${proj?'🗂 '+proj+' · ':''}<span style="color:var(--text3)">${QUAL_LBL[a.qual]||''}</span>${a.source==='spiceworks'?' · <span style="color:var(--accent2)">Spiceworks</span>':''}</div>
+        </div>
+        <div style="font-size:13px;font-family:var(--mono);font-weight:700;color:var(--accent2)">${fmtH(a.hours)}</div>
+      </div>`;
+    });
+  });
+  el.innerHTML=html;
+}
 
 // TASKS
 let editingTaskProjId=null, editingTaskId=null;
@@ -5757,7 +5994,7 @@ window.addEventListener('appinstalled', () => {
 // Register inline service worker for offline support
 if('serviceWorker' in navigator){
   const swCode = `
-const CACHE = 'ativa360-v5';
+const CACHE = 'ativa360-v6';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
@@ -5867,6 +6104,7 @@ _auth.onAuthStateChanged(async user=>{
       if(!snap.empty){
         userData=snap.docs[0].data();
         currentRole=userData.role||'tecnico';
+        currentUser={uid:user.uid,name:userData.name||user.email,email:user.email,role:currentRole};
         mfaSecret=userData.mfaSecret||null;
         mfaEnabled=userData.mfaEnabled||false;
         if(userData.active===false){ alert('Conta desativada.'); _auth.signOut(); return; }
@@ -5882,13 +6120,14 @@ _auth.onAuthStateChanged(async user=>{
     }catch(e){ console.error(e); }
 
     try{
-      const [cSnap,pSnap,lSnap,cmSnap,hSnap,gSnap]=await Promise.all([
+      const [cSnap,pSnap,lSnap,cmSnap,hSnap,gSnap,aSnap]=await Promise.all([
         _db.collection('clients').get(),
         _db.collection('projects').get(),
         _db.collection('licenses').get(),
         _db.collection('commitments').get(),
         _db.collection('hoursPackages').get(),
         _db.collection('clientGroups').get(),
+        _db.collection('activities').get(),
       ]);
       clients=[]; cSnap.forEach(d=>clients.push(d.data()));
       projects=[]; pSnap.forEach(d=>projects.push(d.data()));
@@ -5896,6 +6135,8 @@ _auth.onAuthStateChanged(async user=>{
       commitments=[]; cmSnap.forEach(d=>commitments.push(d.data()));
       hoursPackages=[]; hSnap.forEach(d=>hoursPackages.push(d.data()));
       clientGroups=[]; gSnap.forEach(d=>clientGroups.push(d.data()));
+      activities=[]; aSnap.forEach(d=>activities.push(d.data()));
+      if(activities.length) nextActivityId=Math.max(...activities.map(x=>x.id||0))+1;
       if(clientGroups.length) nextGroupId=Math.max(...clientGroups.map(x=>x.id||0))+1;
       if(clients.length) nextClientId=Math.max(...clients.map(x=>x.id||0))+1;
       if(projects.length) nextProjectId=Math.max(...projects.map(x=>x.id||0))+1;
