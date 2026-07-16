@@ -995,6 +995,21 @@ input,select,textarea{font-family:var(--font)}
         <div class="form-group" id="a-project-wrap"><label class="form-label">Projeto</label><select class="form-select" id="a-project" onchange="_actLoadTasks()"><option value="">Nenhum</option></select></div>
       </div>
       <div class="form-group" id="a-task-wrap" style="display:none"><label class="form-label">Tarefa (soma nas horas executadas)</label><select class="form-select" id="a-task"><option value="">Nenhuma</option></select></div>
+      <div class="form-group" style="margin-top:2px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0">
+          <input type="checkbox" id="a-bill" onchange="_actBillToggle()" style="width:16px;height:16px;accent-color:var(--accent)">
+          <span>Contabilizar do pacote de horas</span>
+        </label>
+      </div>
+      <div class="form-group" id="a-bill-wrap" style="display:none;background:var(--bg3);border-radius:8px;padding:12px;margin-top:2px">
+        <label class="form-label">Pacote de horas *</label>
+        <select class="form-select" id="a-hourspkg" onchange="_actHoursPkgChange()"></select>
+        <div id="a-hourscompany-wrap" style="display:none;margin-top:8px">
+          <label class="form-label">Empresa do grupo *</label>
+          <select class="form-select" id="a-hourscompany"></select>
+        </div>
+        <div id="a-bill-info" style="font-size:11px;color:var(--text3);margin-top:8px"></div>
+      </div>
       <div class="form-group"><label class="form-label">📝 Observação</label><textarea class="form-textarea" id="a-desc" rows="3" placeholder="Informações sobre esta atividade..."></textarea></div>
       <div style="font-size:12px;color:var(--text2);margin-bottom:4px">Duração: <span id="a-dur-lbl" style="font-weight:700;color:var(--accent2)">00:00</span></div>
       <div style="font-size:11px;color:var(--text3)">Qualificação: <span id="a-qual-lbl" style="font-weight:600;color:var(--accent2)">—</span> <span>(detectada pela data)</span></div>
@@ -2580,6 +2595,7 @@ window.removeExtra=function(projId,idx){
 function _actQualUpdate(){
   const q=_autoQualFromDate(document.getElementById('a-date').value);
   document.getElementById('a-qual-lbl').textContent=QUAL_LBL[q]||'—';
+  if(document.getElementById('a-bill')&&document.getElementById('a-bill').checked){ _actPopulateHoursPkgs(); _actHoursPkgChange(); }
 }
 function _actDurHours(){
   const s=document.getElementById('a-start-time').value, e=document.getElementById('a-end-time').value;
@@ -2590,6 +2606,90 @@ function _actDurHours(){
 }
 function _actCalcDur(){
   document.getElementById('a-dur-lbl').textContent=fmtH(_actDurHours());
+  if(document.getElementById('a-bill').checked) _actHoursPkgChange();
+}
+// ── Vínculo com pacote de horas ───────────────────────────────────────────
+function _ndDate(s,fb){ if(!s) return fb; s=String(s).trim(); const br=s.match(/^(\d{2})\/(\d{2})\/(\d{4})/); if(br) return br[3]+'-'+br[2]+'-'+br[1]; return s.slice(0,10); }
+function _hoursChainOf(root){ const chain=[root]; let cur=root; while(true){ const n=hoursPackages.find(p=>p.parentId===cur.id); if(!n) break; cur=n; chain.push(cur); } return chain; }
+function _pkgInstanceForDate(root,dateStr){
+  const chain=_hoursChainOf(root); const d=_ndDate(dateStr,todayStr());
+  const hit=chain.filter(p=>{const ps=_ndDate(p.start,'0000-00-00'),pe=_ndDate(p.end,'9999-12-31');return ps<=d&&d<=pe;});
+  return hit.length?hit[hit.length-1]:chain[chain.length-1];
+}
+function _actRootAvailable(root,dateStr){
+  const d=_ndDate(dateStr,todayStr());
+  return _hoursChainOf(root).some(p=>{const ps=_ndDate(p.start,'0000-00-00'),pe=_ndDate(p.end,'9999-12-31');return ps<=d&&d<=pe;});
+}
+function _actPopulateHoursPkgs(){
+  const sel=document.getElementById('a-hourspkg'); if(!sel) return;
+  const prev=sel.value;
+  const date=document.getElementById('a-date').value||todayStr();
+  const roots=hoursPackages.filter(p=>!p.parentId);
+  let avail=roots.filter(r=>_actRootAvailable(r,date));
+  if(prev && !avail.some(r=>String(r.id)===String(prev))){ const r=roots.find(x=>String(x.id)===String(prev)); if(r) avail=[r,...avail]; }
+  if(!avail.length){ sel.innerHTML='<option value="">Nenhum pacote vigente nesta data</option>'; }
+  else sel.innerHTML='<option value="">Selecione o pacote...</option>'+avail.map(r=>{const inst=_pkgInstanceForDate(r,date);const st=hoursStatus(inst);return `<option value="${r.id}">${hoursOwnerName(inst)} · saldo ${fmtH(st.remaining)}</option>`;}).join('');
+  sel.value=prev||'';
+}
+function _actBillToggle(){
+  const on=document.getElementById('a-bill').checked;
+  document.getElementById('a-bill-wrap').style.display=on?'':'none';
+  if(on){ _actPopulateHoursPkgs(); _actHoursPkgChange(); }
+}
+function _actHoursPkgChange(){
+  const date=document.getElementById('a-date').value||todayStr();
+  const rid=document.getElementById('a-hourspkg').value;
+  const cw=document.getElementById('a-hourscompany-wrap');
+  const info=document.getElementById('a-bill-info');
+  const root=hoursPackages.find(x=>String(x.id)===String(rid));
+  if(!root){ cw.style.display='none'; info.textContent=''; return; }
+  const inst=_pkgInstanceForDate(root,date);
+  if(inst.groupId){
+    const g=clientGroups.find(x=>String(x.id)===String(inst.groupId));
+    const membs=(g?.clientIds||[]).map(id=>clients.find(c=>c.id===id)).filter(Boolean);
+    const csel=document.getElementById('a-hourscompany');
+    const prevC=csel.value;
+    csel.innerHTML='<option value="">Selecione a empresa...</option>'+membs.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+    csel.value=prevC||'';
+    // pré-seleciona se a atividade já tem cliente do grupo
+    const cref=document.getElementById('a-client').value;
+    if(!csel.value && cref.startsWith('c:') && membs.some(c=>String(c.id)===cref.slice(2))) csel.value=cref.slice(2);
+    cw.style.display='';
+  } else cw.style.display='none';
+  const st=hoursStatus(inst);
+  const dur=_actDurHours();
+  const after=st.remaining-dur;
+  info.innerHTML=`Saldo atual: <strong>${fmtH(st.remaining)}</strong> · esta atividade: <strong>${fmtH(dur)}</strong> · saldo após: <strong style="color:${after<0?'var(--red)':'var(--green)'}">${fmtH(after)}</strong>${after<0?' ⚠ excede o saldo':''}`;
+}
+// Sincroniza o uso de horas vinculado a uma atividade (chave estável actId)
+function _syncActivityUsage(data){
+  const changed=new Set();
+  hoursPackages.forEach(p=>{
+    if(!Array.isArray(p.usages)) return;
+    const before=p.usages.length;
+    p.usages=p.usages.filter(u=>String(u.actId||'')!==String(data.id));
+    if(p.usages.length!==before) changed.add(p);
+  });
+  if(data.billFromHours && data.hoursPkgId){
+    const root=hoursPackages.find(x=>String(x.id)===String(data.hoursPkgId));
+    if(root){
+      const pkg=_pkgInstanceForDate(root,data.date);
+      if(!pkg.usages) pkg.usages=[];
+      pkg.usages.push({
+        hours:Number(data.hours)||0,
+        date:data.date,
+        qual:data.qual||_autoQualFromDate(data.date),
+        companyId: pkg.groupId?(data.hoursCompanyId||null):null,
+        tech:data.userName||'',
+        desc:(data.name||'')+(data.desc?(' — '+data.desc):''),
+        projectId:data.projectId||null,
+        actId:data.id, source:'activity',
+      });
+      changed.add(pkg);
+    }
+  }
+  changed.forEach(p=>saveToFirebase('hoursPackages',String(p.id),p));
+  if(changed.size){ try{ if(typeof renderHoursGrid==='function') renderHoursGrid(); }catch(e){} }
 }
 function _actTypeChange(){
   const isProj=document.getElementById('a-type').value==='projeto';
@@ -2651,6 +2751,15 @@ async function openActivityModal(id){
   document.getElementById('a-task').value=a?a.taskId||'':'';
   document.getElementById('a-task-wrap').style.display=(document.getElementById('a-type').value==='projeto'&&pSel.value)?'':'none';
   _actQualUpdate();
+  // Vínculo com pacote de horas
+  document.getElementById('a-bill').checked=a?!!a.billFromHours:false;
+  document.getElementById('a-bill-wrap').style.display=(a&&a.billFromHours)?'':'none';
+  if(a&&a.billFromHours){
+    _actPopulateHoursPkgs();
+    document.getElementById('a-hourspkg').value=a.hoursPkgId||'';
+    _actHoursPkgChange();
+    if(a.hoursCompanyId) document.getElementById('a-hourscompany').value=a.hoursCompanyId;
+  }
   openModal('activity-modal-overlay');
 }
 function saveActivity(){
@@ -2673,6 +2782,19 @@ function saveActivity(){
   const clientRef=document.getElementById('a-client').value||'';
   const projectId=type==='projeto'?(document.getElementById('a-project').value||null):null;
   const taskId=type==='projeto'?(document.getElementById('a-task').value||null):null;
+  // Vínculo com pacote de horas
+  const billFromHours=document.getElementById('a-bill').checked;
+  let hoursPkgId=null, hoursCompanyId=null;
+  if(billFromHours){
+    hoursPkgId=document.getElementById('a-hourspkg').value||null;
+    if(!hoursPkgId){ alert('Selecione o pacote de horas'); return; }
+    const root=hoursPackages.find(x=>String(x.id)===String(hoursPkgId));
+    const inst=root?_pkgInstanceForDate(root,date):null;
+    if(inst&&inst.groupId){
+      hoursCompanyId=document.getElementById('a-hourscompany').value||null;
+      if(!hoursCompanyId){ alert('Selecione a empresa do grupo para abater as horas'); return; }
+    }
+  }
   const prev=_editingActId?activities.find(x=>x.id===_editingActId):null;
   const data={
     id:_editingActId||nextActivityId++,
@@ -2683,6 +2805,7 @@ function saveActivity(){
     clientId: clientRef.startsWith('c:')?clientRef.slice(2):null,
     groupId:  clientRef.startsWith('g:')?clientRef.slice(2):null,
     projectId, taskId:taskId?Number(taskId):null,
+    billFromHours, hoursPkgId, hoursCompanyId,
     desc:document.getElementById('a-desc').value.trim(),
     qual:_autoQualFromDate(date),
     source:'manual', externalId:prev?prev.externalId||null:null,
@@ -2699,6 +2822,8 @@ function saveActivity(){
       p.updatedAt=Date.now(); saveToFirebase('projects',String(p.id),p);
     }
   }
+  // Sincroniza (cria/atualiza/remove) o registro de horas vinculado
+  _syncActivityUsage(data);
   if(_editingActId){ const i=activities.findIndex(x=>x.id===_editingActId); activities[i]=data; }
   else activities.push(data);
   saveToFirebase('activities',String(data.id),data);
@@ -2713,6 +2838,8 @@ function deleteActivity(){
     const t=p&&(p.tasks||[]).find(x=>x.id===a.taskId);
     if(t){ t.doneHours=Math.max(0,(Number(t.doneHours)||0)-(Number(a.hours)||0)); p.updatedAt=Date.now(); saveToFirebase('projects',String(p.id),p); }
   }
+  // Remove o registro de horas vinculado (se houver)
+  if(a){ const changed=new Set(); hoursPackages.forEach(p=>{ if(!Array.isArray(p.usages))return; const b=p.usages.length; p.usages=p.usages.filter(u=>String(u.actId||'')!==String(a.id)); if(p.usages.length!==b) changed.add(p); }); changed.forEach(p=>saveToFirebase('hoursPackages',String(p.id),p)); if(changed.size){ try{ if(typeof renderHoursGrid==='function') renderHoursGrid(); }catch(e){} } }
   activities=activities.filter(x=>x.id!==_editingActId);
   deleteFromFirebase('activities',String(_editingActId));
   closeModal('activity-modal-overlay');
@@ -2767,7 +2894,7 @@ function renderActivities(){
       html+=`<div class="task-item" onclick="openActivityModal(${a.id})" style="align-items:flex-start">
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:600">${a.name||(_tl[a.type]||a.type)}</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:2px">${a.startTime&&a.endTime?'🕒 '+a.startTime+'–'+a.endTime+' · ':''}📌 ${_tl[a.type]||a.type}${isAdmin()?' · 👤 '+(a.userName||'—'):''}${cli?' · '+cli:''}${proj?' · 🗂 '+proj:''}${a.qual?' · '+(QUAL_LBL[a.qual]||''):''}${a.source==='spiceworks'?' · <span style="color:var(--accent2)">Spiceworks</span>':''}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">${a.startTime&&a.endTime?'🕒 '+a.startTime+'–'+a.endTime+' · ':''}📌 ${_tl[a.type]||a.type}${isAdmin()?' · 👤 '+(a.userName||'—'):''}${cli?' · '+cli:''}${proj?' · 🗂 '+proj:''}${a.qual?' · '+(QUAL_LBL[a.qual]||''):''}${a.billFromHours?' · <span style="color:var(--amber)">💳 Abatido do pacote</span>':''}${a.source==='spiceworks'?' · <span style="color:var(--accent2)">Spiceworks</span>':''}</div>
           ${a.desc?`<div style="font-size:11px;color:var(--text2);margin-top:5px;padding:6px 8px;background:var(--bg2);border-left:2px solid var(--accent2);border-radius:4px;white-space:pre-wrap">📝 ${a.desc}</div>`:''}
         </div>
         <div style="font-size:13px;font-family:var(--mono);font-weight:700;color:var(--accent2)">${fmtH(a.hours)}</div>
@@ -6188,7 +6315,7 @@ window.addEventListener('appinstalled', () => {
 // Register inline service worker for offline support
 if('serviceWorker' in navigator){
   const swCode = `
-const CACHE = 'ativa360-v13';
+const CACHE = 'ativa360-v14';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
