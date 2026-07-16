@@ -1483,7 +1483,8 @@ function closeMobileMenu(){
 
 function navTo(page, el){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  el.classList.add('active');
+  if(!el){ el=[...document.querySelectorAll('.nav-item')].find(n=>(n.getAttribute('onclick')||'').includes("navTo('"+page+"'")); }
+  if(el) el.classList.add('active');
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
   const titles={dashboard:'Dashboard',clients:'Clientes',projects:'Projetos',licenses:'Licenciamentos',commitments:'Commitment',hours:'Horas Técnicas',reports:'Relatórios',settings:'Configurações'};
@@ -2852,6 +2853,7 @@ function switchReport(tab,el){
 }
 
 function renderReport(tab){
+  if(!isAdmin() && (tab==='financial'||tab==='mrr')) tab='overview';
   currentReport=tab;
   const el=document.getElementById('reports-content'); if(!el) return;
   try{
@@ -5700,7 +5702,7 @@ async function proceedAfterMfa(user){
   ['mfa-setup-screen','mfa-verify-screen'].forEach(id=>document.getElementById(id).classList.remove('active'));
   document.getElementById('app').classList.add('visible');
   applyRole();
-  navigate('dashboard');
+  navTo('dashboard');
   updateLicBadge(); updateCommitBadge();
   const pwaBtn2 = document.getElementById('pwa-install-btn');
   if(pwaBtn2) pwaBtn2.style.display = _pwaPrompt ? 'flex' : 'none';
@@ -5711,7 +5713,12 @@ function applyRole(){
   const admin=isAdmin();
   document.querySelectorAll('.admin-only').forEach(el=>{ el.style.display=admin?'':'none'; });
   document.getElementById('nav-settings').style.display=admin?'':'none';
-  if(!admin){ document.getElementById('nav-reports').style.display='none'; }
+  // Relatórios: técnico enxerga (versão operacional), mas sem as abas financeiras
+  document.querySelectorAll('#rep-tabs .rep-tab').forEach(t=>{
+    const oc=t.getAttribute('onclick')||'';
+    const isFin=oc.includes("'financial'")||oc.includes("'mrr'");
+    t.style.display=(!admin&&isFin)?'none':'';
+  });
   renderDashboard();
 }
 
@@ -5748,7 +5755,7 @@ window.addEventListener('appinstalled', () => {
 // Register inline service worker for offline support
 if('serviceWorker' in navigator){
   const swCode = `
-const CACHE = 'ativa360-v3';
+const CACHE = 'ativa360-v4';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
@@ -5811,11 +5818,39 @@ window.doLogin=async function(){
 };
 
 // ─── FIREBASE CRUD ───
+// Blindagem financeira: campos monetários vivem em coleções *_fin,
+// liberadas só p/ admin nas Firestore Rules. O técnico nunca baixa esses dados.
+const FIN_FIELDS={
+  projects:     ['proposal','quote','hourrate','monthlyProposal'],
+  licenses:     ['proposal','quote','supportRateClient','supportRateCost','monthlyProposal','monthlyQuote'],
+  hoursPackages:['rateWeekday','rateAfterhours','rateSaturday','rateSunday','monthlyProposal','monthlyQuote','value'],
+  commitments:  ['value'],
+};
 window.saveToFirebase=async function(col,id,data){
-  try{ await _db.collection(col).doc(id).set(JSON.parse(JSON.stringify(data))); }catch(e){ console.error(e); }
+  const fin=FIN_FIELDS[col];
+  const clean=JSON.parse(JSON.stringify(data));
+  try{
+    if(fin){
+      const finDoc={};
+      fin.forEach(f=>{ if(clean[f]!==undefined){ finDoc[f]=clean[f]; delete clean[f]; } });
+      // commitments: custo por uso também é financeiro
+      if(col==='commitments' && Array.isArray(clean.usages)){
+        finDoc.usageCosts=clean.usages.map(u=>Number(u.cost)||0);
+        clean.usages=clean.usages.map(u=>{ const c={...u}; delete c.cost; return c; });
+      }
+      await _db.collection(col).doc(id).set(clean);
+      // Só admin grava o doc financeiro; técnico nunca toca nele (preserva o dado)
+      if(isAdmin()) await _db.collection(col+'_fin').doc(id).set(finDoc);
+    } else {
+      await _db.collection(col).doc(id).set(clean);
+    }
+  }catch(e){ console.error(e); }
 };
 window.deleteFromFirebase=async function(col,id){
-  try{ await _db.collection(col).doc(id).delete(); }catch(e){ console.error(e); }
+  try{
+    await _db.collection(col).doc(id).delete();
+    if(FIN_FIELDS[col] && isAdmin()){ try{ await _db.collection(col+'_fin').doc(id).delete(); }catch(_){} }
+  }catch(e){ console.error(e); }
 };
 
 // ─── AUTH STATE ───
@@ -5867,6 +5902,25 @@ _auth.onAuthStateChanged(async user=>{
       if(hoursPackages.length) nextHoursId=Math.max(...hoursPackages.map(x=>x.id||0))+1;
       const tids=projects.flatMap(p=>(p.tasks||[]).map(t=>t.id||0));
       if(tids.length) nextTaskId=Math.max(...tids)+1;
+
+      // Dados financeiros: só o admin baixa (coleções *_fin, protegidas por Rules)
+      if(isAdmin()){
+        try{
+          const finCols=['projects','licenses','hoursPackages','commitments'];
+          const finSnaps=await Promise.all(finCols.map(c=>_db.collection(c+'_fin').get()));
+          const arrByCol={projects,licenses,hoursPackages,commitments};
+          finCols.forEach((c,i)=>{
+            const map={}; finSnaps[i].forEach(d=>map[d.id]=d.data());
+            arrByCol[c].forEach(rec=>{
+              const f=map[String(rec.id)]; if(!f) return;
+              Object.keys(f).forEach(k=>{ if(k!=='usageCosts') rec[k]=f[k]; });
+              if(c==='commitments' && Array.isArray(f.usageCosts) && Array.isArray(rec.usages)){
+                rec.usages.forEach((u,ui)=>{ u.cost=f.usageCosts[ui]||0; });
+              }
+            });
+          });
+        }catch(e){ console.error('Error loading financials:',e); }
+      }
     }catch(e){ console.error('Error loading data:',e); }
 
     // 2. MFA check — show MFA screen, wait for completion
@@ -5910,7 +5964,7 @@ _auth.onAuthStateChanged(async user=>{
     // 5. Enter the app (intro runs on top via z-index:9999)
     document.getElementById('app').classList.add('visible');
     applyRole();
-    navigate('dashboard');
+    navTo('dashboard');
     updateLicBadge(); updateCommitBadge(); updateHoursBadge();
     const pwaBtn = document.getElementById('pwa-install-btn');
     if(pwaBtn) pwaBtn.style.display = _pwaPrompt ? 'flex' : 'none';
