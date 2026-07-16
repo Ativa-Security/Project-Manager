@@ -564,7 +564,7 @@ input,select,textarea{font-family:var(--font)}
       <div class="nav-item" onclick="navTo('clients',this)" title="Clientes"><span class="nav-icon">👥</span><span class="nav-label">Clientes</span></div>
       <div class="nav-item" onclick="navTo('projects',this)" title="Projetos"><span class="nav-icon">📋</span><span class="nav-label">Projetos</span></div>
       <div class="nav-item" onclick="navTo('licenses',this)" title="Licenciamentos"><span class="nav-icon">🔑</span><span class="nav-label">Licenciamentos</span><span class="nav-badge" id="lic-alert-badge" style="display:none">!</span></div>
-      <div class="nav-item" onclick="navTo('commitments',this)" title="Commitment Acronis"><span class="nav-icon">💳</span><span class="nav-label">Commitment</span><span class="nav-badge" id="commit-alert-badge" style="display:none">!</span></div>
+      <div class="nav-item" id="nav-commitments" onclick="navTo('commitments',this)" title="Commitment Acronis"><span class="nav-icon">💳</span><span class="nav-label">Commitment</span><span class="nav-badge" id="commit-alert-badge" style="display:none">!</span></div>
       <div class="nav-item" onclick="navTo('hours',this)" title="Horas Técnicas"><span class="nav-icon">⏱</span><span class="nav-label">Horas Técnicas</span><span class="nav-badge" id="hours-alert-badge" style="display:none">!</span></div>
       <div class="nav-item" id="nav-reports" onclick="navTo('reports',this)" title="Relatórios"><span class="nav-icon">📊</span><span class="nav-label">Relatórios</span></div>
       <div class="nav-item" id="nav-settings" onclick="navTo('settings',this)" title="Configurações" style="display:none"><span class="nav-icon">⚙️</span><span class="nav-label">Configurações</span></div>
@@ -1482,6 +1482,7 @@ function closeMobileMenu(){
 }
 
 function navTo(page, el){
+  if(!isAdmin() && page==='commitments') page='dashboard';
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   if(!el){ el=[...document.querySelectorAll('.nav-item')].find(n=>(n.getAttribute('onclick')||'').includes("navTo('"+page+"'")); }
   if(el) el.classList.add('active');
@@ -5713,6 +5714,7 @@ function applyRole(){
   const admin=isAdmin();
   document.querySelectorAll('.admin-only').forEach(el=>{ el.style.display=admin?'':'none'; });
   document.getElementById('nav-settings').style.display=admin?'':'none';
+  document.getElementById('nav-commitments').style.display=admin?'':'none';
   // Relatórios: técnico enxerga (versão operacional), mas sem as abas financeiras
   document.querySelectorAll('#rep-tabs .rep-tab').forEach(t=>{
     const oc=t.getAttribute('onclick')||'';
@@ -5755,7 +5757,7 @@ window.addEventListener('appinstalled', () => {
 // Register inline service worker for offline support
 if('serviceWorker' in navigator){
   const swCode = `
-const CACHE = 'ativa360-v4';
+const CACHE = 'ativa360-v5';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
