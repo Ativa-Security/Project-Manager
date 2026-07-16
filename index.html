@@ -973,16 +973,17 @@ input,select,textarea{font-family:var(--font)}
       <button class="modal-close" onclick="closeModal('activity-modal-overlay')">✕</button>
     </div>
     <div class="modal-body">
+      <div class="form-group"><label class="form-label">Nome da atividade *</label><input class="form-input" id="a-name" placeholder="Título da atividade"></div>
       <div class="form-grid">
         <div class="form-group"><label class="form-label">Tipo *</label>
-          <select class="form-select" id="a-type" onchange="_actTypeChange()">
-            <option value="chamado">🎫 Chamado</option>
-            <option value="estudo">📚 Estudo / Certificação</option>
-            <option value="projeto">🗂 Tarefa de projeto</option>
-            <option value="interno">🛠 Interno</option>
-            <option value="reuniao">👥 Reunião</option>
-            <option value="outro">• Outro</option>
-          </select>
+          <div style="display:flex;gap:6px;align-items:center">
+            <select class="form-select" id="a-type" onchange="_actTypeChange()" style="flex:1"></select>
+            <button type="button" class="btn btn-ghost admin-only" id="a-addtype-btn" onclick="_toggleAddType()" title="Adicionar tipo" style="padding:8px 12px">+</button>
+          </div>
+          <div id="a-newtype-row" class="admin-only" style="display:none;gap:6px;margin-top:6px">
+            <input class="form-input" id="a-newtype" placeholder="Novo tipo de atividade" style="flex:1">
+            <button type="button" class="btn btn-accent btn-sm" onclick="_addActType()">OK</button>
+          </div>
         </div>
         <div class="form-group" id="a-user-wrap"><label class="form-label">Responsável</label>
           <select class="form-select" id="a-user"></select>
@@ -994,7 +995,7 @@ input,select,textarea{font-family:var(--font)}
         <div class="form-group" id="a-project-wrap"><label class="form-label">Projeto</label><select class="form-select" id="a-project" onchange="_actLoadTasks()"><option value="">Nenhum</option></select></div>
       </div>
       <div class="form-group" id="a-task-wrap" style="display:none"><label class="form-label">Tarefa (soma nas horas executadas)</label><select class="form-select" id="a-task"><option value="">Nenhuma</option></select></div>
-      <div class="form-group"><label class="form-label">Descrição</label><textarea class="form-textarea" id="a-desc" rows="3" placeholder="O que foi feito..."></textarea></div>
+      <div class="form-group"><label class="form-label">📝 Observação</label><textarea class="form-textarea" id="a-desc" rows="3" placeholder="Informações sobre esta atividade..."></textarea></div>
       <div style="font-size:12px;color:var(--text2);margin-bottom:4px">Duração: <span id="a-dur-lbl" style="font-weight:700;color:var(--accent2)">00:00</span></div>
       <div style="font-size:11px;color:var(--text3)">Qualificação: <span id="a-qual-lbl" style="font-weight:600;color:var(--accent2)">—</span> <span>(detectada pela data)</span></div>
     </div>
@@ -1427,6 +1428,24 @@ let nextTaskId    = 1000;
 let currentUser = null;
 let activities=[]; let nextActivityId=1; let _editingActId=null; let _actUsers=[];
 const ACT_TYPES={chamado:'🎫 Chamado',estudo:'📚 Estudo / Certificação',projeto:'🗂 Tarefa de projeto',interno:'🛠 Interno',reuniao:'👥 Reunião',outro:'• Outro'};
+let customActTypes=[]; // [{key,label}]
+function actTypesAll(){ const o={...ACT_TYPES}; customActTypes.forEach(t=>{o[t.key]=t.label;}); return o; }
+function _populateTypeSelect(sel){
+  const all=actTypesAll();
+  sel.innerHTML=Object.keys(all).map(k=>`<option value="${k}">${all[k]}</option>`).join('');
+}
+function _toggleAddType(){ const r=document.getElementById('a-newtype-row'); r.style.display=r.style.display==='none'?'flex':'none'; if(r.style.display==='flex') document.getElementById('a-newtype').focus(); }
+async function _addActType(){
+  if(!isAdmin()) return;
+  const label=(document.getElementById('a-newtype').value||'').trim();
+  if(!label) return;
+  const key='c_'+Date.now();
+  const t={key,label};
+  customActTypes.push(t);
+  try{ await _db.collection('activityTypes').doc(key).set(t); }catch(e){ console.error(e); }
+  const sel=document.getElementById('a-type'); _populateTypeSelect(sel); sel.value=key; _actTypeChange();
+  document.getElementById('a-newtype').value=''; document.getElementById('a-newtype-row').style.display='none';
+}
 const QUAL_LBL={weekday:'Seg-Sex',afterhours:'Seg-Sex fora do horário',saturday:'Sábado',sunday:'Domingo/Feriado'};
 let currentRole = 'tecnico'; // 'admin' | 'tecnico'
 
@@ -2619,6 +2638,9 @@ async function openActivityModal(id){
   const pSel=document.getElementById('a-project');
   pSel.innerHTML='<option value="">Nenhum</option>'+projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
   pSel.value=a?a.projectId||'':'';
+  _populateTypeSelect(document.getElementById('a-type'));
+  document.getElementById('a-newtype-row').style.display='none';
+  document.getElementById('a-name').value=a?a.name||'':'';
   document.getElementById('a-type').value=a?a.type||'chamado':'chamado';
   document.getElementById('a-date').value=a?a.date||todayStr():todayStr();
   document.getElementById('a-start-time').value=a?a.startTime||'':'';
@@ -2639,6 +2661,8 @@ function saveActivity(){
   if(!startTime||!endTime){alert('Informe o horário de início e fim');return;}
   const hours=_actDurHours();
   if(!hours){alert('O fim deve ser diferente do início');return;}
+  const name=document.getElementById('a-name').value.trim();
+  if(!name){alert('Informe o nome da atividade');return;}
   const type=document.getElementById('a-type').value;
   // Responsável: técnico só pode lançar pra si
   let userId=currentUser.uid, userName=currentUser.name;
@@ -2653,6 +2677,7 @@ function saveActivity(){
   const data={
     id:_editingActId||nextActivityId++,
     userId,userName,date,hours,type,
+    name,
     startTime,endTime,
     clientRef,
     clientId: clientRef.startsWith('c:')?clientRef.slice(2):null,
@@ -2702,7 +2727,7 @@ function renderActivities(){
   const el=document.getElementById('activities-content'); if(!el) return;
   // Popula filtros (tipo/responsável/cliente) uma vez
   const tSel=document.getElementById('act-f-type');
-  if(tSel && tSel.options.length<=1) tSel.innerHTML='<option value="">Todos os tipos</option>'+Object.keys(ACT_TYPES).map(k=>`<option value="${k}">${ACT_TYPES[k]}</option>`).join('');
+  {const _ta=actTypesAll();tSel.innerHTML='<option value="">Todos os tipos</option>'+Object.keys(_ta).map(k=>`<option value="${k}" ${tSel.value===k?'selected':''}>${_ta[k]}</option>`).join('');}
   const uSel=document.getElementById('act-f-user');
   if(isAdmin()){
     const prevU=uSel.value;
@@ -2738,10 +2763,12 @@ function renderActivities(){
     byDate[dt].forEach(a=>{
       const cli=_actClientName(a);
       const proj=a.projectId?(projects.find(p=>String(p.id)===String(a.projectId))||{}).name:'';
+      const _tl=actTypesAll();
       html+=`<div class="task-item" onclick="openActivityModal(${a.id})" style="align-items:flex-start">
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:500">${ACT_TYPES[a.type]||a.type}${a.desc?' — '+a.desc:''}</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:2px">${a.startTime&&a.endTime?'🕒 '+a.startTime+'–'+a.endTime+' · ':''}${isAdmin()?'👤 '+(a.userName||'—')+' · ':''}${cli?cli+' · ':''}${proj?'🗂 '+proj+' · ':''}<span style="color:var(--text3)">${QUAL_LBL[a.qual]||''}</span>${a.source==='spiceworks'?' · <span style="color:var(--accent2)">Spiceworks</span>':''}</div>
+          <div style="font-size:13px;font-weight:600">${a.name||(_tl[a.type]||a.type)}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">${a.startTime&&a.endTime?'🕒 '+a.startTime+'–'+a.endTime+' · ':''}📌 ${_tl[a.type]||a.type}${isAdmin()?' · 👤 '+(a.userName||'—'):''}${cli?' · '+cli:''}${proj?' · 🗂 '+proj:''}${a.qual?' · '+(QUAL_LBL[a.qual]||''):''}${a.source==='spiceworks'?' · <span style="color:var(--accent2)">Spiceworks</span>':''}</div>
+          ${a.desc?`<div style="font-size:11px;color:var(--text2);margin-top:5px;padding:6px 8px;background:var(--bg2);border-left:2px solid var(--accent2);border-radius:4px;white-space:pre-wrap">📝 ${a.desc}</div>`:''}
         </div>
         <div style="font-size:13px;font-family:var(--mono);font-weight:700;color:var(--accent2)">${fmtH(a.hours)}</div>
       </div>`;
@@ -3230,7 +3257,7 @@ function repProductivity(){
   const filters=`<div style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;align-items:center">
     <div style="display:flex;align-items:center;gap:6px"><label style="font-size:11px;color:var(--text3)">De:</label><input type="date" class="form-input" style="padding:5px 8px;font-size:12px;width:140px" value="${start}" onchange="setProdFilter('start',this.value)"></div>
     <div style="display:flex;align-items:center;gap:6px"><label style="font-size:11px;color:var(--text3)">Até:</label><input type="date" class="form-input" style="padding:5px 8px;font-size:12px;width:140px" value="${end}" onchange="setProdFilter('end',this.value)"></div>
-    <select class="form-select" style="width:auto;padding:6px 10px;font-size:12px" onchange="setProdFilter('type',this.value)"><option value="">Todos os tipos</option>${Object.keys(ACT_TYPES).map(k=>`<option value="${k}" ${type===k?'selected':''}>${ACT_TYPES[k]}</option>`).join('')}</select>
+    <select class="form-select" style="width:auto;padding:6px 10px;font-size:12px" onchange="setProdFilter('type',this.value)"><option value="">Todos os tipos</option>${Object.entries(actTypesAll()).map(([k,lb])=>`<option value="${k}" ${type===k?'selected':''}>${lb}</option>`).join('')}</select>
     ${admin?`<select class="form-select" style="width:auto;padding:6px 10px;font-size:12px" onchange="setProdFilter('user',this.value)"><option value="">Todos os responsáveis</option>${userOpts.map(([id,nm])=>`<option value="${id}" ${user===id?'selected':''}>${nm||'—'}</option>`).join('')}</select>`:''}
     <select class="form-select" style="width:auto;padding:6px 10px;font-size:12px" onchange="setProdFilter('client',this.value)"><option value="">Todos os clientes</option>${cliOpts.map(([v,nm])=>`<option value="${v}" ${client===v?'selected':''}>${nm}</option>`).join('')}</select>
     <button class="btn btn-ghost btn-sm" onclick="prodFilter={start:'',end:'',type:'',user:'',client:''};renderReport('productivity')">✕ Limpar</button>
@@ -3256,7 +3283,7 @@ function repProductivity(){
     if(admin) byUser[a.userId]=(byUser[a.userId]||0)+(Number(a.hours)||0);
     const cn=_actClientName(a)||'Sem cliente'; byClient[cn]=(byClient[cn]||0)+(Number(a.hours)||0);
   });
-  const typeRows=Object.keys(byType).map(k=>({label:ACT_TYPES[k]||k,h:byType[k]})).sort((a,b)=>b.h-a.h);
+  const _tAll=actTypesAll();const typeRows=Object.keys(byType).map(k=>({label:_tAll[k]||k,h:byType[k]})).sort((a,b)=>b.h-a.h);
   const uName=id=>{const e=activities.find(a=>a.userId===id);return e?e.userName:'—';};
   const userRows=Object.keys(byUser).map(k=>({label:uName(k),h:byUser[k]})).sort((a,b)=>b.h-a.h);
   const cliRows=Object.keys(byClient).map(k=>({label:k,h:byClient[k]})).sort((a,b)=>b.h-a.h);
@@ -6161,7 +6188,7 @@ window.addEventListener('appinstalled', () => {
 // Register inline service worker for offline support
 if('serviceWorker' in navigator){
   const swCode = `
-const CACHE = 'ativa360-v12';
+const CACHE = 'ativa360-v13';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
@@ -6306,6 +6333,7 @@ _auth.onAuthStateChanged(async user=>{
       clientGroups=[]; gSnap.forEach(d=>clientGroups.push(d.data()));
       activities=[]; aSnap.forEach(d=>activities.push(d.data()));
       if(activities.length) nextActivityId=Math.max(...activities.map(x=>x.id||0))+1;
+      try{ const atSnap=await _db.collection('activityTypes').get(); customActTypes=[]; atSnap.forEach(d=>customActTypes.push(d.data())); }catch(e){ console.warn('activityTypes',e); }
       if(clientGroups.length) nextGroupId=Math.max(...clientGroups.map(x=>x.id||0))+1;
       if(clients.length) nextClientId=Math.max(...clients.map(x=>x.id||0))+1;
       if(projects.length) nextProjectId=Math.max(...projects.map(x=>x.id||0))+1;
