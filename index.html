@@ -464,6 +464,7 @@ input,select,textarea{font-family:var(--font)}
 @keyframes wlcPulse{0%,100%{transform:scale(.82);opacity:.55}50%{transform:scale(1.12);opacity:1}}
 @keyframes wlcBar{to{width:100%}}
 @keyframes wlcSpark{0%{opacity:0;transform:translateY(0) scale(.5)}30%{opacity:1}100%{opacity:0;transform:translateY(-60px) scale(1.2)}}
+#l-dropzone.drag{border-color:var(--accent);background:rgba(37,99,235,.08);color:var(--text2)}
 </style>
 </head>
 <body>
@@ -910,6 +911,19 @@ input,select,textarea{font-family:var(--font)}
         <div class="form-group"><label class="form-label">Projeto vinculado</label><select class="form-select" id="l-project"><option value="">Nenhum</option></select></div>
       </div>
       <div class="form-group" style="margin-top:4px"><label class="form-label">Observações</label><textarea class="form-textarea" id="l-notes" rows="2" placeholder="Detalhes adicionais..."></textarea></div>
+      <div class="form-group admin-only" style="margin-top:4px">
+        <label class="form-label">📎 Anexos (PDF, Word, etc.)</label>
+        <div id="l-dropzone" onclick="document.getElementById('l-file-input').click()"
+             ondragover="event.preventDefault();this.classList.add('drag')"
+             ondragleave="this.classList.remove('drag')"
+             ondrop="_licDrop(event)"
+             style="border:2px dashed var(--border);border-radius:8px;padding:18px;text-align:center;cursor:pointer;color:var(--text3);font-size:13px;transition:.15s">
+          <div>Clique para selecionar ou arraste e solte o arquivo aqui</div>
+          <div id="l-upload-status" style="font-size:11px;margin-top:6px;color:var(--accent2)"></div>
+        </div>
+        <input type="file" id="l-file-input" multiple style="display:none" onchange="_licFilesPicked(this.files)">
+        <div id="l-attach-list" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-danger" id="l-delete-btn" onclick="deleteLicense()" style="margin-right:auto;display:none">Excluir</button>
@@ -2673,8 +2687,10 @@ function renderActivities(){
   if(tSel && tSel.options.length<=1) tSel.innerHTML='<option value="">Todos os tipos</option>'+Object.keys(ACT_TYPES).map(k=>`<option value="${k}">${ACT_TYPES[k]}</option>`).join('');
   const uSel=document.getElementById('act-f-user');
   if(isAdmin()){
+    const prevU=uSel.value;
     const names=[...new Map(activities.map(a=>[a.userId,a.userName])).entries()];
     uSel.style.display=''; uSel.innerHTML='<option value="">Todos os responsáveis</option>'+names.map(([id,nm])=>`<option value="${id}">${nm||'—'}</option>`).join('');
+    uSel.value=prevU;
   } else { uSel.style.display='none'; }
   const cSel=document.getElementById('act-f-client');
   if(cSel && cSel.options.length<=1) cSel.innerHTML='<option value="">Todos os clientes</option>'+clientGroups.map(g=>`<option value="g:${g.id}">👥 ${g.name}</option>`).join('')+clients.map(c=>`<option value="c:${c.id}">${c.name}</option>`).join('');
@@ -2866,10 +2882,54 @@ function openLicenseModal(id=null){
 
   populateClientSelect('l-client',l?l.clientId:'',false);
   populateProjectSelect('l-project',l?l.projectId:'');
+  // Anexos (admin)
+  _licAttachments=(l&&Array.isArray(l.attachments))?[...l.attachments]:[];
+  const st=document.getElementById('l-upload-status'); if(st) st.textContent='';
+  _renderLicAttachments();
   openModal('lic-modal-overlay');
 }
 
 function toggleLicMonthly(v){ document.getElementById('l-monthly-wrap').style.display=v?'grid':'none'; }
+
+// ── Anexos de licença (Firebase Storage) ──────────────────────────────────
+let _licAttachments=[];
+function _renderLicAttachments(){
+  const box=document.getElementById('l-attach-list'); if(!box) return;
+  box.innerHTML=_licAttachments.map((a,i)=>`<div style="display:flex;align-items:center;gap:8px;background:var(--bg3);border-radius:6px;padding:6px 10px;font-size:12px">
+    <span>${_fileIcon(a.name)}</span>
+    <a href="${a.url}" target="_blank" rel="noopener" style="flex:1;color:var(--accent2);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" onclick="event.stopPropagation()">${a.name}</a>
+    <span style="color:var(--text3)">${_fmtSize(a.size)}</span>
+    <button class="btn btn-ghost btn-sm" style="padding:2px 8px" onclick="event.stopPropagation();_licRemoveAttach(${i})">✕</button>
+  </div>`).join('');
+}
+function _fileIcon(n){ n=(n||'').toLowerCase(); if(n.endsWith('.pdf'))return'📕'; if(/\.(docx?|odt)$/.test(n))return'📘'; if(/\.(xlsx?|csv)$/.test(n))return'📗'; if(/\.(png|jpe?g|gif|webp)$/.test(n))return'🖼'; return'📄'; }
+function _fmtSize(b){ b=Number(b)||0; if(b<1024)return b+' B'; if(b<1048576)return (b/1024).toFixed(0)+' KB'; return (b/1048576).toFixed(1)+' MB'; }
+function _licDrop(ev){ ev.preventDefault(); const dz=document.getElementById('l-dropzone'); if(dz)dz.classList.remove('drag'); if(ev.dataTransfer&&ev.dataTransfer.files) _licFilesPicked(ev.dataTransfer.files); }
+async function _licFilesPicked(files){
+  if(!files||!files.length) return;
+  if(!window._storage){ alert('Firebase Storage não está ativo. Ative o Storage no console do Firebase.'); return; }
+  const status=document.getElementById('l-upload-status');
+  const folder=editingLicId||('tmp_'+Date.now());
+  for(const file of files){
+    if(file.size>25*1024*1024){ alert(`"${file.name}" excede 25 MB.`); continue; }
+    try{
+      status.textContent=`Enviando ${file.name}...`;
+      const path=`licenses/${folder}/${Date.now()}_${file.name.replace(/[^\w.\-]/g,'_')}`;
+      const ref=_storage.ref().child(path);
+      await ref.put(file);
+      const url=await ref.getDownloadURL();
+      _licAttachments.push({name:file.name,url,path,size:file.size,type:file.type||'',uploadedAt:Date.now()});
+      _renderLicAttachments();
+      status.textContent='';
+    }catch(e){ console.error(e); status.textContent=''; alert('Falha ao enviar '+file.name); }
+  }
+}
+async function _licRemoveAttach(i){
+  const a=_licAttachments[i]; if(!a) return;
+  if(!confirm(`Remover "${a.name}"?`)) return;
+  try{ if(a.path&&window._storage) await _storage.ref().child(a.path).delete(); }catch(e){ console.warn('Storage delete',e); }
+  _licAttachments.splice(i,1); _renderLicAttachments();
+}
 
 function saveLicense(){
   const product=document.getElementById('l-product').value.trim();
@@ -2901,6 +2961,7 @@ function saveLicense(){
     // MRR — only when monthly is checked
     monthlyProposal:   isAdmin()&&monthly?parseBRL(document.getElementById('l-monthly-proposal').value):0,
     monthlyQuote:      isAdmin()&&monthly?parseBRL(document.getElementById('l-monthly-quote').value):0,
+    attachments:       isAdmin()?_licAttachments:[],
     createdAt:editingLicId?(licenses.find(x=>x.id===editingLicId)||{}).createdAt||Date.now():Date.now(),
   };
 
@@ -3046,6 +3107,11 @@ function openLicDetail(id){
   }
 
   if(l.notes) html+=`<div class="panel" style="padding:14px;font-size:13px;color:var(--text2);margin-top:16px">${l.notes}</div>`;
+  if(isAdmin() && Array.isArray(l.attachments) && l.attachments.length){
+    html+=`<div class="panel" style="padding:14px;margin-top:16px"><div style="font-size:12px;font-weight:600;margin-bottom:10px">📎 Anexos</div>`+
+      l.attachments.map(a=>`<div style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:6px"><span>${_fileIcon(a.name)}</span><a href="${a.url}" target="_blank" rel="noopener" style="color:var(--accent2);text-decoration:none;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.name}</a><span style="color:var(--text3);font-size:11px">${_fmtSize(a.size)}</span></div>`).join('')+
+      `</div>`;
+  }
 
   // Renewal chain — parent
   if(l.parentId){
@@ -6077,7 +6143,7 @@ window.addEventListener('appinstalled', () => {
 // Register inline service worker for offline support
 if('serviceWorker' in navigator){
   const swCode = `
-const CACHE = 'ativa360-v9';
+const CACHE = 'ativa360-v11';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
@@ -6115,6 +6181,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 <script>
 firebase.initializeApp({
   apiKey:"AIzaSyB0FP_nqE7NN__Dm08dBURu_Kh_XGwturM",
@@ -6126,6 +6193,7 @@ firebase.initializeApp({
 });
 _db   = firebase.firestore();
 _auth = firebase.auth();
+try{ window._storage = firebase.storage(); }catch(e){ console.warn('Storage indisponível',e); }
 
 // ─── LOGIN ───
 window.doLogin=async function(){
@@ -6144,7 +6212,7 @@ window.doLogin=async function(){
 // liberadas só p/ admin nas Firestore Rules. O técnico nunca baixa esses dados.
 const FIN_FIELDS={
   projects:     ['proposal','quote','hourrate','monthlyProposal'],
-  licenses:     ['proposal','quote','supportRateClient','supportRateCost','monthlyProposal','monthlyQuote'],
+  licenses:     ['proposal','quote','supportRateClient','supportRateCost','monthlyProposal','monthlyQuote','attachments'],
   hoursPackages:['rateWeekday','rateAfterhours','rateSaturday','rateSunday','monthlyProposal','monthlyQuote','value'],
   commitments:  ['value'],
 };
