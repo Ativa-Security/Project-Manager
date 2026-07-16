@@ -1221,36 +1221,15 @@ input,select,textarea{font-family:var(--font)}
       <button class="modal-close" onclick="closeModal('hours-usage-overlay')">✕</button>
     </div>
     <div class="modal-body">
-      <div class="form-grid">
-        <div class="form-group">
-          <label class="form-label">Horas consumidas *</label>
-          <input class="form-input" id="hu-hours" type="text" placeholder="Ex: 01:30" maxlength="6" oninput="_fmtHInput(this)">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Data</label>
-          <input class="form-input" id="hu-date" type="date" onchange="_autoQualificacao()">
-        </div>
+      <div class="form-group">
+        <label class="form-label">Data</label>
+        <input class="form-input" id="hu-date" type="date" onchange="_huDateChange()">
       </div>
       <div class="form-group">
-        <label class="form-label">Qualificação *</label>
-        <div style="display:flex;gap:10px;margin-top:4px;flex-wrap:wrap">
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:1;min-width:calc(50% - 5px);background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px" id="hu-q-weekday-lbl">
-            <input type="radio" name="hu-qual" id="hu-q-weekday" value="weekday" style="accent-color:var(--accent2)" onchange="_updateQualLabel()">
-            <div><div style="font-size:12px;font-weight:600">🗓 Seg–Sex</div><div id="hu-rate-weekday-lbl" style="font-size:10px;color:var(--text3)">—</div></div>
-          </label>
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:1;min-width:calc(50% - 5px);background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px" id="hu-q-afterhours-lbl">
-            <input type="radio" name="hu-qual" id="hu-q-afterhours" value="afterhours" style="accent-color:var(--purple)" onchange="_updateQualLabel()">
-            <div><div style="font-size:12px;font-weight:600">🌙 Seg–Sex fora comercial</div><div id="hu-rate-afterhours-lbl" style="font-size:10px;color:var(--text3)">—</div></div>
-          </label>
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:1;min-width:calc(50% - 5px);background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px" id="hu-q-saturday-lbl">
-            <input type="radio" name="hu-qual" id="hu-q-saturday" value="saturday" style="accent-color:var(--amber)" onchange="_updateQualLabel()">
-            <div><div style="font-size:12px;font-weight:600">🟡 Sábado</div><div id="hu-rate-saturday-lbl" style="font-size:10px;color:var(--text3)">—</div></div>
-          </label>
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:1;min-width:calc(50% - 5px);background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px" id="hu-q-sunday-lbl">
-            <input type="radio" name="hu-qual" id="hu-q-sunday" value="sunday" style="accent-color:var(--red)" onchange="_updateQualLabel()">
-            <div><div style="font-size:12px;font-weight:600">🔴 Dom/Feriado</div><div id="hu-rate-sunday-lbl" style="font-size:10px;color:var(--text3)">—</div></div>
-          </label>
-        </div>
+        <label class="form-label">Uso por qualificação *</label>
+        <div id="hu-lines"></div>
+        <button type="button" class="btn btn-ghost btn-sm" id="hu-addline-btn" onclick="_huAddLine()" style="margin-top:6px">+ Adicionar tipo</button>
+        <div style="font-size:12px;color:var(--text2);margin-top:8px">Total: <span id="hu-total" style="font-weight:700;color:var(--accent2)">00:00</span></div>
       </div>
       <div class="form-group" id="hu-company-wrap" style="display:none">
         <label class="form-label">Empresa do grupo *</label>
@@ -2604,6 +2583,23 @@ function _actDurHours(){
   let d=(eh*60+em)-(sh*60+sm); if(d<0) d+=1440; // vira o dia
   return d/60;
 }
+// Divide o intervalo em faixas: comercial (Seg-Sex 08:00–18:00) x fora do horário; Sáb/Dom = faixa única
+const BIZ_START=8*60, BIZ_END=18*60;
+function _segFromTimes(date,s,e){
+  if(!s||!e||!date) return [];
+  const toMin=t=>{const[a,b]=t.split(':').map(Number);return a*60+b;};
+  let sm=toMin(s), em=toMin(e); if(em<=sm) em+=1440;
+  const totalMin=em-sm;
+  const dow=new Date(date+'T12:00:00').getDay();
+  if(dow===0) return [{qual:'sunday',hours:totalMin/60}];
+  if(dow===6) return [{qual:'saturday',hours:totalMin/60}];
+  const bizMin=Math.max(0, Math.min(em,BIZ_END)-Math.max(sm,BIZ_START));
+  const afterMin=totalMin-bizMin;
+  const segs=[];
+  if(bizMin>0)   segs.push({qual:'weekday',hours:bizMin/60});
+  if(afterMin>0) segs.push({qual:'afterhours',hours:afterMin/60});
+  return segs;
+}
 function _actCalcDur(){
   document.getElementById('a-dur-lbl').textContent=fmtH(_actDurHours());
   if(document.getElementById('a-bill').checked) _actHoursPkgChange();
@@ -2659,7 +2655,9 @@ function _actHoursPkgChange(){
   const st=hoursStatus(inst);
   const dur=_actDurHours();
   const after=st.remaining-dur;
-  info.innerHTML=`Saldo atual: <strong>${fmtH(st.remaining)}</strong> · esta atividade: <strong>${fmtH(dur)}</strong> · saldo após: <strong style="color:${after<0?'var(--red)':'var(--green)'}">${fmtH(after)}</strong>${after<0?' ⚠ excede o saldo':''}`;
+  const segs=_segFromTimes(document.getElementById('a-date').value,document.getElementById('a-start-time').value,document.getElementById('a-end-time').value);
+  const segTxt=segs.length?('<div style="margin-top:4px">Faixas: '+segs.map(s=>`${HU_QUAL_LBL[s.qual]||s.qual} <strong>${fmtH(s.hours)}</strong>`).join(' + ')+'</div>'):'';
+  info.innerHTML=`Saldo atual: <strong>${fmtH(st.remaining)}</strong> · esta atividade: <strong>${fmtH(dur)}</strong> · saldo após: <strong style="color:${after<0?'var(--red)':'var(--green)'}">${fmtH(after)}</strong>${after<0?' ⚠ excede o saldo':''}${segTxt}`;
 }
 // Sincroniza o uso de horas vinculado a uma atividade (chave estável actId)
 function _syncActivityUsage(data){
@@ -2675,15 +2673,20 @@ function _syncActivityUsage(data){
     if(root){
       const pkg=_pkgInstanceForDate(root,data.date);
       if(!pkg.usages) pkg.usages=[];
-      pkg.usages.push({
-        hours:Number(data.hours)||0,
-        date:data.date,
-        qual:data.qual||_autoQualFromDate(data.date),
-        companyId: pkg.groupId?(data.hoursCompanyId||null):null,
-        tech:data.userName||'',
-        desc:(data.name||'')+(data.desc?(' — '+data.desc):''),
-        projectId:data.projectId||null,
-        actId:data.id, source:'activity',
+      let segs=(data.segments&&data.segments.length)?data.segments:_segFromTimes(data.date,data.startTime,data.endTime);
+      if(!segs.length) segs=[{qual:data.qual||_autoQualFromDate(data.date),hours:Number(data.hours)||0}];
+      segs.forEach(seg=>{
+        if(!(seg.hours>0)) return;
+        pkg.usages.push({
+          hours:seg.hours,
+          date:data.date,
+          qual:seg.qual,
+          companyId: pkg.groupId?(data.hoursCompanyId||null):null,
+          tech:data.userName||'',
+          desc:(data.name||'')+(data.desc?(' — '+data.desc):''),
+          projectId:data.projectId||null,
+          actId:data.id, source:'activity',
+        });
       });
       changed.add(pkg);
     }
@@ -2801,6 +2804,7 @@ function saveActivity(){
     userId,userName,date,hours,type,
     name,
     startTime,endTime,
+    segments:_segFromTimes(date,startTime,endTime),
     clientRef,
     clientId: clientRef.startsWith('c:')?clientRef.slice(2):null,
     groupId:  clientRef.startsWith('g:')?clientRef.slice(2):null,
@@ -5189,6 +5193,27 @@ function _qualRate(pkg,q){
   return pkg.rateWeekday||0;
 }
 
+const HU_QUAL_LBL={weekday:'🗓 Seg–Sex',afterhours:'🌙 Seg–Sex fora comercial',saturday:'🟡 Sábado',sunday:'🔴 Dom/Feriado'};
+function _huQualOptions(v){ return Object.keys(HU_QUAL_LBL).map(k=>`<option value="${k}" ${v===k?'selected':''}>${HU_QUAL_LBL[k]}</option>`).join(''); }
+function _huAddLine(qual,hours){
+  const box=document.getElementById('hu-lines');
+  const row=document.createElement('div');
+  row.className='hu-line'; row.style.cssText='display:flex;gap:8px;margin-bottom:6px;align-items:center';
+  row.innerHTML=`<select class="form-select hu-line-qual" style="flex:1" onchange="_huUpdateTotal()">${_huQualOptions(qual||'weekday')}</select>
+    <input class="form-input hu-line-hours" style="width:110px" placeholder="HH:MM" maxlength="6" value="${hours?fmtH(hours):''}" oninput="_fmtHInput(this);_huUpdateTotal()">
+    <button type="button" class="btn btn-ghost btn-sm" onclick="this.closest('.hu-line').remove();_huUpdateTotal()" style="padding:6px 10px">✕</button>`;
+  box.appendChild(row); _huUpdateTotal();
+}
+function _huUpdateTotal(){
+  let t=0; document.querySelectorAll('#hu-lines .hu-line-hours').forEach(i=>{ t+=parseHM(i.value); });
+  const el=document.getElementById('hu-total'); if(el) el.textContent=fmtH(t);
+}
+function _huDateChange(){
+  // Em novo registro com 1 linha, ajusta a qualificação sugerida pela data
+  if(_editingUsageHoursIdx!==null) return;
+  const lines=document.querySelectorAll('#hu-lines .hu-line');
+  if(lines.length===1){ const q=_autoQualFromDate(document.getElementById('hu-date').value); const sel=lines[0].querySelector('.hu-line-qual'); if(sel) sel.value=q; }
+}
 function openHoursUsageModal(pkgId,idx=null){
   _usageHoursPkgId=pkgId;
   _editingUsageHoursIdx=idx;
@@ -5196,18 +5221,22 @@ function openHoursUsageModal(pkgId,idx=null){
   document.getElementById('hu-modal-title').textContent=isEdit?'✏️ Editar registro':'➕ Registrar horas';
   document.getElementById('hu-save-btn').textContent=isEdit?'Salvar':'Registrar';
   document.getElementById('hu-delete-btn').style.display=isEdit?'':'none';
+  document.getElementById('hu-addline-btn').style.display=isEdit?'none':''; // edição = 1 linha
   const pkg=hoursPackages.find(x=>x.id===pkgId);
   const u=isEdit&&pkg?(pkg.usages||[])[idx]:null;
-  // Populate projects
   const ps=document.getElementById('hu-project');
-  ps.innerHTML='<option value="">Nenhum</option>'+projects.filter(p=>!p.parentId||true).map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
-  document.getElementById('hu-hours').value=u&&u.hours?fmtH(u.hours):'';
+  ps.innerHTML='<option value="">Nenhum</option>'+projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
   const dateVal=u?u.date||todayStr():todayStr();
   document.getElementById('hu-date').value=dateVal;
   document.getElementById('hu-tech').value=u?u.tech||'':'';
   document.getElementById('hu-desc').value=u?u.desc||'':'';
   document.getElementById('hu-project').value=u?u.projectId||'':'';
-  // Group company select
+  // Linhas de uso
+  const box=document.getElementById('hu-lines'); box.innerHTML='';
+  if(u){ _huAddLine(u.qual||_autoQualFromDate(dateVal), u.hours); }
+  else { _huAddLine(_autoQualFromDate(dateVal), 0); }
+  _huUpdateTotal();
+  // Empresa do grupo
   const cw=document.getElementById('hu-company-wrap');
   if(pkg&&pkg.groupId){
     const g=clientGroups.find(x=>String(x.id)===String(pkg.groupId));
@@ -5216,35 +5245,36 @@ function openHoursUsageModal(pkgId,idx=null){
     document.getElementById('hu-company').value=u?u.companyId||'':'';
     cw.style.display='block';
   } else cw.style.display='none';
-  // Show rates from package and auto-select qualificação
-  const _pkg=hoursPackages.find(x=>x.id===pkgId);
-  _updateQualRates(_pkg);
-  const qual=u?u.qual||_autoQualFromDate(dateVal):'';
-  if(qual==='saturday') document.getElementById('hu-q-saturday').checked=true;
-  else if(qual==='sunday') document.getElementById('hu-q-sunday').checked=true;
-  else document.getElementById('hu-q-weekday').checked=true;
-  _updateQualLabel();
   openModal('hours-usage-overlay');
 }
 
 function saveHoursUsage(){
-  const hours=parseHM(document.getElementById('hu-hours').value);
-  if(!hours){alert('Informe as horas consumidas (Ex: 01:30)');return;}
   const pkg=hoursPackages.find(x=>x.id===_usageHoursPkgId); if(!pkg) return;
   if(!pkg.usages) pkg.usages=[];
-  const qual=document.querySelector('input[name="hu-qual"]:checked')?.value||'weekday';
   const companyId=document.getElementById('hu-company').value||null;
   if(pkg.groupId&&!companyId){alert('Selecione a empresa do grupo');return;}
-  const entry={
-    hours,
+  const shared={
     date:document.getElementById('hu-date').value,
-    qual,companyId,
+    companyId,
     tech:document.getElementById('hu-tech').value.trim(),
     desc:document.getElementById('hu-desc').value.trim(),
     projectId:document.getElementById('hu-project').value||null,
   };
-  if(_editingUsageHoursIdx!==null) pkg.usages[_editingUsageHoursIdx]=entry;
-  else pkg.usages.push(entry);
+  // Coleta as linhas (tipo + horas)
+  const lines=[];
+  document.querySelectorAll('#hu-lines .hu-line').forEach(r=>{
+    const qual=r.querySelector('.hu-line-qual').value;
+    const hours=parseHM(r.querySelector('.hu-line-hours').value);
+    if(hours>0) lines.push({qual,hours});
+  });
+  if(!lines.length){alert('Informe ao menos um tipo com horas (Ex: 01:30)');return;}
+  const entries=lines.map(l=>({hours:l.hours,qual:l.qual,...shared}));
+  if(_editingUsageHoursIdx!==null){
+    // Edição = 1 linha (substitui a entrada)
+    pkg.usages[_editingUsageHoursIdx]=entries[0];
+  } else {
+    entries.forEach(e=>pkg.usages.push(e));
+  }
   if(window.saveToFirebase) saveToFirebase('hoursPackages',String(pkg.id),pkg);
   closeModal('hours-usage-overlay');
   renderHoursDetail();
@@ -6315,7 +6345,7 @@ window.addEventListener('appinstalled', () => {
 // Register inline service worker for offline support
 if('serviceWorker' in navigator){
   const swCode = `
-const CACHE = 'ativa360-v14';
+const CACHE = 'ativa360-v15';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
