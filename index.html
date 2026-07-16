@@ -1435,8 +1435,14 @@ async function _addActType(){
   if(!label) return;
   const key='c_'+Date.now();
   const t={key,label};
-  customActTypes.push(t);
-  try{ await _db.collection('activityTypes').doc(key).set(t); }catch(e){ console.error(e); }
+  try{
+    await _db.collection('activityTypes').doc(key).set(t); // grava primeiro
+  }catch(e){
+    console.error(e);
+    alert('Não foi possível salvar o tipo. Verifique se a regra da coleção "activityTypes" foi publicada no Firestore.');
+    return;
+  }
+  customActTypes.push(t); // só adiciona local após confirmar a gravação
   const sel=document.getElementById('a-type'); _populateTypeSelect(sel); sel.value=key; _actTypeChange();
   document.getElementById('a-newtype').value=''; document.getElementById('a-newtype-row').style.display='none';
 }
@@ -6345,7 +6351,7 @@ window.addEventListener('appinstalled', () => {
 // Register inline service worker for offline support
 if('serviceWorker' in navigator){
   const swCode = `
-const CACHE = 'ativa360-v15';
+const CACHE = 'ativa360-v16';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
