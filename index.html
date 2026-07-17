@@ -647,7 +647,10 @@ input,select,textarea{font-family:var(--font)}
     <div class="page" id="page-activities">
       <div class="section-header">
         <div class="section-title">Atividades</div>
-        <button class="btn btn-accent" onclick="openActivityModal()">+ Nova atividade</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost" onclick="openMyResumo()">📊 Meu resumo</button>
+          <button class="btn btn-accent" onclick="openActivityModal()">+ Nova atividade</button>
+        </div>
       </div>
       <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
         <div style="display:flex;align-items:center;gap:6px"><label style="font-size:11px;color:var(--text3)">De:</label><input type="date" id="act-f-start" class="form-input" style="padding:6px 8px;font-size:12px;width:140px" onchange="renderActivities()"></div>
@@ -1025,6 +1028,20 @@ input,select,textarea{font-family:var(--font)}
 <!-- CLIENT DETAIL -->
 <div class="detail-overlay" id="client-detail-overlay" onclick="if(event.target===this)closeDetail('client-detail-overlay')">
   <div class="detail-panel" id="client-detail-panel"></div>
+</div>
+
+<!-- MEU RESUMO -->
+<div class="modal-overlay" id="meuresumo-modal-overlay" onclick="if(event.target===this)closeModal('meuresumo-modal-overlay')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📊 Meu resumo</div>
+      <button class="modal-close" onclick="closeModal('meuresumo-modal-overlay')">✕</button>
+    </div>
+    <div class="modal-body" id="meuresumo-content"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('meuresumo-modal-overlay')">Fechar</button>
+    </div>
+  </div>
 </div>
 
 <!-- PROJECT DETAIL -->
@@ -2942,6 +2959,37 @@ function _actClientName(a){
   if(a.clientId){ const c=clients.find(x=>String(x.id)===String(a.clientId)); return c?c.name:'—'; }
   return '';
 }
+// ── Meu resumo (produtividade pessoal, sem valores) ──────────────────────
+function openMyResumo(){
+  const uid=currentUser&&currentUser.uid;
+  const _d30=new Date(); _d30.setDate(_d30.getDate()-29);
+  const start=_d30.toISOString().split('T')[0], end=todayStr();
+  const list=activities.filter(a=>String(a.userId)===String(uid) && a.date>=start && a.date<=end);
+  const totH=list.reduce((s,a)=>s+(Number(a.hours)||0),0);
+  const days=[...new Set(list.map(a=>a.date))].length;
+  const avg=days?totH/days:0;
+  let bd=0; const d0=new Date(start+'T12:00:00'),d1=new Date(end+'T12:00:00');
+  for(let d=new Date(d0);d<=d1;d.setDate(d.getDate()+1)){ const w=d.getDay(); if(w!==0&&w!==6) bd++; }
+  const occ=bd*8>0?Math.round(totH/(bd*8)*100)+'%':'—';
+  const _tl=actTypesAll();
+  const byType={}; list.forEach(a=>{ byType[a.type]=(byType[a.type]||0)+(Number(a.hours)||0); });
+  const typeRows=Object.keys(byType).map(k=>({label:_tl[k]||k,h:byType[k]})).sort((a,b)=>b.h-a.h);
+  const billed=list.filter(a=>a.billFromHours).reduce((s,a)=>s+(Number(a.hours)||0),0);
+
+  let html=`<div style="font-size:12px;color:var(--text2);margin-bottom:14px;padding:6px 10px;background:var(--bg3);border-radius:6px">📅 Últimos 30 dias · ${fmtDate(start)} → ${fmtDate(end)}</div>`;
+  if(!list.length){ html+=`<div class="empty-state" style="padding:24px 0"><div class="empty-state-icon">📊</div><div class="empty-state-text">Nenhuma atividade sua nos últimos 30 dias</div></div>`; document.getElementById('meuresumo-content').innerHTML=html; openModal('meuresumo-modal-overlay'); return; }
+  html+=`<div class="kpi-grid" style="grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px">
+    <div class="kpi-card"><div class="kpi-l">Atividades</div><div class="kpi-n">${list.length}</div></div>
+    <div class="kpi-card"><div class="kpi-l">Total de horas</div><div class="kpi-n" style="color:var(--accent2)">${fmtH(totH)}</div></div>
+    <div class="kpi-card"><div class="kpi-l">Média por dia</div><div class="kpi-n">${fmtH(avg)}</div></div>
+    <div class="kpi-card"><div class="kpi-l">Taxa de ocupação</div><div class="kpi-n" style="color:var(--green)">${occ}</div><div class="kpi-sub">vs 8h/dia útil</div></div>
+  </div>`;
+  html+=`<div class="panel" style="padding:14px;margin-bottom:12px"><div style="font-size:13px;font-weight:600;margin-bottom:10px">Horas por tipo</div>${_prodBars(typeRows,'#2563eb')}</div>`;
+  html+=`<div style="font-size:12px;color:var(--text3)">Abatido de pacote de horas: <strong style="color:var(--amber)">${fmtH(billed)}</strong> de ${fmtH(totH)}</div>`;
+  document.getElementById('meuresumo-content').innerHTML=html;
+  openModal('meuresumo-modal-overlay');
+}
+
 function renderActivities(){
   const el=document.getElementById('activities-content'); if(!el) return;
   // Popula filtros (tipo/responsável/cliente) uma vez
@@ -6480,7 +6528,7 @@ window.addEventListener('appinstalled', () => {
 // Register inline service worker for offline support
 if('serviceWorker' in navigator){
   const swCode = `
-const CACHE = 'ativa360-v22';
+const CACHE = 'ativa360-v23';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
