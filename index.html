@@ -2982,7 +2982,7 @@ function openMyResumo(){
     <div class="kpi-card"><div class="kpi-l">Atividades</div><div class="kpi-n">${list.length}</div></div>
     <div class="kpi-card"><div class="kpi-l">Total de horas</div><div class="kpi-n" style="color:var(--accent2)">${fmtH(totH)}</div></div>
     <div class="kpi-card"><div class="kpi-l">Média por dia</div><div class="kpi-n">${fmtH(avg)}</div></div>
-    <div class="kpi-card"><div class="kpi-l">Taxa de ocupação</div><div class="kpi-n" style="color:var(--green)">${occ}</div><div class="kpi-sub">vs 8h/dia útil</div></div>
+    <div class="kpi-card"><div class="kpi-l">Taxa de ocupação</div><div class="kpi-n" style="color:var(--green)">${occ}</div><div class="kpi-sub">${fmtH(totH)} de ${fmtH(bd*8)} esperadas · 8h/dia útil</div></div>
   </div>`;
   html+=`<div class="panel" style="padding:14px;margin-bottom:12px"><div style="font-size:13px;font-weight:600;margin-bottom:10px">Horas por tipo</div>${_prodBars(typeRows,'#2563eb')}</div>`;
   html+=`<div style="font-size:12px;color:var(--text3)">Abatido de pacote de horas: <strong style="color:var(--amber)">${fmtH(billed)}</strong> de ${fmtH(totH)}</div>`;
@@ -6528,7 +6528,7 @@ window.addEventListener('appinstalled', () => {
 // Register inline service worker for offline support
 if('serviceWorker' in navigator){
   const swCode = `
-const CACHE = 'ativa360-v23';
+const CACHE = 'ativa360-v24';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
