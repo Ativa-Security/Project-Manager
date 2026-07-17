@@ -584,7 +584,7 @@ input,select,textarea{font-family:var(--font)}
         <span class="nav-label" id="theme-label">Modo claro</span>
       </div>
       <button class="sidebar-collapse-btn" onclick="toggleSidebar()" id="collapse-btn" title="Recolher menu">◀</button>
-      <button class="nav-item" onclick="_auth&&_auth.signOut()" style="width:100%;color:var(--text3);font-size:12px;gap:10px;padding:9px 10px;border-radius:var(--r);margin-top:2px" title="Sair"><span class="nav-icon" style="font-size:16px">🚪</span><span class="nav-label">Sair</span></button>
+      <button class="nav-item" onclick="try{stopRealtimeSync()}catch(e){}; _auth&&_auth.signOut()" style="width:100%;color:var(--text3);font-size:12px;gap:10px;padding:9px 10px;border-radius:var(--r);margin-top:2px" title="Sair"><span class="nav-icon" style="font-size:16px">🚪</span><span class="nav-label">Sair</span></button>
     </div>
   </div>
 
@@ -1577,9 +1577,77 @@ function closeMobileMenu(){
   document.getElementById('mobile-overlay').classList.remove('show');
 }
 
+// ── Sincronização em tempo real ──────────────────────────────────────────
+// Em vez de carregar os dados uma vez, o app "escuta" o banco: quando algo
+// muda (por você em outra aba ou por outro usuário), a tela atualiza sozinha.
+let _rtStarted=false, _rtUnsub=[];
+let _finCache={projects:{},licenses:{},hoursPackages:{},commitments:{}};
+window.currentPage='dashboard';
+
+function _mergeFin(col){
+  const arr={projects,licenses,hoursPackages,commitments}[col]; const cache=_finCache[col]||{};
+  arr.forEach(rec=>{
+    const f=cache[String(rec.id)]; if(!f) return;
+    Object.keys(f).forEach(k=>{ if(k!=='usageCosts') rec[k]=f[k]; });
+    if(col==='commitments' && Array.isArray(f.usageCosts) && Array.isArray(rec.usages)){
+      rec.usages.forEach((u,ui)=>{ u.cost=f.usageCosts[ui]||0; });
+    }
+  });
+}
+function refreshCurrentView(){
+  try{
+    const pg=window.currentPage;
+    if(pg==='dashboard') renderDashboard();
+    else if(pg==='clients') renderClients();
+    else if(pg==='projects') renderProjects();
+    else if(pg==='activities') renderActivities();
+    else if(pg==='licenses') renderLicenses();
+    else if(pg==='commitments') renderCommitments();
+    else if(pg==='hours'){ if(_currentHoursPkg) renderHoursDetail(); else renderHoursGrid(); }
+    else if(pg==='reports'){ if(typeof renderReport==='function') renderReport(currentReport||'overview'); }
+    try{ updateLicBadge&&updateLicBadge(); }catch(e){}
+    try{ updateCommitBadge&&updateCommitBadge(); }catch(e){}
+    try{ updateHoursBadge&&updateHoursBadge(); }catch(e){}
+  }catch(e){ console.warn('refreshCurrentView',e); }
+}
+function startRealtimeSync(){
+  if(_rtStarted) return; _rtStarted=true;
+  const bind=(col,apply)=>{
+    try{
+      const u=_db.collection(col).onSnapshot(snap=>{
+        const arr=[]; snap.forEach(d=>arr.push(d.data()));
+        apply(arr);
+        refreshCurrentView();
+      }, err=>console.warn('realtime '+col,err));
+      _rtUnsub.push(u);
+    }catch(e){ console.warn('bind '+col,e); }
+  };
+  bind('clients',      a=>{ clients=a; });
+  bind('clientGroups', a=>{ clientGroups=a; });
+  bind('projects',     a=>{ projects=a; _mergeFin('projects'); const t=projects.flatMap(p=>(p.tasks||[]).map(x=>x.id||0)); if(t.length) nextTaskId=Math.max(nextTaskId||1,Math.max(...t)+1); });
+  bind('licenses',     a=>{ licenses=a; _mergeFin('licenses'); });
+  bind('commitments',  a=>{ commitments=a; _mergeFin('commitments'); });
+  bind('hoursPackages',a=>{ hoursPackages=a; _mergeFin('hoursPackages'); });
+  bind('activities',   a=>{ activities=a; });
+  bind('activityTypes',a=>{ customActTypes=a; });
+  if(isAdmin()){
+    ['projects','licenses','hoursPackages','commitments'].forEach(c=>{
+      try{
+        const u=_db.collection(c+'_fin').onSnapshot(snap=>{
+          const cache={}; snap.forEach(d=>cache[d.id]=d.data()); _finCache[c]=cache;
+          _mergeFin(c); refreshCurrentView();
+        }, err=>console.warn('realtime fin '+c,err));
+        _rtUnsub.push(u);
+      }catch(e){ console.warn('bind fin '+c,e); }
+    });
+  }
+}
+function stopRealtimeSync(){ _rtUnsub.forEach(u=>{try{u&&u();}catch(e){}}); _rtUnsub=[]; _rtStarted=false; }
+
 function navTo(page, el){
   if(!isAdmin() && page==='commitments') page='dashboard';
   if(!isAdmin() && page==='reports') page='dashboard';
+  window.currentPage=page;
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   if(!el){ el=[...document.querySelectorAll('.nav-item')].find(n=>(n.getAttribute('onclick')||'').includes("navTo('"+page+"'")); }
   if(el) el.classList.add('active');
@@ -6411,7 +6479,7 @@ window.addEventListener('appinstalled', () => {
 // Register inline service worker for offline support
 if('serviceWorker' in navigator){
   const swCode = `
-const CACHE = 'ativa360-v19';
+const CACHE = 'ativa360-v20';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
@@ -6584,6 +6652,7 @@ _auth.onAuthStateChanged(async user=>{
           });
         }catch(e){ console.error('Error loading financials:',e); }
       }
+      startRealtimeSync(); // passa a atualizar a tela sozinho a partir daqui
     }catch(e){ console.error('Error loading data:',e); }
 
     // 2. MFA check — show MFA screen, wait for completion
