@@ -2792,7 +2792,7 @@ async function _actEnsureUsers(){
   if(!isAdmin()) return;
   try{
     let snap=await _db.collection('Users').get();
-    _actUsers=[]; snap.forEach(d=>{const u=d.data(); if(u.active!==false) _actUsers.push({uid:u.uid||d.id,name:u.name||u.email});});
+    _actUsers=[]; snap.forEach(d=>{const u=d.data(); if(u.active!==false) _actUsers.push({uid:d.id,name:u.name||u.email,email:u.email||'',role:u.role||''});});
   }catch(e){ _actUsers=[]; }
 }
 async function openActivityModal(id){
@@ -2805,8 +2805,8 @@ async function openActivityModal(id){
   const uWrap=document.getElementById('a-user-wrap'), uSel=document.getElementById('a-user');
   if(isAdmin()){
     uWrap.style.display='';
-    const opts=_actUsers.length?_actUsers:[{uid:currentUser.uid,name:currentUser.name}];
-    uSel.innerHTML=opts.map(u=>`<option value="${u.uid}">${esc(u.name)}</option>`).join('');
+    const opts=_actUsers.length?_actUsers:[{uid:currentUser.uid,name:currentUser.name,email:currentUser.email,role:currentUser.role}];
+    uSel.innerHTML=opts.map(u=>`<option value="${esc(u.uid)}">${esc(u.name)}${u.email?' · '+esc(u.email):''}${u.role==='admin'?' (admin)':''}</option>`).join('');
     uSel.value=a?a.userId||currentUser.uid:currentUser.uid;
   } else {
     uWrap.style.display='none';
@@ -6480,7 +6480,7 @@ window.addEventListener('appinstalled', () => {
 // Register inline service worker for offline support
 if('serviceWorker' in navigator){
   const swCode = `
-const CACHE = 'ativa360-v21';
+const CACHE = 'ativa360-v22';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
