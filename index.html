@@ -1596,7 +1596,8 @@ function _mergeFin(col){
 }
 function refreshCurrentView(){
   try{
-    const pg=window.currentPage;
+    const active=document.querySelector('.page.active');
+    const pg=active?active.id.replace('page-',''):(window.currentPage||'dashboard');
     if(pg==='dashboard') renderDashboard();
     else if(pg==='clients') renderClients();
     else if(pg==='projects') renderProjects();
@@ -6479,7 +6480,7 @@ window.addEventListener('appinstalled', () => {
 // Register inline service worker for offline support
 if('serviceWorker' in navigator){
   const swCode = `
-const CACHE = 'ativa360-v20';
+const CACHE = 'ativa360-v21';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
