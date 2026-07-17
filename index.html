@@ -1475,6 +1475,7 @@ if(savedTheme==='light'){
 //   HELPERS
 // ══════════════════════════════════
 function fmtDate(d){ if(!d) return '—'; const [y,m,day]=d.split('-'); return `${day}/${m}/${y}`; }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function fmtH(h){
   // Convert decimal hours to HH:MM — e.g. 2.5 → 02:30, 0.25 → 00:15
   const total = Math.round((Number(h)||0) * 60);
@@ -1707,8 +1708,8 @@ function renderExpiryAlertBanner(){
           return `<div onclick="openLicDetail(${l.id})" style="display:flex;align-items:center;gap:10px;background:rgba(255,95,95,0.1);border:1px solid rgba(255,95,95,0.3);border-radius:var(--r);padding:8px 12px;cursor:pointer;transition:background .15s" onmouseenter="this.style.background='rgba(255,95,95,0.2)'" onmouseleave="this.style.background='rgba(255,95,95,0.1)'">
             <span style="font-size:20px">${isExp?'🔴':'🟠'}</span>
             <div style="flex:1">
-              <div style="font-weight:600;font-size:13px">${l.product}</div>
-              <div style="font-size:11px;color:var(--text3)">🏢 ${clientName(l.clientId)}${l.vendor?' · '+l.vendor:''}</div>
+              <div style="font-weight:600;font-size:13px">${esc(l.product)}</div>
+              <div style="font-size:11px;color:var(--text3)">🏢 ${esc(clientName(l.clientId))}${l.vendor?' · '+esc(l.vendor):''}</div>
             </div>
             <span style="font-size:12px;font-weight:700;color:var(--red);font-family:var(--mono);white-space:nowrap">${isExp?`Vencida há ${Math.abs(d)}d`:`Vence em ${d}d`}</span>
           </div>`;
@@ -1727,8 +1728,8 @@ function renderExpiryAlertBanner(){
       <div style="display:flex;flex-wrap:wrap;gap:6px">
         ${warning.map(l=>{
           const d=daysUntil(l.end);
-          return `<div onclick="openLicDetail(${l.id})" style="display:flex;align-items:center;gap:6px;background:rgba(245,166,35,0.12);border:1px solid rgba(245,166,35,0.3);border-radius:20px;padding:4px 12px;cursor:pointer;font-size:12px" title="${clientName(l.clientId)}">
-            <span>🟡</span><span style="font-weight:600">${l.product}</span><span style="color:var(--text3)">${d}d</span>
+          return `<div onclick="openLicDetail(${l.id})" style="display:flex;align-items:center;gap:6px;background:rgba(245,166,35,0.12);border:1px solid rgba(245,166,35,0.3);border-radius:20px;padding:4px 12px;cursor:pointer;font-size:12px" title="${esc(clientName(l.clientId))}">
+            <span>🟡</span><span style="font-weight:600">${esc(l.product)}</span><span style="color:var(--text3)">${d}d</span>
           </div>`;
         }).join('')}
       </div>
@@ -1760,14 +1761,14 @@ function populateSectorSelect(selId, currentVal){
 function populateClientSelect(selId, currentVal, includeNone=true){
   const sel = document.getElementById(selId); if(!sel) return;
   sel.innerHTML = (includeNone?'<option value="">Sem cliente vinculado</option>':'<option value="">Selecione o cliente...</option>') +
-    clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+    clients.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
   if(currentVal) sel.value = currentVal;
 }
 
 function populateProjectSelect(selId, currentVal){
   const sel = document.getElementById(selId); if(!sel) return;
   sel.innerHTML = '<option value="">Nenhum</option>' +
-    projects.map(p=>`<option value="${p.id}">${p.name}${p.clientId?` (${clientName(p.clientId)})`:''}` ).join('');
+    projects.map(p=>`<option value="${p.id}">${esc(p.name)}${p.clientId?` (${esc(clientName(p.clientId))})`:''}` ).join('');
   if(currentVal) sel.value = currentVal;
 }
 
@@ -1780,7 +1781,7 @@ function renderGroupList(){
   const el=document.getElementById('grp-list');
   if(!clientGroups.length){ el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:8px">Nenhum grupo criado</div>'; return; }
   el.innerHTML=clientGroups.map(g=>`<div class="panel" style="padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px">
-    <div style="flex:1"><div style="font-weight:600;font-size:13px">👥 ${g.name}</div><div style="font-size:11px;color:var(--text3)">${(g.clientIds||[]).length} empresa(s)</div></div>
+    <div style="flex:1"><div style="font-weight:600;font-size:13px">👥 ${esc(g.name)}</div><div style="font-size:11px;color:var(--text3)">${(g.clientIds||[]).length} empresa(s)</div></div>
     <button class="icon-btn" onclick="editGroup(${g.id})">✏️</button>
     <button class="icon-btn" style="color:var(--red)" onclick="deleteGroup(${g.id})">🗑</button>
   </div>`).join('');
@@ -1805,7 +1806,7 @@ function renderGroupMembers(){
   const g=clientGroups.find(x=>x.id===_editingGroupId); if(!g) return;
   document.getElementById('grp-members').innerHTML=clients.map(c=>{
     const on=(g.clientIds||[]).includes(c.id);
-    return `<label style="display:flex;align-items:center;gap:8px;padding:6px 4px;cursor:pointer"><input type="checkbox" ${on?'checked':''} onchange="toggleGroupMember(${c.id})" style="accent-color:var(--accent2)"> ${c.name}</label>`;
+    return `<label style="display:flex;align-items:center;gap:8px;padding:6px 4px;cursor:pointer"><input type="checkbox" ${on?'checked':''} onchange="toggleGroupMember(${c.id})" style="accent-color:var(--accent2)"> ${esc(c.name)}</label>`;
   }).join('')||'<div style="font-size:12px;color:var(--text3)">Nenhum cliente cadastrado</div>';
 }
 function toggleGroupMember(cid){
@@ -1855,8 +1856,8 @@ function renderDashboard(){
       ${expiring.map(l=>{
         const st=getLicStatus(l); const d=daysUntil(l.end);
         return `<tr onclick="openLicDetail(${l.id})" style="cursor:pointer">
-          <td style="font-weight:600">${l.product}</td>
-          <td style="color:var(--text2)">${clientName(l.clientId)}</td>
+          <td style="font-weight:600">${esc(l.product)}</td>
+          <td style="color:var(--text2)">${esc(clientName(l.clientId))}</td>
           <td style="font-family:var(--mono);font-size:12px">${fmtDate(l.end)}</td>
           <td><span class="badge ${st.cls}">${d<=75?'🔴 ':'🟡 '}${st.label}</span></td>
         </tr>`;
@@ -1874,9 +1875,9 @@ function renderDashboard(){
       const st=getProjStatusInfo(p.status);
       const late=isOverdue(p.end,isDoneStatus(p.status));
       return `<tr onclick="openProjDetail(${p.id})" style="cursor:pointer">
-        <td style="font-weight:600">${p.name}</td>
-        <td style="color:var(--text2)">${clientName(p.clientId)}</td>
-        <td style="color:var(--text2)">${p.owner||'—'}</td>
+        <td style="font-weight:600">${esc(p.name)}</td>
+        <td style="color:var(--text2)">${esc(clientName(p.clientId))}</td>
+        <td style="color:var(--text2)">${esc(p.owner||'—')}</td>
         <td style="font-family:var(--mono);font-size:12px;color:${late?'var(--red)':'var(--text2)'}">${fmtDate(p.end)}</td>
         <td><span class="badge" style="background:${st.bar}20;color:${st.color}">${st.label}</span></td>
       </tr>`;
@@ -1911,7 +1912,7 @@ function renderClients(){
     return `<div class="client-card" onclick="openClientDetail(${c.id})">
       <div class="client-card-header">
         <div class="client-logo" style="background:${av.bg};color:${av.text}">${initials(c.name)}</div>
-        <div style="flex:1;min-width:0"><div class="client-name">${c.name}</div><div class="client-segment">${c.segment||'—'}</div></div>
+        <div style="flex:1;min-width:0"><div class="client-name">${esc(c.name)}</div><div class="client-segment">${esc(c.segment||'—')}</div></div>
         <div class="client-alert">${licAlert(c.id)}</div>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -1920,7 +1921,7 @@ function renderClients(){
         ${cHrs?`<span class="badge badge-gray">⏱ ${cHrs} pacote${cHrs!==1?'s':''} horas</span>`:''}
       </div>
       <div class="client-meta" style="margin-top:10px">
-        <div><div class="client-meta-item">Contato no cliente</div><div class="client-meta-val">${c.contact||c.email||'—'}</div></div>
+        <div><div class="client-meta-item">Contato no cliente</div><div class="client-meta-val">${esc(c.contact||c.email||'—')}</div></div>
         <div><div class="client-meta-item">Responsável comercial</div><div class="client-meta-val">${c.owner||'—'}</div></div>
       </div>
     </div>`;
@@ -1933,7 +1934,7 @@ function renderClients(){
       const membs=(g.clientIds||[]).map(id=>clients.find(c=>c.id===id)).filter(Boolean).filter(c=>!q||c.name.toLowerCase().includes(q));
       grid.innerHTML=`<div style="grid-column:1/-1;display:flex;align-items:center;gap:12px;margin-bottom:4px">
         <button class="btn btn-ghost btn-sm" onclick="window._openGroupCard=null;renderClients()">← Voltar</button>
-        <div style="font-size:16px;font-weight:700">👥 ${g.name}</div>
+        <div style="font-size:16px;font-weight:700">👥 ${esc(g.name)}</div>
         <span style="font-size:12px;color:var(--text3)">${membs.length} empresa(s)</span>
       </div>`+ (membs.length?membs.map(clientCard).join(''):'<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-text">Nenhuma empresa no grupo</div></div>');
       return;
@@ -1949,7 +1950,7 @@ function renderClients(){
     return `<div class="client-card" onclick="window._openGroupCard=${g.id};renderClients()" style="border-color:var(--accent)">
       <div class="client-card-header">
         <div class="client-logo" style="background:var(--accent);color:#fff">👥</div>
-        <div style="flex:1;min-width:0"><div class="client-name">${g.name}</div><div class="client-segment">Grupo de clientes</div></div>
+        <div style="flex:1;min-width:0"><div class="client-name">${esc(g.name)}</div><div class="client-segment">Grupo de clientes</div></div>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap"><span class="badge badge-blue">🏢 ${n} empresa${n!==1?'s':''}</span></div>
     </div>`;
@@ -2015,16 +2016,16 @@ function openClientDetail(id){
 
   let html=`<div class="detail-header">
     <div class="avatar" style="background:${av.bg};color:${av.text};width:44px;height:44px;font-size:15px">${initials(c.name)}</div>
-    <div style="flex:1"><div style="font-size:17px;font-weight:700">${c.name}</div><div style="font-size:12px;color:var(--text3)">${c.segment||'Cliente'} ${c.cnpj?'· '+c.cnpj:''}</div></div>
+    <div style="flex:1"><div style="font-size:17px;font-weight:700">${esc(c.name)}</div><div style="font-size:12px;color:var(--text3)">${esc(c.segment||'Cliente')} ${c.cnpj?'· '+esc(c.cnpj):''}</div></div>
     <button class="btn btn-ghost btn-sm" onclick="openClientModal(${id})">✏️ Editar</button>
     <button onclick="closeDetail('client-detail-overlay')" style="color:var(--text3);font-size:20px;padding:4px 8px">✕</button>
   </div>
   <div class="detail-body">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
       <div><div class="form-label">Responsável comercial</div><div style="font-size:13px">${c.owner||'—'}</div></div>
-      <div><div class="form-label">Contato no cliente</div><div style="font-size:13px;font-weight:600">${c.contact||'—'}</div></div>
-      <div><div class="form-label">E-mail</div><div style="font-size:13px">${c.email||'—'}</div></div>
-      <div><div class="form-label">Telefone</div><div style="font-size:13px">${c.phone||'—'}</div></div>
+      <div><div class="form-label">Contato no cliente</div><div style="font-size:13px;font-weight:600">${esc(c.contact||'—')}</div></div>
+      <div><div class="form-label">E-mail</div><div style="font-size:13px">${esc(c.email||'—')}</div></div>
+      <div><div class="form-label">Telefone</div><div style="font-size:13px">${esc(c.phone||'—')}</div></div>
       ${c.reajusteIndex?`<div><div class="form-label">Índice de reajuste</div><div style="font-size:13px">${c.reajusteIndex}${c.reajusteFixed?' · '+c.reajusteFixed+'% a.a.':''}</div></div>`:''}
     </div>
     ${isAdmin()&&mrrClient>0?`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
@@ -2032,7 +2033,7 @@ function openClientDetail(id){
       <div class="stat-card" style="padding:12px"><div style="font-size:11px;color:var(--text3)">Meses pagos</div><div style="font-size:17px;font-weight:700;color:var(--accent2)">${monthsPaid}m</div><div style="font-size:10px;color:var(--text3)">desde ${fmtDate(oldestStart)}</div></div>
       <div class="stat-card" style="padding:12px"><div style="font-size:11px;color:var(--text3)">Receita recorrente total</div><div style="font-size:17px;font-weight:700;color:var(--green)">${fmtCur(totalRecurring)}</div></div>
     </div>`:''}
-    ${c.notes?`<div style="background:var(--bg3);border-radius:var(--r);padding:12px;font-size:13px;color:var(--text2);margin-bottom:16px">${c.notes}</div>`:''}
+    ${c.notes?`<div style="background:var(--bg3);border-radius:var(--r);padding:12px;font-size:13px;color:var(--text2);margin-bottom:16px">${esc(c.notes)}</div>`:''}
 
     <div class="tabs">
       <div class="tab active" onclick="switchClientDetailTab('lics',this,${id})">🔑 Licenciamentos (${cLics.length})</div>
@@ -2070,7 +2071,7 @@ function renderClientHours(pkgs){
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
         <span style="font-size:16px">${st.icon}</span>
         <div style="flex:1">
-          <div style="font-size:13px;font-weight:600">${pkg.desc||'Pacote de horas'}</div>
+          <div style="font-size:13px;font-weight:600">${esc(pkg.desc||'Pacote de horas')}</div>
           <div style="font-size:11px;color:var(--text3)">${pkg.tipo==='mensal'?'📆 Mensal':pkg.tipo==='trimestral'?'🗓️ Trimestral':'📅 Anual'} · ${fmtDate(pkg.start)} → ${fmtDate(pkg.end)}${expired?' · <span style="color:var(--red)">Expirado</span>':''}${renewals?' · 🔄 '+renewals+' renov.':''}</div>
         </div>
         <div style="text-align:right">
@@ -2101,11 +2102,11 @@ function renderClientProjects(projs){
     const tasks=p.tasks||[]; const done=tasks.filter(t=>t.status==='done').length;
     return `<div class="card" style="margin-bottom:10px;cursor:pointer" onclick="openProjDetail(${p.id})">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <div style="font-weight:600">${p.name}</div>
+        <div style="font-weight:600">${esc(p.name)}</div>
         <span class="badge" style="background:${st.bar}20;color:${st.color}">${st.label}</span>
       </div>
       <div style="display:flex;gap:16px;font-size:12px;color:var(--text3)">
-        <span>👤 ${p.owner||'—'}</span><span>📅 ${fmtDate(p.end)}</span><span>✅ ${done}/${tasks.length}</span>
+        <span>👤 ${esc(p.owner||'—')}</span><span>📅 ${fmtDate(p.end)}</span><span>✅ ${done}/${tasks.length}</span>
       </div>
     </div>`;
   }).join('');
@@ -2139,7 +2140,7 @@ function renderProjects(){
   const cf=document.getElementById('proj-filter-client');
   if(cf){
     const cv=cf.value;
-    cf.innerHTML='<option value="">Todos os clientes</option>'+clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+    cf.innerHTML='<option value="">Todos os clientes</option>'+clients.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
     cf.value=cv;
   }
   const filtered = filterProjects();
@@ -2165,11 +2166,11 @@ function renderKanban(projs){
         const av=avColor(p.owner||'');
         const isCaveat=p.status==='done_caveat';
         return `<div class="kanban-card" onclick="openProjDetail(${p.id})" style="${isCaveat?'border:2px solid var(--amber);background:rgba(245,166,35,0.06)':''}">
-          <div style="font-weight:600;font-size:13px;margin-bottom:6px">${p.name}</div>
-          ${p.clientId?`<div style="font-size:11px;color:var(--accent2);margin-bottom:6px">🏢 ${clientName(p.clientId)}</div>`:''}
+          <div style="font-weight:600;font-size:13px;margin-bottom:6px">${esc(p.name)}</div>
+          ${p.clientId?`<div style="font-size:11px;color:var(--accent2);margin-bottom:6px">🏢 ${esc(clientName(p.clientId))}</div>`:''}
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
-            <div class="avatar-sm" style="background:${av.bg};color:${av.text}">${initials(p.owner||'?')}</div>
-            <span style="font-size:11px;color:var(--text2)">${p.owner||'—'}</span>
+            <div class="avatar-sm" style="background:${av.bg};color:${av.text}">${esc(initials(p.owner||'?'))}</div>
+            <span style="font-size:11px;color:var(--text2)">${esc(p.owner||'—')}</span>
           </div>
           ${tasks.length>0?`<div class="progress-bar" style="margin-bottom:4px"><div class="progress-fill" style="width:${pct}%;background:${st.bar}"></div></div>
           <div style="font-size:10px;color:var(--text3)">${done}/${tasks.length} tarefas · ${pct}%</div>`:''}
@@ -2195,9 +2196,9 @@ function renderProjList(projs){
       const late=isOverdue(p.end,isDoneStatus(p.status));
       const isCaveat=p.status==='done_caveat';
       return `<tr onclick="openProjDetail(${p.id})" style="cursor:pointer${isCaveat?';background:rgba(245,166,35,0.05)':''}">
-        <td style="font-weight:600">${p.name}</td>
-        <td style="color:var(--text2)">${clientName(p.clientId)}</td>
-        <td style="color:var(--text2)">${p.owner||'—'}</td>
+        <td style="font-weight:600">${esc(p.name)}</td>
+        <td style="color:var(--text2)">${esc(clientName(p.clientId))}</td>
+        <td style="color:var(--text2)">${esc(p.owner||'—')}</td>
         <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${fmtDate(p.start)}</td>
         <td style="font-family:var(--mono);font-size:11px;color:${late?'var(--red)':'var(--text2)'}">${fmtDate(p.end)}</td>
         <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${p.concludedDate?fmtDate(p.concludedDate):'—'}</td>
@@ -2254,8 +2255,8 @@ function renderGantt(projs){
         const sBefore=ps<periodStart, eAfter=pe>periodEnd;
         return `<tr><td class="gantt-name-col" onclick="openProjDetail(${p.id})" style="cursor:pointer;width:200px">
           <div style="display:flex;align-items:center;gap:6px">
-            <div class="avatar-sm" style="background:${av.bg};color:${av.text};width:18px;height:18px;font-size:8px">${initials(p.owner||'?')}</div>
-            <span style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name}</span>
+            <div class="avatar-sm" style="background:${av.bg};color:${av.text};width:18px;height:18px;font-size:8px">${esc(initials(p.owner||'?'))}</div>
+            <span style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</span>
           </div>
         </td>
         <td class="gantt-track-col" onclick="openProjDetail(${p.id})" style="cursor:pointer">
@@ -2265,7 +2266,7 @@ function renderGantt(projs){
             <div class="gantt-bar-el" style="left:${left}%;width:${w}%;background:${st.bar};
               border-radius:${sBefore?'0':'5px'} ${eAfter?'0':'5px'} ${eAfter?'0':'5px'} ${sBefore?'0':'5px'}">
               ${sBefore?`<span style="position:absolute;left:-8px;color:${st.bar}">◀</span>`:''}
-              <span style="overflow:hidden;text-overflow:ellipsis;position:relative;z-index:1">${p.name}</span>
+              <span style="overflow:hidden;text-overflow:ellipsis;position:relative;z-index:1">${esc(p.name)}</span>
               ${eAfter?`<span style="position:absolute;right:-8px;color:${st.bar}">▶</span>`:''}
             </div>
           </div>
@@ -2383,10 +2384,10 @@ function renderProjDetail(){
 
   let html=`<div class="detail-header">
     <div style="flex:1">
-      <div style="font-size:17px;font-weight:700;margin-bottom:4px">${p.name}</div>
+      <div style="font-size:17px;font-weight:700;margin-bottom:4px">${esc(p.name)}</div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span class="badge" style="background:${st.bar}20;color:${st.color}">${st.label}</span>
-        ${p.clientId?`<span class="badge badge-blue">🏢 ${clientName(p.clientId)}</span>`:''}
+        ${p.clientId?`<span class="badge badge-blue">🏢 ${esc(clientName(p.clientId))}</span>`:''}
         ${late?`<span class="badge badge-red">⚠ Atrasado</span>`:''}
         ${isDone&&p.concludedDate?`<span class="badge badge-gray">✓ Concluído em ${fmtDate(p.concludedDate)}</span>`:''}
       </div>
@@ -2399,12 +2400,12 @@ function renderProjDetail(){
     <span style="font-size:20px">⚠️</span>
     <div>
       <div style="font-size:13px;font-weight:700;color:var(--amber)">Concluído com ressalvas</div>
-      ${p.caveat?`<div style="font-size:12px;color:var(--text2);margin-top:4px">${p.caveat}</div>`:''}
+      ${p.caveat?`<div style="font-size:12px;color:var(--text2);margin-top:4px">${esc(p.caveat)}</div>`:''}
     </div>
   </div>`:''}
   <div class="detail-body">
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px">
-      <div class="stat-card" style="padding:12px"><div style="font-size:11px;color:var(--text3)">Sponsor</div><div style="font-size:13px;font-weight:600;margin-top:2px">${p.owner||'—'}</div></div>
+      <div class="stat-card" style="padding:12px"><div style="font-size:11px;color:var(--text3)">Sponsor</div><div style="font-size:13px;font-weight:600;margin-top:2px">${esc(p.owner||'—')}</div></div>
       <div class="stat-card" style="padding:12px"><div style="font-size:11px;color:var(--text3)">Prazo</div><div style="font-size:13px;font-weight:600;margin-top:2px;color:${late?'var(--red)':'var(--text)'}">${fmtDate(p.end)}</div></div>
       <div class="stat-card" style="padding:12px"><div style="font-size:11px;color:var(--text3)">Progresso</div><div style="font-size:13px;font-weight:600;margin-top:2px">${pct}% (${done}/${tasks.length})</div></div>
     </div>`;
@@ -2440,9 +2441,9 @@ function renderProjDetail(){
         html+=`<div class="task-item" onclick="openTaskModal(${p.id},${t.id})">
           <div class="task-dot" style="margin-top:5px;background:${tLate?'var(--red)':grp.color}"></div>
           <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:500;${t.status==='done'?'text-decoration:line-through;color:var(--text3)':''}">${t.name}</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:2px">${t.owner?'👤 '+t.owner+' · ':''} ${t.due?'📅 '+fmtDate(t.due):''}${t.waitingReason?' · ⏸ '+t.waitingReason:''}${t.status==='done'&&t.concludedDate?' · ✓ '+fmtDate(t.concludedDate):''}</div>
-            ${t.obs?`<div style="font-size:11px;color:var(--text2);margin-top:5px;padding:6px 8px;background:var(--bg2);border-left:2px solid var(--accent2);border-radius:4px;white-space:pre-wrap">📝 ${t.obs}</div>`:''}
+            <div style="font-size:13px;font-weight:500;${t.status==='done'?'text-decoration:line-through;color:var(--text3)':''}">${esc(t.name)}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">${t.owner?'👤 '+esc(t.owner)+' · ':''} ${t.due?'📅 '+fmtDate(t.due):''}${t.waitingReason?' · ⏸ '+esc(t.waitingReason):''}${t.status==='done'&&t.concludedDate?' · ✓ '+fmtDate(t.concludedDate):''}</div>
+            ${t.obs?`<div style="font-size:11px;color:var(--text2);margin-top:5px;padding:6px 8px;background:var(--bg2);border-left:2px solid var(--accent2);border-radius:4px;white-space:pre-wrap">📝 ${esc(t.obs)}</div>`:''}
           </div>
           ${!t.na&&(t.estimated||t.doneHours)?`<div style="font-size:11px;font-family:var(--mono);color:var(--text3)">${fmtH(t.doneHours||0)}/${fmtH(t.estimated||0)}</div>`:''}
           ${tLate?`<span class="badge badge-red" style="font-size:10px">Atrasado</span>`:''}
@@ -2525,7 +2526,7 @@ function renderProjDetail(){
           ${(p.extras||[]).length===0
             ?`<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:16px;font-size:12px">Nenhum custo adicional</td></tr>`
             :(p.extras||[]).map((e,i)=>`<tr>
-              <td style="padding:8px 14px;border-bottom:1px solid var(--border)"><input class="form-input" style="padding:4px 8px;font-size:12px" value="${e.desc||''}" placeholder="Descrição..." onchange="updateExtra(${p.id},${i},'desc',this.value)"></td>
+              <td style="padding:8px 14px;border-bottom:1px solid var(--border)"><input class="form-input" style="padding:4px 8px;font-size:12px" value="${esc(e.desc||'')}" placeholder="Descrição..." onchange="updateExtra(${p.id},${i},'desc',this.value)"></td>
               <td style="padding:8px 14px;border-bottom:1px solid var(--border)">
                 <select class="form-select" style="padding:4px 8px;font-size:12px;width:auto" onchange="updateExtra(${p.id},${i},'cat',this.value)">
                   ${['Km','Pedágio','Hospedagem','Alimentação','Licença/Software','Infraestrutura','Outros'].map(c=>`<option value="${c}" ${e.cat===c?'selected':''}>${c}</option>`).join('')}
@@ -2630,7 +2631,7 @@ function _actPopulateHoursPkgs(){
   let avail=roots.filter(r=>_actRootAvailable(r,date));
   if(prev && !avail.some(r=>String(r.id)===String(prev))){ const r=roots.find(x=>String(x.id)===String(prev)); if(r) avail=[r,...avail]; }
   if(!avail.length){ sel.innerHTML='<option value="">Nenhum pacote vigente nesta data</option>'; }
-  else sel.innerHTML='<option value="">Selecione o pacote...</option>'+avail.map(r=>{const inst=_pkgInstanceForDate(r,date);const st=hoursStatus(inst);return `<option value="${r.id}">${hoursOwnerName(inst)} · saldo ${fmtH(st.remaining)}</option>`;}).join('');
+  else sel.innerHTML='<option value="">Selecione o pacote...</option>'+avail.map(r=>{const inst=_pkgInstanceForDate(r,date);const st=hoursStatus(inst);return `<option value="${r.id}">${esc(hoursOwnerName(inst))} · saldo ${fmtH(st.remaining)}</option>`;}).join('');
   sel.value=prev||'';
 }
 function _actBillToggle(){
@@ -2651,7 +2652,7 @@ function _actHoursPkgChange(){
     const membs=(g?.clientIds||[]).map(id=>clients.find(c=>c.id===id)).filter(Boolean);
     const csel=document.getElementById('a-hourscompany');
     const prevC=csel.value;
-    csel.innerHTML='<option value="">Selecione a empresa...</option>'+membs.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+    csel.innerHTML='<option value="">Selecione a empresa...</option>'+membs.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
     csel.value=prevC||'';
     // pré-seleciona se a atividade já tem cliente do grupo
     const cref=document.getElementById('a-client').value;
@@ -2666,39 +2667,45 @@ function _actHoursPkgChange(){
   info.innerHTML=`Saldo atual: <strong>${fmtH(st.remaining)}</strong> · esta atividade: <strong>${fmtH(dur)}</strong> · saldo após: <strong style="color:${after<0?'var(--red)':'var(--green)'}">${fmtH(after)}</strong>${after<0?' ⚠ excede o saldo':''}${segTxt}`;
 }
 // Sincroniza o uso de horas vinculado a uma atividade (chave estável actId)
-function _syncActivityUsage(data){
-  const changed=new Set();
-  hoursPackages.forEach(p=>{
-    if(!Array.isArray(p.usages)) return;
-    const before=p.usages.length;
-    p.usages=p.usages.filter(u=>String(u.actId||'')!==String(data.id));
-    if(p.usages.length!==before) changed.add(p);
-  });
+// Escrita por transação: remove as entradas antigas e grava as novas lendo
+// sempre a versão mais recente do pacote no banco.
+async function _syncActivityUsage(data){
+  const actKey=String(data.id);
+  // pacotes que localmente têm entradas desta atividade
+  const affected=new Set();
+  hoursPackages.forEach(p=>{ if(Array.isArray(p.usages)&&p.usages.some(u=>String(u.actId||'')===actKey)) affected.add(String(p.id)); });
+  // pacote de destino (se vinculado)
+  let targetId=null, targetSegs=null, targetPkg=null;
   if(data.billFromHours && data.hoursPkgId){
     const root=hoursPackages.find(x=>String(x.id)===String(data.hoursPkgId));
     if(root){
-      const pkg=_pkgInstanceForDate(root,data.date);
-      if(!pkg.usages) pkg.usages=[];
+      targetPkg=_pkgInstanceForDate(root,data.date);
+      targetId=String(targetPkg.id);
       let segs=(data.segments&&data.segments.length)?data.segments:_segFromTimes(data.date,data.startTime,data.endTime);
       if(!segs.length) segs=[{qual:data.qual||_autoQualFromDate(data.date),hours:Number(data.hours)||0}];
-      segs.forEach(seg=>{
-        if(!(seg.hours>0)) return;
-        pkg.usages.push({
-          hours:seg.hours,
-          date:data.date,
-          qual:seg.qual,
-          companyId: pkg.groupId?(data.hoursCompanyId||null):null,
-          tech:data.userName||'',
-          desc:(data.name||'')+(data.desc?(' — '+data.desc):''),
-          projectId:data.projectId||null,
-          actId:data.id, source:'activity',
-        });
-      });
-      changed.add(pkg);
+      targetSegs=segs.filter(s=>s.hours>0);
+      affected.add(targetId);
     }
   }
-  changed.forEach(p=>saveToFirebase('hoursPackages',String(p.id),p));
-  if(changed.size){ try{ if(typeof renderHoursGrid==='function') renderHoursGrid(); }catch(e){} }
+  let allOk=true;
+  for(const pid of affected){
+    const ok=await _txUpdateUsages(pid,d=>{
+      d.usages=d.usages.filter(u=>String(u.actId||'')!==actKey); // limpa entradas antigas (idempotente)
+      if(pid===targetId && targetSegs){
+        targetSegs.forEach(seg=>{
+          d.usages.push({
+            hours:seg.hours, date:data.date, qual:seg.qual,
+            companyId: targetPkg.groupId?(data.hoursCompanyId||null):null,
+            tech:data.userName||'', desc:(data.name||'')+(data.desc?(' — '+data.desc):''),
+            projectId:data.projectId||null, actId:data.id, source:'activity',
+          });
+        });
+      }
+    });
+    if(!ok) allOk=false;
+  }
+  if(affected.size){ try{ if(typeof renderHoursGrid==='function') renderHoursGrid(); }catch(e){} }
+  return allOk;
 }
 function _actTypeChange(){
   const isProj=document.getElementById('a-type').value==='projeto';
@@ -2709,7 +2716,7 @@ function _actLoadTasks(){
   const pid=document.getElementById('a-project').value;
   const sel=document.getElementById('a-task');
   const p=projects.find(x=>String(x.id)===String(pid));
-  sel.innerHTML='<option value="">Nenhuma</option>'+((p&&p.tasks||[]).map(t=>`<option value="${t.id}">${t.name}</option>`).join(''));
+  sel.innerHTML='<option value="">Nenhuma</option>'+((p&&p.tasks||[]).map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join(''));
   document.getElementById('a-task-wrap').style.display=(document.getElementById('a-type').value==='projeto'&&pid)?'':'none';
 }
 async function _actEnsureUsers(){
@@ -2721,7 +2728,7 @@ async function _actEnsureUsers(){
 }
 async function openActivityModal(id){
   _editingActId=id||null;
-  const a=id?activities.find(x=>x.id===id):null;
+  const a=id?activities.find(x=>String(x.id)===String(id)):null;
   document.getElementById('activity-modal-title').textContent=a?'Editar Atividade':'Nova Atividade';
   document.getElementById('a-delete-btn').style.display=a?'':'none';
   // Responsável
@@ -2730,7 +2737,7 @@ async function openActivityModal(id){
   if(isAdmin()){
     uWrap.style.display='';
     const opts=_actUsers.length?_actUsers:[{uid:currentUser.uid,name:currentUser.name}];
-    uSel.innerHTML=opts.map(u=>`<option value="${u.uid}">${u.name}</option>`).join('');
+    uSel.innerHTML=opts.map(u=>`<option value="${u.uid}">${esc(u.name)}</option>`).join('');
     uSel.value=a?a.userId||currentUser.uid:currentUser.uid;
   } else {
     uWrap.style.display='none';
@@ -2739,13 +2746,13 @@ async function openActivityModal(id){
   }
   // Cliente / grupo
   const cSel=document.getElementById('a-client');
-  const grpOpts=clientGroups.map(g=>`<option value="g:${g.id}">👥 ${g.name}</option>`).join('');
-  const cliOpts=clients.map(c=>`<option value="c:${c.id}">${c.name}</option>`).join('');
+  const grpOpts=clientGroups.map(g=>`<option value="g:${g.id}">👥 ${esc(g.name)}</option>`).join('');
+  const cliOpts=clients.map(c=>`<option value="c:${c.id}">${esc(c.name)}</option>`).join('');
   cSel.innerHTML='<option value="">Sem cliente</option>'+grpOpts+cliOpts;
   cSel.value=a?a.clientRef||'':'';
   // Projeto
   const pSel=document.getElementById('a-project');
-  pSel.innerHTML='<option value="">Nenhum</option>'+projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  pSel.innerHTML='<option value="">Nenhum</option>'+projects.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
   pSel.value=a?a.projectId||'':'';
   _populateTypeSelect(document.getElementById('a-type'));
   document.getElementById('a-newtype-row').style.display='none';
@@ -2771,7 +2778,7 @@ async function openActivityModal(id){
   }
   openModal('activity-modal-overlay');
 }
-function saveActivity(){
+async function saveActivity(){
   const startTime=document.getElementById('a-start-time').value;
   const endTime=document.getElementById('a-end-time').value;
   const date=document.getElementById('a-date').value;
@@ -2804,9 +2811,9 @@ function saveActivity(){
       if(!hoursCompanyId){ alert('Selecione a empresa do grupo para abater as horas'); return; }
     }
   }
-  const prev=_editingActId?activities.find(x=>x.id===_editingActId):null;
+  const prev=_editingActId?activities.find(x=>String(x.id)===String(_editingActId)):null;
   const data={
-    id:_editingActId||nextActivityId++,
+    id:_editingActId||_db.collection('activities').doc().id,
     userId,userName,date,hours,type,
     name,
     startTime,endTime,
@@ -2833,24 +2840,30 @@ function saveActivity(){
     }
   }
   // Sincroniza (cria/atualiza/remove) o registro de horas vinculado
-  _syncActivityUsage(data);
-  if(_editingActId){ const i=activities.findIndex(x=>x.id===_editingActId); activities[i]=data; }
+  const syncOk=await _syncActivityUsage(data);
+  if(_editingActId){ const i=activities.findIndex(x=>String(x.id)===String(_editingActId)); if(i>=0) activities[i]=data; }
   else activities.push(data);
   saveToFirebase('activities',String(data.id),data);
+  if(!syncOk) alert('A atividade foi salva, mas o abatimento no pacote de horas falhou. Edite e salve novamente para refazer o vínculo.');
   closeModal('activity-modal-overlay');
   renderActivities();
 }
-function deleteActivity(){
+async function deleteActivity(){
   if(!_editingActId||!confirm('Excluir esta atividade?')) return;
-  const a=activities.find(x=>x.id===_editingActId);
+  const a=activities.find(x=>String(x.id)===String(_editingActId));
   if(a&&a.taskId){
     const p=projects.find(x=>String(x.id)===String(a.projectId));
     const t=p&&(p.tasks||[]).find(x=>x.id===a.taskId);
     if(t){ t.doneHours=Math.max(0,(Number(t.doneHours)||0)-(Number(a.hours)||0)); p.updatedAt=Date.now(); saveToFirebase('projects',String(p.id),p); }
   }
-  // Remove o registro de horas vinculado (se houver)
-  if(a){ const changed=new Set(); hoursPackages.forEach(p=>{ if(!Array.isArray(p.usages))return; const b=p.usages.length; p.usages=p.usages.filter(u=>String(u.actId||'')!==String(a.id)); if(p.usages.length!==b) changed.add(p); }); changed.forEach(p=>saveToFirebase('hoursPackages',String(p.id),p)); if(changed.size){ try{ if(typeof renderHoursGrid==='function') renderHoursGrid(); }catch(e){} } }
-  activities=activities.filter(x=>x.id!==_editingActId);
+  // Remove o registro de horas vinculado por transação (devolve o saldo com segurança)
+  if(a){
+    const actKey=String(a.id);
+    const affected=hoursPackages.filter(p=>Array.isArray(p.usages)&&p.usages.some(u=>String(u.actId||'')===actKey)).map(p=>String(p.id));
+    for(const pid of affected){ await _txUpdateUsages(pid,d=>{ d.usages=d.usages.filter(u=>String(u.actId||'')!==actKey); }); }
+    if(affected.length){ try{ if(typeof renderHoursGrid==='function') renderHoursGrid(); }catch(e){} }
+  }
+  activities=activities.filter(x=>String(x.id)!==String(_editingActId));
   deleteFromFirebase('activities',String(_editingActId));
   closeModal('activity-modal-overlay');
   renderActivities();
@@ -2873,7 +2886,7 @@ function renderActivities(){
     uSel.value=prevU;
   } else { uSel.style.display='none'; }
   const cSel=document.getElementById('act-f-client');
-  if(cSel && cSel.options.length<=1) cSel.innerHTML='<option value="">Todos os clientes</option>'+clientGroups.map(g=>`<option value="g:${g.id}">👥 ${g.name}</option>`).join('')+clients.map(c=>`<option value="c:${c.id}">${c.name}</option>`).join('');
+  if(cSel && cSel.options.length<=1) cSel.innerHTML='<option value="">Todos os clientes</option>'+clientGroups.map(g=>`<option value="g:${g.id}">👥 ${esc(g.name)}</option>`).join('')+clients.map(c=>`<option value="c:${c.id}">${esc(c.name)}</option>`).join('');
 
   const fStart=document.getElementById('act-f-start').value, fEnd=document.getElementById('act-f-end').value;
   const fType=document.getElementById('act-f-type').value, fUser=document.getElementById('act-f-user').value, fClient=document.getElementById('act-f-client').value;
@@ -2901,11 +2914,11 @@ function renderActivities(){
       const cli=_actClientName(a);
       const proj=a.projectId?(projects.find(p=>String(p.id)===String(a.projectId))||{}).name:'';
       const _tl=actTypesAll();
-      html+=`<div class="task-item" onclick="openActivityModal(${a.id})" style="align-items:flex-start">
+      html+=`<div class="task-item" onclick="openActivityModal('${a.id}')" style="align-items:flex-start">
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600">${a.name||(_tl[a.type]||a.type)}</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:2px">${a.startTime&&a.endTime?'🕒 '+a.startTime+'–'+a.endTime+' · ':''}📌 ${_tl[a.type]||a.type}${isAdmin()?' · 👤 '+(a.userName||'—'):''}${cli?' · '+cli:''}${proj?' · 🗂 '+proj:''}${a.qual?' · '+(QUAL_LBL[a.qual]||''):''}${a.billFromHours?' · <span style="color:var(--amber)">💳 Abatido do pacote</span>':''}${a.source==='spiceworks'?' · <span style="color:var(--accent2)">Spiceworks</span>':''}</div>
-          ${a.desc?`<div style="font-size:11px;color:var(--text2);margin-top:5px;padding:6px 8px;background:var(--bg2);border-left:2px solid var(--accent2);border-radius:4px;white-space:pre-wrap">📝 ${a.desc}</div>`:''}
+          <div style="font-size:13px;font-weight:600">${esc(a.name)||esc(_tl[a.type]||a.type)}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">${a.startTime&&a.endTime?'🕒 '+esc(a.startTime)+'–'+esc(a.endTime)+' · ':''}📌 ${esc(_tl[a.type]||a.type)}${isAdmin()?' · 👤 '+esc(a.userName||'—'):''}${cli?' · '+esc(cli):''}${proj?' · 🗂 '+esc(proj):''}${a.qual?' · '+(QUAL_LBL[a.qual]||''):''}${a.billFromHours?' · <span style="color:var(--amber)">💳 Abatido do pacote</span>':''}${a.source==='spiceworks'?' · <span style="color:var(--accent2)">Spiceworks</span>':''}</div>
+          ${a.desc?`<div style="font-size:11px;color:var(--text2);margin-top:5px;padding:6px 8px;background:var(--bg2);border-left:2px solid var(--accent2);border-radius:4px;white-space:pre-wrap">📝 ${esc(a.desc)}</div>`:''}
         </div>
         <div style="font-size:13px;font-family:var(--mono);font-weight:700;color:var(--accent2)">${fmtH(a.hours)}</div>
       </div>`;
@@ -3014,12 +3027,12 @@ function renderLicCard(l, compact){
   return `<div class="lic-card ${st.level==='critical'?'critical':st.level==='warning'?'warning':''}" onclick="openLicDetail(${l.id})" style="${compact?'margin-bottom:10px':''}">
     <div style="display:flex;align-items:start;justify-content:space-between;margin-bottom:8px">
       <div>
-        <div style="font-weight:700;font-size:14px">${l.product}</div>
+        <div style="font-weight:700;font-size:14px">${esc(l.product)}</div>
         <div style="font-size:11px;color:var(--text3);margin-top:2px">${l.vendor||'—'} ${l.dist?'· via '+l.dist:''}</div>
       </div>
       <span class="badge ${st.cls}">${st.label}</span>
     </div>
-    <div style="font-size:12px;color:var(--accent2);margin-bottom:8px">🏢 ${clientName(l.clientId)}${(Number(l.qty)||1)>1?` <span style="color:var(--text3)">· 📦 ${l.qty} licenças</span>`:''}</div>
+    <div style="font-size:12px;color:var(--accent2);margin-bottom:8px">🏢 ${esc(clientName(l.clientId))}${(Number(l.qty)||1)>1?` <span style="color:var(--text3)">· 📦 ${l.qty} licenças</span>`:''}</div>
     <div style="display:flex;gap:12px;font-size:11px;color:var(--text3);margin-bottom:8px;flex-wrap:wrap">
       <span>📅 ${fmtDate(l.start)} → ${fmtDate(l.end)}</span>
       ${l.parentId?`<span style="font-size:10px;font-weight:600;color:var(--accent2);background:rgba(37,99,235,0.1);padding:2px 7px;border-radius:10px">🔄 Renovação</span>`:''}
@@ -3079,7 +3092,7 @@ function _renderLicAttachments(){
   const box=document.getElementById('l-attach-list'); if(!box) return;
   box.innerHTML=_licAttachments.map((a,i)=>`<div style="display:flex;align-items:center;gap:8px;background:var(--bg3);border-radius:6px;padding:6px 10px;font-size:12px">
     <span>${_fileIcon(a.name)}</span>
-    <a href="${a.url}" target="_blank" rel="noopener" style="flex:1;color:var(--accent2);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" onclick="event.stopPropagation()">${a.name}</a>
+    <a href="${esc(a.url)}" target="_blank" rel="noopener" style="flex:1;color:var(--accent2);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" onclick="event.stopPropagation()">${esc(a.name)}</a>
     <span style="color:var(--text3)">${_fmtSize(a.size)}</span>
     <button class="btn btn-ghost btn-sm" style="padding:2px 8px" onclick="event.stopPropagation();_licRemoveAttach(${i})">✕</button>
   </div>`).join('');
@@ -3208,10 +3221,10 @@ function openLicDetail(id){
 
   let html=`<div class="detail-header">
     <div style="flex:1">
-      <div style="font-size:17px;font-weight:700;margin-bottom:4px">${l.product}</div>
+      <div style="font-size:17px;font-weight:700;margin-bottom:4px">${esc(l.product)}</div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span class="badge ${st.cls}">${st.label}</span>
-        <span class="badge badge-blue">🏢 ${clientName(l.clientId)}</span>
+        <span class="badge badge-blue">🏢 ${esc(clientName(l.clientId))}</span>
         <span class="badge badge-gray">📦 ${qty} ${qty>1?'licenças':'licença'}</span>
         ${l.monthly?`<span class="badge badge-green">📅 Mensalizado</span>`:''}
       </div>
@@ -3231,7 +3244,7 @@ function openLicDetail(id){
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Progresso do período (${Math.round(prog)}%)</div>
       <div class="progress-bar" style="height:8px"><div style="height:100%;border-radius:4px;width:${prog}%;background:${progColor}"></div></div>
     </div>
-    ${l.seller?`<div style="font-size:12px;color:var(--text3);margin-bottom:16px">🧑‍💼 Vendedor: <strong style="color:var(--text2)">${l.seller}</strong></div>`:''}
+    ${l.seller?`<div style="font-size:12px;color:var(--text3);margin-bottom:16px">🧑‍💼 Vendedor: <strong style="color:var(--text2)">${esc(l.seller)}</strong></div>`:''}
     ${l.supportHours||l.supportRateClient||l.supportUsed?`
     <div class="rep-section"><div class="rep-section-title">🛠 Suporte técnico</div>
       <div class="kpi-grid" style="grid-template-columns:repeat(${isAdmin()?4:2},1fr)">
@@ -3288,10 +3301,10 @@ function openLicDetail(id){
     </div></div>`;
   }
 
-  if(l.notes) html+=`<div class="panel" style="padding:14px;font-size:13px;color:var(--text2);margin-top:16px">${l.notes}</div>`;
+  if(l.notes) html+=`<div class="panel" style="padding:14px;font-size:13px;color:var(--text2);margin-top:16px">${esc(l.notes)}</div>`;
   if(isAdmin() && Array.isArray(l.attachments) && l.attachments.length){
     html+=`<div class="panel" style="padding:14px;margin-top:16px"><div style="font-size:12px;font-weight:600;margin-bottom:10px">📎 Anexos</div>`+
-      l.attachments.map(a=>`<div style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:6px"><span>${_fileIcon(a.name)}</span><a href="${a.url}" target="_blank" rel="noopener" style="color:var(--accent2);text-decoration:none;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.name}</a><span style="color:var(--text3);font-size:11px">${_fmtSize(a.size)}</span></div>`).join('')+
+      l.attachments.map(a=>`<div style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:6px"><span>${_fileIcon(a.name)}</span><a href="${esc(a.url)}" target="_blank" rel="noopener" style="color:var(--accent2);text-decoration:none;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.name)}</a><span style="color:var(--text3);font-size:11px">${_fmtSize(a.size)}</span></div>`).join('')+
       `</div>`;
   }
 
@@ -3365,7 +3378,7 @@ function setProdFilter(k,v){ prodFilter[k]=v; renderReport('productivity'); }
 function _prodBars(rows,color){
   const max=Math.max(1,...rows.map(r=>r.h));
   return rows.map(r=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-    <div style="width:150px;font-size:12px;color:var(--text2);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.label}</div>
+    <div style="width:150px;font-size:12px;color:var(--text2);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.label)}</div>
     <div style="flex:1;background:var(--bg3);border-radius:4px;height:16px;position:relative">
       <div style="width:${(r.h/max*100).toFixed(1)}%;background:${color};height:100%;border-radius:4px;min-width:2px"></div>
     </div>
@@ -3810,9 +3823,9 @@ function repOverview(){
       const pct=tasks.length?Math.round(d/tasks.length*100):0;
       const late=isOverdue(p.end,true); const isCaveat=p.status==='done_caveat';
       return `<tr onclick="openProjDetail(${p.id})" style="cursor:pointer${isCaveat?';background:rgba(245,166,35,0.04)':''}">
-        <td style="font-weight:600">${isCaveat?'⚠️ ':'● '}${p.name}</td>
-        <td style="color:var(--text2)">${clientName(p.clientId)}</td>
-        <td style="color:var(--text2)">${p.owner||'—'}</td>
+        <td style="font-weight:600">${isCaveat?'⚠️ ':'● '}${esc(p.name)}</td>
+        <td style="color:var(--text2)">${esc(clientName(p.clientId))}</td>
+        <td style="color:var(--text2)">${esc(p.owner||'—')}</td>
         <td style="font-family:var(--mono);font-size:11px">${fmtDate(p.end)}</td>
         <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${p.concludedDate?fmtDate(p.concludedDate):'—'}</td>
         <td><div style="display:flex;align-items:center;gap:6px"><span style="font-size:11px;font-family:var(--mono)">${d}/${tasks.length}</span><div style="flex:1;min-width:40px;height:5px;background:var(--bg4);border-radius:3px;overflow:hidden"><div style="height:100%;border-radius:3px;background:${pct===100?'var(--green)':'var(--accent2)'};width:${pct}%"></div></div></div></td>
@@ -3901,8 +3914,8 @@ function repFinancial(){
       const prop=Number(p.proposal)||0, quot=Number(p.quote)||0, hc=(Number(p.hourrate)||0)*h;
       const real=prop-hc; const pct=prop>0?Math.round(real/prop*100):0;
       return `<tr onclick="openProjDetail(${p.id})" style="cursor:pointer">
-        <td style="font-weight:600">${p.name}</td>
-        <td style="color:var(--text2);font-size:12px">${clientName(p.clientId)}</td>
+        <td style="font-weight:600">${esc(p.name)}</td>
+        <td style="color:var(--text2);font-size:12px">${esc(clientName(p.clientId))}</td>
         <td style="color:var(--green);font-family:var(--mono);font-size:12px">${fmtCur(prop)}</td>
         <td style="color:var(--amber);font-family:var(--mono);font-size:12px">${fmtCur(quot)}</td>
         <td style="font-family:var(--mono);font-size:12px">${h}h</td>
@@ -4017,7 +4030,7 @@ function repMRR(){
     <tbody>${clientMRR.map(({c,totalMRR,totalCost,margin,monthsRel,totalRevenue})=>{
       const pct=totalMRR>0?Math.round(margin/totalMRR*100):0;
       return `<tr onclick="openClientDetail(${c.id})" style="cursor:pointer">
-        <td style="font-weight:600">${c.name}</td>
+        <td style="font-weight:600">${esc(c.name)}</td>
         <td style="color:var(--green);font-family:var(--mono);font-size:12px">${fmtCur(totalMRR)}/m</td>
         <td style="color:var(--amber);font-family:var(--mono);font-size:12px">${fmtCur(totalCost)}/m</td>
         <td><span class="badge ${pct>=30?'badge-green':pct>=0?'badge-amber':'badge-red'}">${fmtCur(margin)} · ${pct}%</span></td>
@@ -4071,7 +4084,7 @@ function repPerformance(){
           <div style="font-size:22px">${medals[i]||'#'+(i+1)}</div>
           <div class="avatar" style="background:${av.bg};color:${av.text};width:36px;height:36px;font-size:13px;font-weight:700;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0">${initials(u.name)}</div>
           <div style="flex:1;min-width:0">
-            <div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.name}</div>
+            <div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(u.name)}</div>
             <div style="font-size:11px;color:var(--text3)">${u.tp} proj · ${u.tt} tar</div>
           </div>
           <div style="font-size:24px;font-weight:700;font-family:var(--mono);color:${sCol(u.score)}">${u.score}%</div>
@@ -4253,9 +4266,9 @@ function repHours(){
   const tipoLbl=tipoSet.size===1?({anual:'📅 Anual',mensal:'📆 Mensal',trimestral:'🗓️ Trimestral'})[[...tipoSet][0]]:(tipoSet.size?'Modelos mistos':'—');
 
   // selector options
-  const groupOpts=clientGroups.map(g=>`<option value="g:${g.id}"${fc==='g:'+g.id?' selected':''}>👥 ${g.name}</option>`).join('');
-  const memberOpts=clientGroups.map(g=>{const membs=(g.clientIds||[]).map(id=>clients.find(c=>String(c.id)===String(id))).filter(Boolean);return membs.length?'<optgroup label="↳ '+g.name+' — empresas">'+membs.map(c=>`<option value="gc:${g.id}:${c.id}"${fc==='gc:'+g.id+':'+c.id?' selected':''}>${c.name}</option>`).join('')+'</optgroup>':'';}).join('');
-  const standaloneOpts=clientIdsInUse.filter(id=>!cGroupOf(id)).map(id=>`<option value="c:${id}"${fc==='c:'+id?' selected':''}>${cName(id)}</option>`).join('');
+  const groupOpts=clientGroups.map(g=>`<option value="g:${g.id}"${fc==='g:'+g.id?' selected':''}>👥 ${esc(g.name)}</option>`).join('');
+  const memberOpts=clientGroups.map(g=>{const membs=(g.clientIds||[]).map(id=>clients.find(c=>String(c.id)===String(id))).filter(Boolean);return membs.length?'<optgroup label="↳ '+esc(g.name)+' — empresas">'+membs.map(c=>`<option value="gc:${g.id}:${c.id}"${fc==='gc:'+g.id+':'+c.id?' selected':''}>${esc(c.name)}</option>`).join('')+'</optgroup>':'';}).join('');
+  const standaloneOpts=clientIdsInUse.filter(id=>!cGroupOf(id)).map(id=>`<option value="c:${id}"${fc==='c:'+id?' selected':''}>${esc(cName(id))}</option>`).join('');
 
   const multiOn=!!window._hoursMultiOpen||multi.length>0;
   const multiChecklist=multiOn?`<div class="panel no-print" style="padding:12px 14px;margin-bottom:16px">
@@ -4263,7 +4276,7 @@ function repHours(){
     <div style="display:flex;flex-wrap:wrap;gap:8px">
     ${clientIdsInUse.map(id=>{const g=cGroupOf(id);const ck=multi.includes(String(id));return `<label style="display:flex;align-items:center;gap:5px;font-size:12px;background:var(--bg3);border:1px solid ${ck?'var(--accent)':'var(--border)'};border-radius:8px;padding:5px 10px;cursor:pointer">
       <input type="checkbox" ${ck?'checked':''} onchange="(function(cb){window._hoursRepClient='';let a=Array.isArray(window._hoursRepClients)?window._hoursRepClients.slice():[];const v='${id}';if(cb.checked){if(!a.includes(v))a.push(v);}else{a=a.filter(x=>x!==v);}window._hoursRepClients=a;renderReport('hours');})(this)">
-      ${cName(id)}${g?` <span style="color:var(--text3);font-size:10px">(👥 ${g.name})</span>`:''}</label>`;}).join('')}
+      ${esc(cName(id))}${g?` <span style="color:var(--text3);font-size:10px">(👥 ${esc(g.name)})</span>`:''}</label>`;}).join('')}
     </div>
     ${multi.length?`<button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="window._hoursRepClients=[];renderReport('hours')">✕ Limpar seleção</button>`:''}
   </div>`:'';
@@ -4325,7 +4338,7 @@ function repHours(){
       <table class="data-table">
         <thead><tr><th>Cliente</th><th>Grupo</th><th>Registros</th><th>Utilizadas</th><th>Utilizado em ${year}</th><th>Pacote (pool)</th></tr></thead>
         <tbody>${clientRows.map(r=>`<tr>
-            <td style="font-weight:600">${cName(r.cid)}</td>
+            <td style="font-weight:600">${esc(cName(r.cid))}</td>
             <td style="font-size:12px;color:var(--text3)">${r.grp?'👥 '+r.grp.name:'—'}</td>
             <td style="font-family:var(--mono)">${r.n}</td>
             <td style="font-family:var(--mono);color:var(--amber);font-weight:700">${fmtH(r.used)}</td>
@@ -4348,12 +4361,12 @@ function repHours(){
             const g=cGroupOf(u.effClientId);
             return `<tr>
               <td style="font-family:var(--mono);font-size:11px">${fmtDate(u.date)}</td>
-              <td style="font-weight:600">${cName(u.effClientId)}</td>
+              <td style="font-weight:600">${esc(cName(u.effClientId))}</td>
               <td style="font-size:11px;color:var(--text3)">${g?'👥 '+g.name:'—'}</td>
               <td style="font-size:11px;white-space:nowrap">${_qualLabel(u.qual||'weekday')}</td>
               <td style="font-family:var(--mono);font-weight:700;color:var(--amber)">${fmtH(u.hours)}</td>
-              <td>${u.tech||'—'}</td>
-              <td style="font-size:12px">${u.desc||'—'}</td>
+              <td>${esc(u.tech||'—')}</td>
+              <td style="font-size:12px">${esc(u.desc||'—')}</td>
               <td style="font-size:11px;color:var(--purple)">${proj?proj.name:'—'}</td>
             </tr>`;}).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">Sem registros</td></tr>'}
         </tbody></table>
@@ -4733,8 +4746,8 @@ function renderHoursGrid(){
       </div>
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
         <div>
-          <div style="font-size:15px;font-weight:700">${hoursOwnerName(pkg)}</div>
-          <div style="font-size:12px;color:var(--text3);margin-top:2px">${pkg.desc||'Pacote de horas'}</div>
+          <div style="font-size:15px;font-weight:700">${esc(hoursOwnerName(pkg))}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px">${esc(pkg.desc||'Pacote de horas')}</div>
         </div>
         <span style="font-size:18px">${st.icon}</span>
       </div>
@@ -4774,8 +4787,8 @@ function openHoursModal(id=null){
   document.getElementById('hp-delete-btn').style.display=isEdit?'':'none';
   const pkg=isEdit?hoursPackages.find(x=>x.id===id):null;
   const cs=document.getElementById('hp-client');
-  const grpOpts=clientGroups.length?'<optgroup label="👥 Grupos de clientes">'+clientGroups.map(g=>`<option value="g:${g.id}">👥 ${g.name}</option>`).join('')+'</optgroup>':'';
-  const cliOpts='<optgroup label="🏢 Clientes">'+clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')+'</optgroup>';
+  const grpOpts=clientGroups.length?'<optgroup label="👥 Grupos de clientes">'+clientGroups.map(g=>`<option value="g:${g.id}">👥 ${esc(g.name)}</option>`).join('')+'</optgroup>':'';
+  const cliOpts='<optgroup label="🏢 Clientes">'+clients.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')+'</optgroup>';
   cs.innerHTML='<option value="">Selecione...</option>'+grpOpts+cliOpts;
   document.getElementById('hp-client').value=pkg?(pkg.groupId?('g:'+pkg.groupId):pkg.clientId||''):'';
   document.getElementById('hp-hours').value=pkg&&pkg.hours?fmtH(pkg.hours):'';
@@ -4904,12 +4917,12 @@ function exportHoursClientPDF(rootId,companyId){
     <tr>
       <td style="padding:10px 12px;border-bottom:1px solid #e5e9f0;font-family:monospace;font-size:12px;white-space:nowrap">${fmtDate(u.date)}</td>
       <td style="padding:10px 12px;border-bottom:1px solid #e5e9f0;font-family:monospace;font-weight:700;color:#c07c00">${fmtH(u.hours)}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #e5e9f0;font-size:13px">${u.desc||'—'}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #e5e9f0;font-size:12px;color:#555">${u.tech||'—'}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #e5e9f0;font-size:13px">${esc(u.desc||'—')}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #e5e9f0;font-size:12px;color:#555">${esc(u.tech||'—')}</td>
     </tr>`).join('');
   const w=window.open('','_blank','width=1100,height=850');
   w.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
-<title>Relatório de Horas — ${ownerName}</title>
+<title>Relatório de Horas — ${esc(ownerName)}</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>*{margin:0;padding:0;box-sizing:border-box;font-family:'DM Sans',sans-serif}body{color:#1a2e5c}@media print{.np{display:none}}</style>
 </head><body>
@@ -4919,7 +4932,7 @@ function exportHoursClientPDF(rootId,companyId){
     <div>
       <img src="${LOGO_DATA_URI}" style="height:54px;filter:brightness(10);margin-bottom:14px">
       <div style="font-size:26px;font-weight:800;background:linear-gradient(135deg,#fff,#93c5fd);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Relatório de Horas Técnicas</div>
-      <div style="opacity:.7;font-size:14px;margin-top:4px">${ownerName} · ${pkg.desc||'Pacote de horas'}</div>
+      <div style="opacity:.7;font-size:14px;margin-top:4px">${esc(ownerName)} · ${esc(pkg.desc||'Pacote de horas')}</div>
     </div>
     <div style="text-align:right;font-size:12px;opacity:.7">Gerado em<br><strong style="font-size:15px;opacity:1">${now}</strong></div>
   </div>
@@ -4985,7 +4998,7 @@ function renderHoursDetail(){
     const g=clientGroups.find(x=>String(x.id)===String(pkg.groupId));
     const membs=(g?.clientIds||[]).map(id=>clients.find(c=>c.id===id)).filter(Boolean);
     companyBreak=`<div style="margin-bottom:16px"><div class="rep-section-title">🏢 Uso por empresa do grupo</div>
-    ${membs.map(c=>{const h=allUsages.filter(u=>String(u.companyId)===String(c.id)).reduce((s,u)=>s+(Number(u.hours)||0),0);const n=allUsages.filter(u=>String(u.companyId)===String(c.id)).length;return `<div class="panel" style="padding:10px 14px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:13px;font-weight:600">🏢 ${c.name}</div><div style="font-size:11px;color:var(--text3)">${n} registro(s)</div></div><span style="font-family:var(--mono);font-weight:700;color:var(--amber)">${fmtH(h)}</span></div>`;}).join('')}</div>`;
+    ${membs.map(c=>{const h=allUsages.filter(u=>String(u.companyId)===String(c.id)).reduce((s,u)=>s+(Number(u.hours)||0),0);const n=allUsages.filter(u=>String(u.companyId)===String(c.id)).length;return `<div class="panel" style="padding:10px 14px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:13px;font-weight:600">🏢 ${esc(c.name)}</div><div style="font-size:11px;color:var(--text3)">${n} registro(s)</div></div><span style="font-family:var(--mono);font-weight:700;color:var(--amber)">${fmtH(h)}</span></div>`;}).join('')}</div>`;
   }
 
   // Totals across all periods
@@ -5002,13 +5015,13 @@ function renderHoursDetail(){
 
   let html=`<div class="detail-header">
     <div style="flex:1">
-      <div style="font-size:17px;font-weight:700">${hoursOwnerName(pkg)}</div>
-      <div style="font-size:12px;color:var(--text3)">${pkg.desc||'Pacote de horas'}</div>
+      <div style="font-size:17px;font-weight:700">${esc(hoursOwnerName(pkg))}</div>
+      <div style="font-size:12px;color:var(--text3)">${esc(pkg.desc||'Pacote de horas')}</div>
     </div>
     ${isGroupPkg?`<select class="form-select btn-sm" style="max-width:200px;padding:6px 10px;font-size:12px" onchange="if(this.value==='all')exportHoursClientPDF(${root.id});else exportHoursClientPDF(${root.id},this.value);this.value=''">
       <option value="">📄 Exportar PDF ▾</option>
       <option value="all">📊 Relatório do grupo (todas)</option>
-      ${(clientGroups.find(x=>String(x.id)===String(pkg.groupId))?.clientIds||[]).map(id=>clients.find(c=>c.id===id)).filter(Boolean).map(c=>`<option value="${c.id}">🏢 ${c.name}</option>`).join('')}
+      ${(clientGroups.find(x=>String(x.id)===String(pkg.groupId))?.clientIds||[]).map(id=>clients.find(c=>c.id===id)).filter(Boolean).map(c=>`<option value="${c.id}">🏢 ${esc(c.name)}</option>`).join('')}
     </select>`:`<button class="btn btn-ghost btn-sm" onclick="exportHoursClientPDF(${root.id})">📄 PDF cliente</button>`}
     <button class="btn btn-ghost btn-sm" onclick="openHoursModal(${pkg.id})">✏️ Editar</button>
     <button class="btn btn-accent btn-sm" onclick="openHoursRenewal(${pkg.id})">🔄 Renovar</button>
@@ -5097,7 +5110,7 @@ function renderHoursDetail(){
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         ${isGroupPkg?`<select class="form-select" style="max-width:180px;padding:6px 10px;font-size:12px" onchange="window._hoursDetailCompany=this.value;renderHoursDetail()">
           <option value="">Todas empresas</option>
-          ${(clientGroups.find(x=>String(x.id)===String(pkg.groupId))?.clientIds||[]).map(id=>clients.find(c=>c.id===id)).filter(Boolean).map(c=>`<option value="${c.id}"${_cf===String(c.id)?' selected':''}>${c.name}</option>`).join('')}
+          ${(clientGroups.find(x=>String(x.id)===String(pkg.groupId))?.clientIds||[]).map(id=>clients.find(c=>c.id===id)).filter(Boolean).map(c=>`<option value="${c.id}"${_cf===String(c.id)?' selected':''}>${esc(c.name)}</option>`).join('')}
         </select>`:''}
         <select class="form-select" style="max-width:180px;padding:6px 10px;font-size:12px" onchange="window._hoursDetailFilter=this.value;renderHoursDetail()">
           <option value="all"${_hf==='all'?' selected':''}>Todos</option>
@@ -5119,7 +5132,7 @@ function renderHoursDetail(){
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
               <span style="font-family:var(--mono);font-weight:700;font-size:16px;color:var(--amber)">${fmtH(u.hours)}</span>
               <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:var(--bg3);white-space:nowrap">${_qualLabel(u.qual||'weekday')}</span>
-              ${u.companyId?`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:var(--accent);color:#fff;white-space:nowrap">🏢 ${clientName(u.companyId)}</span>`:''}
+              ${u.companyId?`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:var(--accent);color:#fff;white-space:nowrap">🏢 ${esc(clientName(u.companyId))}</span>`:''}
               ${rate&&isAdmin()?`<span style="font-size:11px;color:var(--text3)">${fmtCur(rate)}/h</span>`:''}
             </div>
             <div style="display:flex;gap:4px;flex-shrink:0">
@@ -5127,10 +5140,10 @@ function renderHoursDetail(){
               <button class="icon-btn" onclick="removeHoursUsage(${u._pkgId},'${u._origIdx!==undefined?u._origIdx:i}')" style="color:var(--red)" title="Remover">🗑</button>
             </div>
           </div>
-          ${u.desc?`<div style="font-size:13px;color:var(--text1);margin-bottom:8px;line-height:1.4;background:var(--bg3);border-radius:var(--r);padding:8px 12px;border-left:3px solid var(--accent2)">📝 ${u.desc}</div>`:'<div style="font-size:12px;color:var(--text3);font-style:italic;margin-bottom:8px">Sem descrição</div>'}
+          ${u.desc?`<div style="font-size:13px;color:var(--text1);margin-bottom:8px;line-height:1.4;background:var(--bg3);border-radius:var(--r);padding:8px 12px;border-left:3px solid var(--accent2)">📝 ${esc(u.desc)}</div>`:'<div style="font-size:12px;color:var(--text3);font-style:italic;margin-bottom:8px">Sem descrição</div>'}
           <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--text3)">
             <span>📅 ${fmtDate(u.date)}</span>
-            ${u.tech?`<span>👤 ${u.tech}</span>`:''}
+            ${u.tech?`<span>👤 ${esc(u.tech)}</span>`:''}
             ${proj?`<span style="color:var(--purple)">📋 ${proj.name}</span>`:''}
             <span>P${u._pkgIdx+1}</span>
           </div>
@@ -5142,7 +5155,7 @@ function renderHoursDetail(){
       </div>
     </div>`:''}
 
-    ${pkg.notes?`<div class="panel" style="padding:12px 16px;margin-top:14px;font-size:13px;color:var(--text2)">${pkg.notes}</div>`:''}
+    ${pkg.notes?`<div class="panel" style="padding:12px 16px;margin-top:14px;font-size:13px;color:var(--text2)">${esc(pkg.notes)}</div>`:''}
   </div>`;
 
   document.getElementById('hours-detail-panel').innerHTML=html;
@@ -5231,7 +5244,7 @@ function openHoursUsageModal(pkgId,idx=null){
   const pkg=hoursPackages.find(x=>x.id===pkgId);
   const u=isEdit&&pkg?(pkg.usages||[])[idx]:null;
   const ps=document.getElementById('hu-project');
-  ps.innerHTML='<option value="">Nenhum</option>'+projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  ps.innerHTML='<option value="">Nenhum</option>'+projects.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
   const dateVal=u?u.date||todayStr():todayStr();
   document.getElementById('hu-date').value=dateVal;
   document.getElementById('hu-tech').value=u?u.tech||'':'';
@@ -5247,14 +5260,40 @@ function openHoursUsageModal(pkgId,idx=null){
   if(pkg&&pkg.groupId){
     const g=clientGroups.find(x=>String(x.id)===String(pkg.groupId));
     const membs=(g?.clientIds||[]).map(id=>clients.find(c=>c.id===id)).filter(Boolean);
-    document.getElementById('hu-company').innerHTML='<option value="">Selecione...</option>'+membs.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+    document.getElementById('hu-company').innerHTML='<option value="">Selecione...</option>'+membs.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
     document.getElementById('hu-company').value=u?u.companyId||'':'';
     cw.style.display='block';
   } else cw.style.display='none';
   openModal('hours-usage-overlay');
 }
 
-function saveHoursUsage(){
+// ── Escrita segura de usos de horas ──────────────────────────────────────
+// Transação: o banco lê a versão MAIS RECENTE do pacote, aplica a mudança e
+// grava — se duas pessoas gravarem ao mesmo tempo, o Firebase processa uma
+// de cada vez. Ninguém sobrescreve o registro do outro.
+async function _txUpdateUsages(pkgId,mutate){
+  try{
+    await _db.runTransaction(async tx=>{
+      const ref=_db.collection('hoursPackages').doc(String(pkgId));
+      const snap=await tx.get(ref);
+      if(!snap.exists) throw new Error('Pacote não encontrado');
+      const data=snap.data();
+      data.usages=Array.isArray(data.usages)?data.usages:[];
+      mutate(data);
+      tx.set(ref,JSON.parse(JSON.stringify(data)));
+    });
+    // Atualiza a cópia local com a versão fresca do banco
+    const fresh=await _db.collection('hoursPackages').doc(String(pkgId)).get();
+    if(fresh.exists){ const i=hoursPackages.findIndex(p=>String(p.id)===String(pkgId)); if(i>=0) hoursPackages[i]=fresh.data(); }
+    return true;
+  }catch(e){
+    console.error('txUsages',e);
+    alert('⚠ Não foi possível gravar as horas (falha de conexão ou conflito). Nada foi perdido — tente novamente.');
+    return false;
+  }
+}
+
+async function saveHoursUsage(){
   const pkg=hoursPackages.find(x=>x.id===_usageHoursPkgId); if(!pkg) return;
   if(!pkg.usages) pkg.usages=[];
   const companyId=document.getElementById('hu-company').value||null;
@@ -5275,33 +5314,54 @@ function saveHoursUsage(){
   });
   if(!lines.length){alert('Informe ao menos um tipo com horas (Ex: 01:30)');return;}
   const entries=lines.map(l=>({hours:l.hours,qual:l.qual,...shared}));
-  if(_editingUsageHoursIdx!==null){
-    // Edição = 1 linha (substitui a entrada)
-    pkg.usages[_editingUsageHoursIdx]=entries[0];
-  } else {
-    entries.forEach(e=>pkg.usages.push(e));
-  }
-  if(window.saveToFirebase) saveToFirebase('hoursPackages',String(pkg.id),pkg);
+  // Edição: captura o registro original para localizar pela IDENTIDADE
+  // (não pelo índice, que pode mudar se outra pessoa gravou antes)
+  const original=(_editingUsageHoursIdx!==null)?JSON.parse(JSON.stringify(pkg.usages[_editingUsageHoursIdx]||null)):null;
+  const ok=await _txUpdateUsages(pkg.id,data=>{
+    if(original){
+      const oj=JSON.stringify(original);
+      let idx=data.usages.findIndex(u=>JSON.stringify(u)===oj);
+      if(idx<0) idx=Math.min(_editingUsageHoursIdx,data.usages.length-1); // fallback
+      if(idx>=0) data.usages[idx]=entries[0]; else data.usages.push(entries[0]);
+    } else {
+      entries.forEach(e=>data.usages.push(e));
+    }
+  });
+  if(!ok) return;
   closeModal('hours-usage-overlay');
   renderHoursDetail();
   renderHoursGrid();
 }
 
-function deleteHoursUsage(){
+async function deleteHoursUsage(){
   if(_editingUsageHoursIdx===null||!confirm('Remover este registro?')) return;
   const pkg=hoursPackages.find(x=>x.id===_usageHoursPkgId); if(!pkg) return;
-  pkg.usages.splice(_editingUsageHoursIdx,1);
-  if(window.saveToFirebase) saveToFirebase('hoursPackages',String(pkg.id),pkg);
+  const original=JSON.parse(JSON.stringify((pkg.usages||[])[_editingUsageHoursIdx]||null));
+  if(!original) return;
+  const ok=await _txUpdateUsages(pkg.id,data=>{
+    const oj=JSON.stringify(original);
+    let idx=data.usages.findIndex(u=>JSON.stringify(u)===oj);
+    if(idx<0) idx=Math.min(_editingUsageHoursIdx,data.usages.length-1);
+    if(idx>=0) data.usages.splice(idx,1);
+  });
+  if(!ok) return;
   closeModal('hours-usage-overlay');
   renderHoursDetail();
   renderHoursGrid();
 }
 
-function removeHoursUsage(pkgId,idx){
+async function removeHoursUsage(pkgId,idx){
   if(!confirm('Remover este registro?')) return;
   const pkg=hoursPackages.find(x=>x.id===pkgId); if(!pkg) return;
-  pkg.usages.splice(Number(idx),1);
-  if(window.saveToFirebase) saveToFirebase('hoursPackages',String(pkg.id),pkg);
+  const original=JSON.parse(JSON.stringify((pkg.usages||[])[Number(idx)]||null));
+  if(!original) return;
+  const ok=await _txUpdateUsages(pkg.id,data=>{
+    const oj=JSON.stringify(original);
+    let i=data.usages.findIndex(u=>JSON.stringify(u)===oj);
+    if(i<0) i=Math.min(Number(idx),data.usages.length-1);
+    if(i>=0) data.usages.splice(i,1);
+  });
+  if(!ok) return;
   renderHoursDetail();
   renderHoursGrid();
 }
@@ -5328,7 +5388,7 @@ function openHoursRenewal(pkgId){
   const rManter=document.getElementById('hr-tipo-manter');
   if(rManter) rManter.checked=true;
   document.getElementById('hr-summary').innerHTML=`
-    <div style="font-weight:600;margin-bottom:4px">⏱ ${hoursOwnerName(pkg)} — ${pkg.desc||'Pacote de horas'}</div>
+    <div style="font-weight:600;margin-bottom:4px">⏱ ${esc(hoursOwnerName(pkg))} — ${esc(pkg.desc||'Pacote de horas')}</div>
     <div style="font-size:12px;color:var(--text3);display:flex;gap:16px;flex-wrap:wrap">
       <span>📅 Período atual: ${fmtDate(pkg.start)} → ${fmtDate(pkg.end)}</span>
       <span>⏱ Horas: ${pkg.hours}h contratadas</span>
@@ -5427,7 +5487,7 @@ function renderCommitments(){
       </div>
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
         <div>
-          <div style="font-size:16px;font-weight:700">${cm.desc||'Commitment Acronis'}</div>
+          <div style="font-size:16px;font-weight:700">${esc(cm.desc||'Commitment Acronis')}</div>
           <div style="font-size:12px;color:var(--text3);margin-top:2px">${cm.date?fmtDate(cm.date):''}</div>
         </div>
         <span style="font-size:18px" title="${st.label}">${st.icon}</span>
@@ -5530,7 +5590,7 @@ function renderCommitDetail(){
 
   let html=`<div class="detail-header">
     <div style="flex:1">
-      <div style="font-size:17px;font-weight:700">${cm.desc||'Commitment Acronis'}</div>
+      <div style="font-size:17px;font-weight:700">${esc(cm.desc||'Commitment Acronis')}</div>
       <div style="font-size:12px;color:var(--text3)">${cm.date?fmtDate(cm.date):''} · ${fmtCur(total)} contratados</div>
     </div>
     <button class="btn btn-ghost btn-sm" onclick="openCommitModal(${cm.id})">✏️ Editar</button>
@@ -5602,7 +5662,7 @@ function renderCommitDetail(){
       </tr></tfoot>
       </tbody></table></div>`:''}
 
-    ${cm.notes?`<div class="panel" style="padding:12px 16px;margin-top:14px;font-size:13px;color:var(--text2)">${cm.notes}</div>`:''}
+    ${cm.notes?`<div class="panel" style="padding:12px 16px;margin-top:14px;font-size:13px;color:var(--text2)">${esc(cm.notes)}</div>`:''}
   </div>`;
 
   document.getElementById('commit-detail-panel').innerHTML=html;
@@ -5619,9 +5679,9 @@ function openCommitUsageModal(idx=null){
 
   // Populate selects
   const cs=document.getElementById('cu-client');
-  cs.innerHTML='<option value="">Selecione...</option>'+clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  cs.innerHTML='<option value="">Selecione...</option>'+clients.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
   const ls=document.getElementById('cu-license');
-  ls.innerHTML='<option value="">Nenhum licenciamento vinculado</option>'+licenses.map(l=>`<option value="${l.id}">${l.product} — ${clientName(l.clientId)||'sem cliente'}</option>`).join('');
+  ls.innerHTML='<option value="">Nenhum licenciamento vinculado</option>'+licenses.map(l=>`<option value="${l.id}">${esc(l.product)} — ${clientName(l.clientId)||'sem cliente'}</option>`).join('');
 
   // If editing, populate with existing values
   const cm=commitments.find(x=>x.id===currentCommitId);
@@ -5704,9 +5764,9 @@ window.openRenewalModal = function(licId){
   document.getElementById('ren-error').style.display='none';
   document.getElementById('ren-monthly-fields').style.display = l.monthly&&isAdmin()?'block':'none';
   document.getElementById('renewal-summary').innerHTML = `
-    <div style="font-weight:600;margin-bottom:6px">📋 ${l.product}</div>
+    <div style="font-weight:600;margin-bottom:6px">📋 ${esc(l.product)}</div>
     <div style="font-size:12px;color:var(--text3);display:flex;gap:16px;flex-wrap:wrap">
-      <span>🏢 ${clientName(l.clientId)}</span>
+      <span>🏢 ${esc(clientName(l.clientId))}</span>
       <span>📅 Período atual: ${fmtDate(l.start)} → ${fmtDate(l.end)}</span>
       ${isAdmin()&&l.monthly?`<span>💰 MRR atual: ${fmtCur(l.monthlyProposal)}/mês</span>`:''}
     </div>`;
@@ -5980,10 +6040,10 @@ function repByProject(){
           <div style="flex-shrink:0;margin-top:2px">${miniDonut}</div>
 
           <div style="flex:1;min-width:0">
-            <div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px">${p.name}</div>
+            <div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px">${esc(p.name)}</div>
             <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">
               <span class="badge" style="background:${st.bar}20;color:${st.color};font-size:9px">${st.label}</span>
-              ${p.clientId?`<span style="font-size:11px;color:var(--accent2)">🏢 ${clientName(p.clientId)}</span>`:''}
+              ${p.clientId?`<span style="font-size:11px;color:var(--accent2)">🏢 ${esc(clientName(p.clientId))}</span>`:''}
               ${projLate?`<span class="badge badge-red" style="font-size:9px">⚠ Atrasado</span>`:''}
               ${isCaveat?`<span class="badge badge-amber" style="font-size:9px">⚠ Ressalvas</span>`:''}
             </div>
@@ -6013,7 +6073,7 @@ function repByProject(){
 
           <!-- Avatar + date -->
           <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:6px">
-            <div class="avatar-sm" style="background:${av.bg};color:${av.text};width:28px;height:28px;font-size:10px;font-weight:700;border-radius:50%;display:flex;align-items:center;justify-content:center" title="${p.owner||'—'}">${initials(p.owner||'?')}</div>
+            <div class="avatar-sm" style="background:${av.bg};color:${av.text};width:28px;height:28px;font-size:10px;font-weight:700;border-radius:50%;display:flex;align-items:center;justify-content:center" title="${esc(p.owner||'—')}">${esc(initials(p.owner||'?'))}</div>
             <div style="font-size:9px;color:${projLate?'var(--red)':'var(--text3)'};font-family:var(--mono);white-space:nowrap">${fmtDate(p.end)}</div>
           </div>
         </div>
@@ -6034,9 +6094,9 @@ function repByProject(){
       const late=isOverdue(p.end,isDoneStatus(p.status));
       const pct=tasks.length?Math.round(doneT/tasks.length*100):0;
       return `<tr onclick="openProjDetail(${p.id})" style="cursor:pointer">
-        <td style="font-weight:600">${p.name}</td>
-        <td style="color:var(--text2)">${clientName(p.clientId)}</td>
-        <td style="color:var(--text2)">${p.owner||'—'}</td>
+        <td style="font-weight:600">${esc(p.name)}</td>
+        <td style="color:var(--text2)">${esc(clientName(p.clientId))}</td>
+        <td style="color:var(--text2)">${esc(p.owner||'—')}</td>
         <td>
           <div style="display:flex;align-items:center;gap:8px">
             <span style="font-family:var(--mono);font-size:12px">${doneT}/${tasks.length}</span>
@@ -6069,12 +6129,12 @@ window.openStatusReport = function(projId){
 
   const statusLabel={todo:'Pendente',in_progress:'Em andamento',waiting:'Aguardando',done:'Concluída'};
   const taskRow=(t,bg='')=>`<tr style="${bg}">
-    <td style="padding:6px 12px;font-size:12px;border-bottom:1px solid #eee">${t.name}</td>
-    <td style="padding:6px 12px;font-size:12px;border-bottom:1px solid #eee;color:#555">${t.owner||'—'}</td>
+    <td style="padding:6px 12px;font-size:12px;border-bottom:1px solid #eee">${esc(t.name)}</td>
+    <td style="padding:6px 12px;font-size:12px;border-bottom:1px solid #eee;color:#555">${esc(t.owner||'—')}</td>
     <td style="padding:6px 12px;font-size:12px;border-bottom:1px solid #eee;color:#555">${t.due?fmtDate(t.due):'—'}</td>
     <td style="padding:6px 12px;font-size:12px;border-bottom:1px solid #eee;color:#555">${t.concludedDate?fmtDate(t.concludedDate):'—'}</td>
     <td style="padding:6px 12px;font-size:12px;border-bottom:1px solid #eee"><span style="padding:2px 8px;border-radius:10px;font-weight:600;font-size:11px;background:${t.status==='done'?'#e6f9f0':t.status==='waiting'?'#fff7e6':'#e6f0ff'};color:${t.status==='done'?'#1a7a4a':t.status==='waiting'?'#b45309':'#1a4fb5'}">${statusLabel[t.status]||t.status}</span></td>
-    <td style="padding:6px 12px;font-size:12px;border-bottom:1px solid #eee;color:#555">${t.waitingReason||''}</td>
+    <td style="padding:6px 12px;font-size:12px;border-bottom:1px solid #eee;color:#555">${esc(t.waitingReason||'')}</td>
   </tr>`;
 
   const body=`<div id="status-report-print" style="padding:24px 28px;font-family:'DM Sans',sans-serif;color:#1a1a2e">
@@ -6082,12 +6142,12 @@ window.openStatusReport = function(projId){
       <img src="${LOGO_DATA_URI}" style="height:52px;width:auto" alt="Ativa Security">
       <div style="text-align:center;flex:1;padding:0 16px">
         <div style="font-size:20px;font-weight:700;color:#2563eb">Status Report</div>
-        <div style="font-size:14px;color:#555;margin-top:2px">${p.name}</div>
+        <div style="font-size:14px;color:#555;margin-top:2px">${esc(p.name)}</div>
         ${client?`<div style="font-size:12px;color:#888">Cliente: ${client.name}</div>`:''}
       </div>
       <div style="text-align:right">
         <div style="font-size:12px;color:#888">Data: ${now}</div>
-        <div style="font-size:12px;color:#888">Sponsor: ${p.owner||'—'}</div>
+        <div style="font-size:12px;color:#888">Sponsor: ${esc(p.owner||'—')}</div>
         <div style="margin-top:6px"><span style="padding:3px 10px;border-radius:10px;font-size:11px;font-weight:700;background:${st.bar}20;color:${st.color}">${st.label}</span></div>
       </div>
     </div>
@@ -6122,7 +6182,7 @@ window.openStatusReport = function(projId){
 
     ${p.status==='done_caveat'&&p.caveat?`<div style="background:#fffbeb;border:1px solid #f5a623;border-radius:8px;padding:12px 16px;margin-bottom:16px">
       <div style="font-size:12px;font-weight:700;color:#b45309;margin-bottom:4px">⚠ Ressalvas de conclusão</div>
-      <div style="font-size:13px;color:#555">${p.caveat}</div>
+      <div style="font-size:13px;color:#555">${esc(p.caveat)}</div>
     </div>`:''}
 
     <div style="margin-top:32px;border-top:1px solid #ddd;padding-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:40px">
@@ -6351,7 +6411,7 @@ window.addEventListener('appinstalled', () => {
 // Register inline service worker for offline support
 if('serviceWorker' in navigator){
   const swCode = `
-const CACHE = 'ativa360-v16';
+const CACHE = 'ativa360-v19';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
@@ -6601,7 +6661,7 @@ window.renderSettingsUsers=async function(panel){
         <td><span class="badge ${u.active!==false?'badge-green':'badge-red'}">${u.active!==false?'Ativo':'Inativo'}</span></td>
         <td style="display:flex;gap:6px;align-items:center">
           <button class="btn btn-ghost btn-sm" onclick="toggleUserActive('${u.id}',${u.active!==false})">${u.active!==false?'⏸ Inativar':'▶ Ativar'}</button>
-          <button class="btn btn-ghost btn-sm" onclick="resetUserPwd('${u.email}')">🔑 Resetar senha</button>
+          <button class="btn btn-ghost btn-sm" onclick="resetUserPwd('${esc(u.email)}')">🔑 Resetar senha</button>
         </td>
       </tr>`).join('')}</tbody>
     </table></div>
