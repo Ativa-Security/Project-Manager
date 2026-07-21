@@ -946,15 +946,28 @@ input,select,textarea{font-family:var(--font)}
     <div class="modal-body">
       <div class="form-group"><label class="form-label">Nome da tarefa *</label><input class="form-input" id="t-name" placeholder="Descreva a tarefa"></div>
       <div class="form-grid">
-        <div class="form-group"><label class="form-label">Responsável</label><input class="form-input" id="t-owner" placeholder="Nome"></div>
+        <div class="form-group"><label class="form-label">Responsável</label>
+          <div style="display:flex;gap:6px;align-items:center">
+            <select class="form-select" id="t-owner-sel" style="flex:1" onchange="_tOwnerChange()"></select>
+            <button type="button" class="btn btn-ghost admin-only" onclick="_toggleAddOwner()" title="Adicionar responsável" style="padding:8px 12px">+</button>
+          </div>
+          <div id="t-newowner-row" class="admin-only" style="display:none;gap:6px;margin-top:6px">
+            <input class="form-input" id="t-newowner" placeholder="Nome do responsável" style="flex:1">
+            <button type="button" class="btn btn-accent btn-sm" onclick="_addTaskOwner()">OK</button>
+          </div>
+          <input type="hidden" id="t-owner">
+        </div>
         <div class="form-group"><label class="form-label">Status</label>
           <select class="form-select" id="t-status">
             <option value="todo">Pendente</option><option value="in_progress">Em andamento</option><option value="waiting">Aguardando</option><option value="done">Concluída</option>
           </select>
         </div>
         <div class="form-group"><label class="form-label">Prazo</label><input class="form-input" id="t-due" type="date"></div>
-        <div class="form-group"><label class="form-label">Horas previstas — Tarefas</label><input class="form-input" id="t-est" oninput="_fmtHInput(this)" type="number" placeholder="0"></div>
-        <div class="form-group"><label class="form-label">Horas executadas</label><input class="form-input" id="t-done-h" oninput="_fmtHInput(this)" type="number" placeholder="0"></div>
+        <div class="form-group"><label class="form-label">Horas previstas — Tarefa</label><input class="form-input" id="t-est" oninput="_fmtHInput(this)" placeholder="Ex: 02:00" maxlength="6"></div>
+        <div class="form-group"><label class="form-label">Data de execução</label><input class="form-input" id="t-exec-date" type="date"></div>
+        <div class="form-group"><label class="form-label">Hora de início</label><input class="form-input" id="t-start-time" type="time" onchange="_tCalcDur()"></div>
+        <div class="form-group"><label class="form-label">Hora de fim</label><input class="form-input" id="t-end-time" type="time" onchange="_tCalcDur()"></div>
+        <div class="form-group"><label class="form-label">Horas executadas</label><input class="form-input" id="t-done-h" oninput="_fmtHInput(this)" placeholder="Ex: 02:00" maxlength="6"><div style="font-size:11px;color:var(--text3);margin-top:4px">Duração calculada: <span id="t-dur-lbl" style="font-weight:700;color:var(--accent2)">00:00</span></div></div>
       </div>
       <div class="form-group" id="t-waiting-wrap" style="display:none"><label class="form-label">Motivo do aguardo</label><input class="form-input" id="t-waiting-reason" placeholder="Ex: Aguardando acesso do cliente"></div>
       <div class="form-group" id="t-concluded-wrap" style="display:none"><label class="form-label">Data de conclusão</label><input class="form-input" id="t-concluded" type="date"></div>
@@ -995,7 +1008,7 @@ input,select,textarea{font-family:var(--font)}
         <div class="form-group"><label class="form-label">Início *</label><input class="form-input" id="a-start-time" type="time" onchange="_actCalcDur()"></div>
         <div class="form-group"><label class="form-label">Fim *</label><input class="form-input" id="a-end-time" type="time" onchange="_actCalcDur()"></div>
         <div class="form-group"><label class="form-label">Cliente / Grupo</label><select class="form-select" id="a-client"><option value="">Sem cliente</option></select></div>
-        <div class="form-group" id="a-project-wrap"><label class="form-label">Projeto</label><select class="form-select" id="a-project" onchange="_actLoadTasks()"><option value="">Nenhum</option></select></div>
+        <div class="form-group" id="a-project-wrap"><label class="form-label">Projeto *</label><select class="form-select" id="a-project" onchange="_actLoadTasks()"><option value="">Nenhum</option></select></div>
       </div>
       <div class="form-group" id="a-task-wrap" style="display:none"><label class="form-label">Tarefa (soma nas horas executadas)</label><select class="form-select" id="a-task"><option value="">Nenhuma</option></select></div>
       <div class="form-group" style="margin-top:2px">
@@ -1649,6 +1662,7 @@ function startRealtimeSync(){
   bind('hoursPackages',a=>{ hoursPackages=a; _mergeFin('hoursPackages'); });
   bind('activities',   a=>{ activities=a; });
   bind('activityTypes',a=>{ customActTypes=a; });
+  try{ _rtUnsub.push(_db.collection('taskOwners').doc('list').onSnapshot(d=>{ if(d.exists) customTaskOwners=(d.data().names||[]); },e=>console.warn('rt taskOwners',e))); }catch(e){}
   if(isAdmin()){
     ['projects','licenses','hoursPackages','commitments'].forEach(c=>{
       try{
@@ -2532,7 +2546,7 @@ function renderProjDetail(){
             <div style="font-size:11px;color:var(--text3);margin-top:2px">${t.owner?'👤 '+esc(t.owner)+' · ':''} ${t.due?'📅 '+fmtDate(t.due):''}${t.waitingReason?' · ⏸ '+esc(t.waitingReason):''}${t.status==='done'&&t.concludedDate?' · ✓ '+fmtDate(t.concludedDate):''}</div>
             ${t.obs?`<div style="font-size:11px;color:var(--text2);margin-top:5px;padding:6px 8px;background:var(--bg2);border-left:2px solid var(--accent2);border-radius:4px;white-space:pre-wrap">📝 ${esc(t.obs)}</div>`:''}
           </div>
-          ${!t.na&&(t.estimated||t.doneHours)?`<div style="font-size:11px;font-family:var(--mono);color:var(--text3)">${fmtH(t.doneHours||0)}/${fmtH(t.estimated||0)}</div>`:''}
+          ${!t.na&&(t.estimated||t.doneHours||t.startTime)?`<div style="font-size:11px;font-family:var(--mono);color:var(--text3);text-align:right">${fmtH(t.doneHours||0)}/${fmtH(t.estimated||0)}${t.startTime&&t.endTime?`<div style="font-size:10px;color:var(--text3)">🕒 ${esc(t.startTime)}–${esc(t.endTime)} · ${fmtH(_tSegHours(t))}</div>`:""}</div>`:""}
           ${tLate?`<span class="badge badge-red" style="font-size:10px">Atrasado</span>`:''}
         </div>`;
       });
@@ -2885,6 +2899,7 @@ async function saveActivity(){
   }
   const clientRef=document.getElementById('a-client').value||'';
   const projectId=type==='projeto'?(document.getElementById('a-project').value||null):null;
+  if(type==='projeto' && !projectId){ alert('Selecione o projeto para atividades do tipo "Tarefa de projeto".'); return; }
   const taskId=type==='projeto'?(document.getElementById('a-task').value||null):null;
   // Vínculo com pacote de horas
   const billFromHours=document.getElementById('a-bill').checked;
@@ -2914,11 +2929,13 @@ async function saveActivity(){
     desc:document.getElementById('a-desc').value.trim(),
     qual:_autoQualFromDate(date),
     source:'manual', externalId:prev?prev.externalId||null:null,
+    taskRef:prev?prev.taskRef||null:null,
     createdAt:prev?prev.createdAt||Date.now():Date.now(),
     updatedAt:Date.now(),
   };
   // Sincroniza horas executadas da tarefa (delta em relação ao valor anterior)
-  if(data.taskId){
+  // Atividades espelhadas de tarefa (taskRef) não somam — a tarefa é a origem.
+  if(data.taskId && !data.taskRef){
     const p=projects.find(x=>String(x.id)===String(data.projectId));
     const t=p&&(p.tasks||[]).find(x=>x.id===data.taskId);
     if(t){
@@ -3000,7 +3017,7 @@ function openMyResumo(){
   html+=`<div class="kpi-grid" style="grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px">
     <div class="kpi-card"><div class="kpi-l">Atividades</div><div class="kpi-n">${list.length}</div></div>
     <div class="kpi-card"><div class="kpi-l">Total de horas</div><div class="kpi-n" style="color:var(--accent2)">${fmtH(totH)}</div>${_expectedSub(totH,start,end,1)}</div>
-    <div class="kpi-card"><div class="kpi-l">Média por dia</div><div class="kpi-n">${fmtH(avg)}</div></div>
+    <div class="kpi-card"><div class="kpi-l">Média por dia</div><div class="kpi-n">${fmtH(avg)}</div><div class="kpi-sub">de ${fmtH(JORNADA_H)} esperadas · ${Math.round(avg/JORNADA_H*100)}%</div></div>
     <div class="kpi-card"><div class="kpi-l">Taxa de ocupação</div><div class="kpi-n" style="color:var(--green)">${occ}</div><div class="kpi-sub">${fmtH(totH)} de ${fmtH(bd*8)} esperadas · 8h/dia útil</div></div>
   </div>`;
   html+=`<div class="panel" style="padding:14px;margin-bottom:12px"><div style="font-size:13px;font-weight:600;margin-bottom:10px">Horas por tipo</div>${_prodBars(typeRows,'#2563eb')}</div>`;
@@ -3072,13 +3089,19 @@ function renderActivities(){
 
 // TASKS
 let editingTaskProjId=null, editingTaskId=null;
-function openTaskModal(projId, taskId){
+async function openTaskModal(projId, taskId){
   editingTaskProjId=projId; editingTaskId=taskId;
   const p=projects.find(x=>x.id===projId);
   const t=taskId?(p?.tasks||[]).find(x=>x.id===taskId):null;
   document.getElementById('task-modal-title').textContent=taskId?'Editar Tarefa':'Nova Tarefa';
   document.getElementById('t-delete-btn').style.display=taskId?'':'none';
-  ['name','owner'].forEach(f=>document.getElementById('t-'+f).value=t?t[f]||'':'');
+  document.getElementById('t-name').value=t?t.name||'':'';
+  await _actEnsureUsers();
+  _populateTaskOwners(t?t.owner||'':'');
+  document.getElementById('t-newowner-row').style.display='none';
+  document.getElementById('t-exec-date').value=t?(t.execDate||t.concludedDate||''):'';
+  document.getElementById('t-start-time').value=t?t.startTime||'':'';
+  document.getElementById('t-end-time').value=t?t.endTime||'':'';
   document.getElementById('t-status').value=t?t.status||'todo':'todo';
   document.getElementById('t-due').value=t?t.due||'':'';
   document.getElementById('t-est').value=t&&t.estimated?fmtH(t.estimated):'';
@@ -3087,6 +3110,7 @@ function openTaskModal(projId, taskId){
   document.getElementById('t-waiting-reason').value=t?t.waitingReason||'':'';
   document.getElementById('t-concluded').value=t?t.concludedDate||'':'';
   document.getElementById('t-obs').value=t?t.obs||'':'';
+  document.getElementById('t-dur-lbl').textContent=fmtH(t?_tSegHours(t):0);
   document.getElementById('t-concluded-wrap').style.display=(t&&t.status==='done')?'block':'none';
   document.getElementById('t-waiting-wrap').style.display=(t&&t.status==='waiting')?'block':'none';
   document.getElementById('t-status').onchange=function(){
@@ -3097,18 +3121,110 @@ function openTaskModal(projId, taskId){
   openModal('task-modal-overlay');
 }
 
+// ── Responsável e duração da tarefa ──────────────────────────────────────
+let customTaskOwners=[]; // nomes extras cadastrados pelo admin
+function _taskOwnerList(){
+  const fromUsers=_actUsers.map(u=>({uid:u.uid,name:u.name}));
+  const extras=customTaskOwners.map(n=>({uid:'',name:n}));
+  const seen=new Set(); const out=[];
+  fromUsers.concat(extras).forEach(o=>{ const k=(o.name||'').toLowerCase(); if(k&&!seen.has(k)){seen.add(k);out.push(o);} });
+  return out;
+}
+function _populateTaskOwners(cur){
+  const sel=document.getElementById('t-owner-sel'); if(!sel) return;
+  const list=_taskOwnerList();
+  sel.innerHTML='<option value="">Sem responsável</option>'+list.map(o=>`<option value="${esc(o.uid)}" data-name="${esc(o.name)}">${esc(o.name)}</option>`).join('');
+  if(cur){
+    const hit=list.find(o=>(o.name||'').toLowerCase()===String(cur).toLowerCase());
+    if(hit) sel.value=hit.uid; else { sel.insertAdjacentHTML('beforeend',`<option value="" data-name="${esc(cur)}" selected>${esc(cur)}</option>`); }
+  } else sel.value='';
+  _tOwnerChange();
+}
+function _tOwnerChange(){
+  const sel=document.getElementById('t-owner-sel');
+  const opt=sel.options[sel.selectedIndex];
+  document.getElementById('t-owner').value=opt?(opt.getAttribute('data-name')||''):'';
+}
+function _toggleAddOwner(){ const r=document.getElementById('t-newowner-row'); r.style.display=r.style.display==='none'?'flex':'none'; if(r.style.display==='flex') document.getElementById('t-newowner').focus(); }
+async function _addTaskOwner(){
+  if(!isAdmin()) return;
+  const name=(document.getElementById('t-newowner').value||'').trim(); if(!name) return;
+  try{ await _db.collection('taskOwners').doc('list').set({names:[...customTaskOwners,name]}); }
+  catch(e){ console.error(e); alert('Não foi possível salvar. Verifique a regra da coleção "taskOwners".'); return; }
+  customTaskOwners.push(name);
+  _populateTaskOwners(name);
+  document.getElementById('t-newowner').value=''; document.getElementById('t-newowner-row').style.display='none';
+}
+function _tDurHours(){
+  const s=document.getElementById('t-start-time').value, e=document.getElementById('t-end-time').value;
+  if(!s||!e) return 0;
+  const [sh,sm]=s.split(':').map(Number), [eh,em]=e.split(':').map(Number);
+  let d=(eh*60+em)-(sh*60+sm); if(d<0) d+=1440;
+  return d/60;
+}
+function _tCalcDur(){
+  const d=_tDurHours();
+  document.getElementById('t-dur-lbl').textContent=fmtH(d);
+  if(d>0) document.getElementById('t-done-h').value=fmtH(d); // horas executadas = duração
+}
+// Espelha tarefa CONCLUÍDA como atividade (tipo "Tarefa de projeto")
+async function _syncTaskActivity(proj,task){
+  const key='task:'+proj.id+':'+task.id;
+  const existing=activities.find(a=>a.taskRef===key);
+  const concluded=task.status==='done' && !task.na;
+  if(!concluded){
+    if(existing){ // deixou de estar concluída → remove o espelho
+      activities=activities.filter(a=>a.taskRef!==key);
+      deleteFromFirebase('activities',String(existing.id));
+    }
+    return;
+  }
+  const owner=_taskOwnerList().find(o=>(o.name||'').toLowerCase()===String(task.owner||'').toLowerCase());
+  const date=task.execDate||task.concludedDate||todayStr();
+  const hours=Number(task.doneHours)||_tSegHours(task);
+  const data={
+    id: existing?existing.id : _db.collection('activities').doc().id,
+    userId: owner?owner.uid||'' : (existing?existing.userId:''),
+    userName: task.owner||'',
+    date, hours, type:'projeto', name:task.name,
+    startTime:task.startTime||'', endTime:task.endTime||'',
+    segments:_segFromTimes(date,task.startTime,task.endTime),
+    clientRef: proj.clientId?('c:'+proj.clientId):'',
+    clientId: proj.clientId||null, groupId:null,
+    projectId: proj.id, taskId: task.id, taskRef:key,
+    billFromHours:false, hoursPkgId:null, hoursCompanyId:null,
+    desc:task.obs||'',
+    qual:_autoQualFromDate(date),
+    source:'task', externalId:null,
+    createdAt: existing?existing.createdAt||Date.now():Date.now(),
+    updatedAt: Date.now(),
+  };
+  if(existing){ const i=activities.findIndex(a=>a.taskRef===key); activities[i]=data; }
+  else activities.push(data);
+  saveToFirebase('activities',String(data.id),data);
+}
+function _tSegHours(task){
+  if(!task.startTime||!task.endTime) return 0;
+  const [sh,sm]=task.startTime.split(':').map(Number),[eh,em]=task.endTime.split(':').map(Number);
+  let d=(eh*60+em)-(sh*60+sm); if(d<0)d+=1440; return d/60;
+}
+
 function saveTask(){
   const name=document.getElementById('t-name').value.trim();
   if(!name){alert('Nome é obrigatório');return;}
   const p=projects.find(x=>x.id===editingTaskProjId); if(!p) return;
   if(!p.tasks) p.tasks=[];
   const status=document.getElementById('t-status').value;
+  const startTime=document.getElementById('t-start-time').value;
+  const endTime=document.getElementById('t-end-time').value;
   const data={
     id:editingTaskId||nextTaskId++,
     name, owner:document.getElementById('t-owner').value.trim(),
     status, due:document.getElementById('t-due').value,
     estimated:parseHM(document.getElementById('t-est').value)||'',
     doneHours:parseHM(document.getElementById('t-done-h').value)||'',
+    startTime, endTime,
+    execDate:document.getElementById('t-exec-date').value||'',
     na:document.getElementById('t-na').checked,
     waitingReason:status==='waiting'?document.getElementById('t-waiting-reason').value.trim():'',
     concludedFromWaiting:editingTaskId?((p.tasks.find(x=>x.id===editingTaskId)||{}).status==='waiting'&&status==='done'):false,
@@ -3119,6 +3235,7 @@ function saveTask(){
   else p.tasks.push(data);
   p.updatedAt=Date.now();
   saveToFirebase('projects',String(p.id),p);
+  _syncTaskActivity(p,data); // espelha em Atividades quando concluída
   closeModal('task-modal-overlay');
   renderProjDetail(); renderProjects();
 }
@@ -3128,6 +3245,10 @@ function deleteTask(){
   const p=projects.find(x=>x.id===editingTaskProjId); if(!p) return;
   p.tasks=(p.tasks||[]).filter(x=>x.id!==editingTaskId);
   saveToFirebase('projects',String(p.id),p);
+  // remove o espelho em Atividades, se houver
+  const key='task:'+p.id+':'+editingTaskId;
+  const mir=activities.find(a=>a.taskRef===key);
+  if(mir){ activities=activities.filter(a=>a.taskRef!==key); deleteFromFirebase('activities',String(mir.id)); }
   closeModal('task-modal-overlay');
   renderProjDetail(); renderProjects();
 }
@@ -3593,7 +3714,7 @@ function repProductivity(forPrint){
   html+=`<div class="kpi-grid" style="grid-template-columns:repeat(${occ?4:3},1fr);margin-bottom:20px">
     <div class="kpi-card"><div class="kpi-l">Atividades</div><div class="kpi-n">${list.length}</div></div>
     <div class="kpi-card"><div class="kpi-l">Total de horas</div><div class="kpi-n" style="color:var(--accent2)">${fmtH(totH)}</div>${_expectedSub(totH,effStart,effEnd,nPeople)}</div>
-    <div class="kpi-card"><div class="kpi-l">Média por dia</div><div class="kpi-n">${fmtH(avg)}</div></div>
+    <div class="kpi-card"><div class="kpi-l">Média por dia</div><div class="kpi-n">${fmtH(avg)}</div><div class="kpi-sub">de ${fmtH(JORNADA_H*nPeople)} esperadas · ${Math.round(avg/(JORNADA_H*nPeople)*100)}%${nPeople>1?" · "+nPeople+" resp.":""}</div></div>
     ${occ?`<div class="kpi-card"><div class="kpi-l">Taxa de ocupação</div><div class="kpi-n" style="color:var(--green)">${occ}</div><div class="kpi-sub">${fmtH(totH)} de ${fmtH(expH)} esperadas${nPeople>1?' · '+nPeople+' resp.':''}</div></div>`:''}
   </div>`;
   html+=`<div class="panel" style="padding:16px;margin-bottom:16px"><div style="font-size:13px;font-weight:600;margin-bottom:12px">Horas por tipo de atividade</div>${_prodBars(typeRows,'#2563eb')}</div>`;
@@ -6568,7 +6689,7 @@ window.addEventListener('appinstalled', () => {
 // Register inline service worker for offline support
 if('serviceWorker' in navigator){
   const swCode = `
-const CACHE = 'ativa360-v30';
+const CACHE = 'ativa360-v33';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
@@ -6714,6 +6835,7 @@ _auth.onAuthStateChanged(async user=>{
       activities=[]; aSnap.forEach(d=>activities.push(d.data()));
       if(activities.length) nextActivityId=Math.max(...activities.map(x=>x.id||0))+1;
       try{ const atSnap=await _db.collection('activityTypes').get(); customActTypes=[]; atSnap.forEach(d=>customActTypes.push(d.data())); }catch(e){ console.warn('activityTypes',e); }
+      try{ const toSnap=await _db.collection('taskOwners').doc('list').get(); if(toSnap.exists) customTaskOwners=(toSnap.data().names||[]); }catch(e){ console.warn('taskOwners',e); }
       if(clientGroups.length) nextGroupId=Math.max(...clientGroups.map(x=>x.id||0))+1;
       if(clients.length) nextClientId=Math.max(...clients.map(x=>x.id||0))+1;
       if(projects.length) nextProjectId=Math.max(...projects.map(x=>x.id||0))+1;
