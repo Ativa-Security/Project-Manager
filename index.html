@@ -955,7 +955,7 @@ input,select,textarea{font-family:var(--font)}
         <div class="form-group"><label class="form-label">Data de execução</label><input class="form-input" id="t-exec-date" type="date"></div>
         <div class="form-group"><label class="form-label">Hora de início</label><input class="form-input" id="t-start-time" type="time" onchange="_tCalcDur()"></div>
         <div class="form-group"><label class="form-label">Hora de fim</label><input class="form-input" id="t-end-time" type="time" onchange="_tCalcDur()"></div>
-        <div class="form-group"><label class="form-label">Horas executadas</label><input class="form-input" id="t-done-h" oninput="_fmtHInput(this)" placeholder="Ex: 02:00" maxlength="6"><div style="font-size:11px;color:var(--text3);margin-top:4px">Duração calculada: <span id="t-dur-lbl" style="font-weight:700;color:var(--accent2)">00:00</span></div></div>
+        <div class="form-group"><label class="form-label">Tempo de execução</label><div style="background:var(--bg3);border-radius:var(--r);padding:10px 12px;font-size:13px"><div>Duração da tarefa: <span id="t-dur-lbl" style="font-weight:700;color:var(--accent2)">00:00</span></div><div id="t-acts-box" style="margin-top:6px;font-size:11px;color:var(--text3)"></div></div></div>
       </div>
       <div class="form-group" id="t-waiting-wrap" style="display:none"><label class="form-label">Motivo do aguardo</label><input class="form-input" id="t-waiting-reason" placeholder="Ex: Aguardando acesso do cliente"></div>
       <div class="form-group" id="t-concluded-wrap" style="display:none"><label class="form-label">Data de conclusão</label><input class="form-input" id="t-concluded" type="date"></div>
@@ -2533,8 +2533,14 @@ function renderProjDetail(){
             <div style="font-size:13px;font-weight:500;${t.status==='done'?'text-decoration:line-through;color:var(--text3)':''}">${esc(t.name)}</div>
             <div style="font-size:11px;color:var(--text3);margin-top:2px">${t.owner?'👤 '+esc(t.owner)+' · ':''} ${t.due?'📅 '+fmtDate(t.due):''}${t.waitingReason?' · ⏸ '+esc(t.waitingReason):''}${t.status==='done'&&t.concludedDate?' · ✓ '+fmtDate(t.concludedDate):''}</div>
             ${t.obs?`<div style="font-size:11px;color:var(--text2);margin-top:5px;padding:6px 8px;background:var(--bg2);border-left:2px solid var(--accent2);border-radius:4px;white-space:pre-wrap">📝 ${esc(t.obs)}</div>`:''}
+            ${(()=>{const la=_taskLinkedActs(p.id,t.id); if(!la.length) return '';
+              return `<div style="margin-top:6px;padding:6px 8px;background:var(--bg2);border-left:2px solid var(--purple);border-radius:4px">
+                <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">🔗 Atividades correlacionadas (${la.length})</div>
+                ${la.map(a=>`<div style="font-size:11px;color:var(--text2);display:flex;justify-content:space-between;gap:8px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.name||'—')}${a.startTime&&a.endTime?' · '+esc(a.startTime)+'–'+esc(a.endTime):''}</span><span style="font-family:var(--mono);color:var(--accent2)">${fmtH(a.hours)}</span></div>`).join('')}
+              </div>`;})()}
           </div>
-          ${!t.na&&(t.estimated||t.doneHours||t.startTime)?`<div style="font-size:11px;font-family:var(--mono);color:var(--text3);text-align:right">${fmtH(t.doneHours||0)}/${fmtH(t.estimated||0)}${t.startTime&&t.endTime?`<div style="font-size:10px;color:var(--text3)">🕒 ${esc(t.startTime)}–${esc(t.endTime)} · ${fmtH(_tSegHours(t))}</div>`:""}</div>`:""}
+          ${!t.na&&(t.estimated||t.doneHours||t.startTime)?(()=>{const base=_taskBaseHours(t),la=_taskLinkedActs(p.id,t.id),extra=la.reduce((s2,a)=>s2+(Number(a.hours)||0),0);
+            return `<div style="font-size:11px;font-family:var(--mono);color:var(--text3);text-align:right">${fmtH(base+extra)}/${fmtH(t.estimated||0)}${t.startTime&&t.endTime?`<div style="font-size:10px;color:var(--text3)">🕒 ${esc(t.startTime)}–${esc(t.endTime)}</div>`:''}${extra>0?`<div style="font-size:10px;color:var(--purple)">${fmtH(base)} + ${fmtH(extra)} ativ.</div>`:''}</div>`;})():""}
           ${tLate?`<span class="badge badge-red" style="font-size:10px">Atrasado</span>`:''}
         </div>`;
       });
@@ -2926,12 +2932,17 @@ async function saveActivity(){
   // Sincroniza horas executadas da tarefa (delta em relação ao valor anterior)
   // Atividades espelhadas de tarefa (taskRef) não somam — a tarefa é a origem.
   if(data.taskId && !data.taskRef){
+    // grava a atividade na lista antes de recalcular, para entrar na soma
+    if(_editingActId){ const i=activities.findIndex(x=>String(x.id)===String(_editingActId)); if(i>=0) activities[i]=data; }
+    else if(!activities.some(x=>String(x.id)===String(data.id))) activities.push(data);
     const p=projects.find(x=>String(x.id)===String(data.projectId));
-    const t=p&&(p.tasks||[]).find(x=>x.id===data.taskId);
-    if(t){
-      const oldContrib=(prev&&prev.taskId===data.taskId)?(Number(prev.hours)||0):0;
-      t.doneHours=Math.max(0,(Number(t.doneHours)||0)-oldContrib+(Number(data.hours)||0));
-      p.updatedAt=Date.now(); saveToFirebase('projects',String(p.id),p);
+    const t=p&&(p.tasks||[]).find(x=>String(x.id)===String(data.taskId));
+    if(t){ _recalcTaskHours(p,t); p.updatedAt=Date.now(); saveToFirebase('projects',String(p.id),p); }
+    // se a atividade mudou de tarefa, recalcula a antiga também
+    if(prev&&prev.taskId&&String(prev.taskId)!==String(data.taskId)){
+      const pp=projects.find(x=>String(x.id)===String(prev.projectId));
+      const pt=pp&&(pp.tasks||[]).find(x=>String(x.id)===String(prev.taskId));
+      if(pt){ _recalcTaskHours(pp,pt); pp.updatedAt=Date.now(); saveToFirebase('projects',String(pp.id),pp); }
     }
   }
   // Sincroniza (cria/atualiza/remove) o registro de horas vinculado
@@ -2957,9 +2968,10 @@ async function deleteActivity(){
     }
   }
   if(a&&a.taskId&&!a.taskRef){
+    activities=activities.filter(x=>String(x.id)!==String(a.id)); // remove antes de recalcular
     const p=projects.find(x=>String(x.id)===String(a.projectId));
-    const t=p&&(p.tasks||[]).find(x=>x.id===a.taskId);
-    if(t){ t.doneHours=Math.max(0,(Number(t.doneHours)||0)-(Number(a.hours)||0)); p.updatedAt=Date.now(); saveToFirebase('projects',String(p.id),p); }
+    const t=p&&(p.tasks||[]).find(x=>String(x.id)===String(a.taskId));
+    if(t){ _recalcTaskHours(p,t); p.updatedAt=Date.now(); saveToFirebase('projects',String(p.id),p); }
   }
   // Remove o registro de horas vinculado por transação (devolve o saldo com segurança)
   if(a){
@@ -3105,12 +3117,12 @@ async function openTaskModal(projId, taskId){
   document.getElementById('t-status').value=t?t.status||'todo':'todo';
   document.getElementById('t-due').value=t?t.due||'':'';
   document.getElementById('t-est').value=t&&t.estimated?fmtH(t.estimated):'';
-  document.getElementById('t-done-h').value=t&&t.doneHours?fmtH(t.doneHours):'';
   document.getElementById('t-na').checked=t?t.na||false:false;
   document.getElementById('t-waiting-reason').value=t?t.waitingReason||'':'';
   document.getElementById('t-concluded').value=t?t.concludedDate||'':'';
   document.getElementById('t-obs').value=t?t.obs||'':'';
-  document.getElementById('t-dur-lbl').textContent=fmtH(t?_tSegHours(t):0);
+  document.getElementById('t-dur-lbl').textContent=fmtH(t?_taskBaseHours(t):0);
+  _tRenderActs(projId,taskId);
   document.getElementById('t-concluded-wrap').style.display=(t&&t.status==='done')?'block':'none';
   document.getElementById('t-waiting-wrap').style.display=(t&&t.status==='waiting')?'block':'none';
   document.getElementById('t-status').onchange=function(){
@@ -3165,7 +3177,7 @@ function _tDurHours(){
 function _tCalcDur(){
   const d=_tDurHours();
   document.getElementById('t-dur-lbl').textContent=fmtH(d);
-  if(d>0) document.getElementById('t-done-h').value=fmtH(d); // horas executadas = duração
+  _tRenderActs(editingTaskProjId,editingTaskId);
 }
 // Espelha tarefa CONCLUÍDA como atividade (tipo "Tarefa de projeto")
 async function _syncTaskActivity(proj,task){
@@ -3203,10 +3215,42 @@ async function _syncTaskActivity(proj,task){
   else activities.push(data);
   saveToFirebase('activities',String(data.id),data);
 }
+function _tRenderActs(projId,taskId){
+  const box=document.getElementById('t-acts-box'); if(!box) return;
+  if(!taskId){ box.innerHTML=''; return; }
+  const la=_taskLinkedActs(projId,taskId);
+  const base=parseFloat(document.getElementById('t-dur-lbl').textContent.split(':')[0]||0); // só p/ fallback
+  const extra=la.reduce((s,a)=>s+(Number(a.hours)||0),0);
+  const p=projects.find(x=>String(x.id)===String(projId));
+  const t=p&&(p.tasks||[]).find(x=>String(x.id)===String(taskId));
+  const b=t?_taskBaseHours(t):0;
+  if(!la.length){ box.innerHTML='<span style="color:var(--text3)">Sem atividades correlacionadas</span>'; return; }
+  box.innerHTML='<div style="color:var(--purple);margin-bottom:3px">🔗 '+la.length+' atividade(s) correlacionada(s)</div>'
+    +la.map(a=>'<div style="display:flex;justify-content:space-between;gap:8px"><span>'+esc(a.name||'—')+(a.startTime&&a.endTime?' · '+esc(a.startTime)+'–'+esc(a.endTime):'')+'</span><span style="font-family:var(--mono);color:var(--accent2)">'+fmtH(a.hours)+'</span></div>').join('')
+    +'<div style="margin-top:5px;padding-top:5px;border-top:1px solid var(--border);color:var(--text2)">Total: <strong style="color:var(--accent2)">'+fmtH(b+extra)+'</strong> ('+fmtH(b)+' tarefa + '+fmtH(extra)+' atividades)</div>';
+}
 function _tSegHours(task){
   if(!task.startTime||!task.endTime) return 0;
   const [sh,sm]=task.startTime.split(':').map(Number),[eh,em]=task.endTime.split(':').map(Number);
   let d=(eh*60+em)-(sh*60+sm); if(d<0)d+=1440; return d/60;
+}
+// Tempo próprio da tarefa (início/fim); mantém o histórico antigo quando não há horários
+function _taskBaseHours(t){
+  if(t.startTime&&t.endTime) return _tSegHours(t);
+  if(t.baseHours!==undefined&&t.baseHours!=='') return Number(t.baseHours)||0;
+  return Number(t.doneHours)||0; // registros antigos
+}
+// Atividades correlacionadas (exclui as que são espelho da própria tarefa)
+function _taskLinkedActs(projId,taskId){
+  return activities.filter(a=>String(a.projectId)===String(projId)&&String(a.taskId)===String(taskId)&&!a.taskRef);
+}
+// Tempo total = tempo da tarefa + tempo das atividades correlacionadas
+function _recalcTaskHours(proj,t){
+  const base=_taskBaseHours(t);
+  t.baseHours=base;
+  const extra=_taskLinkedActs(proj.id,t.id).reduce((s,a)=>s+(Number(a.hours)||0),0);
+  t.doneHours=base+extra;
+  return t.doneHours;
 }
 
 // Espelha a ATIVIDADE como tarefa dentro do projeto (caminho inverso)
@@ -3255,7 +3299,8 @@ function saveTask(){
     name, owner:document.getElementById('t-owner').value.trim(),
     status, due:document.getElementById('t-due').value,
     estimated:parseHM(document.getElementById('t-est').value)||'',
-    doneHours:parseHM(document.getElementById('t-done-h').value)||'',
+    doneHours:0, // recalculado abaixo (tarefa + atividades correlacionadas)
+    baseHours:0,
     startTime, endTime,
     execDate:document.getElementById('t-exec-date').value||'',
     na:document.getElementById('t-na').checked,
@@ -3264,8 +3309,12 @@ function saveTask(){
     concludedDate:status==='done'?document.getElementById('t-concluded').value||todayStr():'',
     obs:document.getElementById('t-obs').value.trim(),
   };
+  // Preserva histórico antigo quando a tarefa não tem horários
+  const _oldT=editingTaskId?(p.tasks.find(x=>x.id===editingTaskId)||{}):{};
+  if(!startTime||!endTime){ data.baseHours=(_oldT.baseHours!==undefined?_oldT.baseHours:(_oldT.doneHours||0)); }
   if(editingTaskId){ const i=p.tasks.findIndex(x=>x.id===editingTaskId); p.tasks[i]=data; }
   else p.tasks.push(data);
+  _recalcTaskHours(p,data);
   p.updatedAt=Date.now();
   saveToFirebase('projects',String(p.id),p);
   _syncTaskActivity(p,data); // espelha em Atividades quando concluída
@@ -6685,7 +6734,7 @@ window.addEventListener('appinstalled', () => {
 // Register inline service worker for offline support
 if('serviceWorker' in navigator){
   const swCode = `
-const CACHE = 'ativa360-v37';
+const CACHE = 'ativa360-v38';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
