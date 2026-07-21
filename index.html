@@ -3517,7 +3517,18 @@ function renderReport(tab){
 
 // ── Relatório de Produtividade ────────────────────────────────────────────
 let prodFilter={start:'',end:'',type:'',user:'',client:''};
-function setProdFilter(k,v){ prodFilter[k]=v; renderReport('productivity'); }
+function setProdFilter(k,v){
+  prodFilter[k]=v;
+  // Atualiza só o conteúdo — os campos de filtro não são recriados,
+  // assim o foco/digitação (ex.: ano da data) não é interrompido.
+  const body=document.getElementById('prod-body');
+  if(body){
+    const full=repProductivity();
+    const m=full.match(/<div id="prod-body">([\s\S]*)<\/div>$/);
+    if(m){ body.innerHTML=m[1]; return; }
+  }
+  renderReport('productivity');
+}
 function _prodBars(rows,color){
   const max=Math.max(1,...rows.map(r=>r.h));
   return rows.map(r=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
@@ -3557,7 +3568,7 @@ function repProductivity(forPrint){
   </div>`)+`
   <div style="font-size:12px;color:var(--text2);margin:-6px 0 16px;padding:6px 10px;background:var(--bg3);border-radius:6px;display:inline-block">📅 Período: <strong>${custom?'personalizado':'últimos 30 dias'}</strong> · ${fmtDate(effStart)} → ${fmtDate(effEnd)}</div>`;
 
-  if(!list.length) return filters+`<div class="empty-state" style="padding:30px 0"><div class="empty-state-icon">📝</div><div class="empty-state-text">Nenhuma atividade no filtro</div></div>`;
+  if(!list.length) return filters+`<div id="prod-body"><div class="empty-state" style="padding:30px 0"><div class="empty-state-icon">📝</div><div class="empty-state-text">Nenhuma atividade no filtro</div></div></div>`;
 
   const totH=list.reduce((s,a)=>s+(Number(a.hours)||0),0);
   const days=[...new Set(list.map(a=>a.date))].length;
@@ -3578,7 +3589,7 @@ function repProductivity(forPrint){
   const userRows=Object.keys(byUser).map(k=>({label:uName(k),h:byUser[k]})).sort((a,b)=>b.h-a.h);
   const cliRows=Object.keys(byClient).map(k=>({label:k,h:byClient[k]})).sort((a,b)=>b.h-a.h);
 
-  let html=filters;
+  let html=filters+'<div id="prod-body">';
   html+=`<div class="kpi-grid" style="grid-template-columns:repeat(${occ?4:3},1fr);margin-bottom:20px">
     <div class="kpi-card"><div class="kpi-l">Atividades</div><div class="kpi-n">${list.length}</div></div>
     <div class="kpi-card"><div class="kpi-l">Total de horas</div><div class="kpi-n" style="color:var(--accent2)">${fmtH(totH)}</div>${_expectedSub(totH,effStart,effEnd,nPeople)}</div>
@@ -3588,7 +3599,7 @@ function repProductivity(forPrint){
   html+=`<div class="panel" style="padding:16px;margin-bottom:16px"><div style="font-size:13px;font-weight:600;margin-bottom:12px">Horas por tipo de atividade</div>${_prodBars(typeRows,'#2563eb')}</div>`;
   if(admin&&userRows.length) html+=`<div class="panel" style="padding:16px;margin-bottom:16px"><div style="font-size:13px;font-weight:600;margin-bottom:12px">Horas por responsável</div>${_prodBars(userRows,'#8b5cf6')}</div>`;
   html+=`<div class="panel" style="padding:16px"><div style="font-size:13px;font-weight:600;margin-bottom:12px">Horas por cliente</div>${_prodBars(cliRows,'#34c97e')}</div>`;
-  return html;
+  return html+'</div>';
 }
 
 function periodFilter(){
@@ -6557,7 +6568,7 @@ window.addEventListener('appinstalled', () => {
 // Register inline service worker for offline support
 if('serviceWorker' in navigator){
   const swCode = `
-const CACHE = 'ativa360-v29';
+const CACHE = 'ativa360-v30';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
