@@ -1010,7 +1010,7 @@ input,select,textarea{font-family:var(--font)}
         <div class="form-group"><label class="form-label">Cliente / Grupo</label><select class="form-select" id="a-client"><option value="">Sem cliente</option></select></div>
         <div class="form-group" id="a-project-wrap"><label class="form-label">Projeto *</label><select class="form-select" id="a-project" onchange="_actLoadTasks()"><option value="">Nenhum</option></select></div>
       </div>
-      <div class="form-group" id="a-task-wrap" style="display:none"><label class="form-label">Tarefa (soma nas horas executadas)</label><select class="form-select" id="a-task"><option value="">Nenhuma</option></select></div>
+      <div class="form-group" id="a-task-wrap" style="display:none"><label class="form-label">Tarefa do projeto <span style="font-weight:400;color:var(--text3)">— deixe "Nenhuma" para criar uma nova</span></label><select class="form-select" id="a-task"><option value="">Nenhuma — criar nova tarefa</option></select></div>
       <div class="form-group" style="margin-top:2px">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0">
           <input type="checkbox" id="a-bill" onchange="_actBillToggle()" style="width:16px;height:16px;accent-color:var(--accent)">
@@ -2817,7 +2817,7 @@ function _actLoadTasks(){
   const pid=document.getElementById('a-project').value;
   const sel=document.getElementById('a-task');
   const p=projects.find(x=>String(x.id)===String(pid));
-  sel.innerHTML='<option value="">Nenhuma</option>'+((p&&p.tasks||[]).map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join(''));
+  sel.innerHTML='<option value="">Nenhuma — criar nova tarefa</option>'+((p&&p.tasks||[]).map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join(''));
   document.getElementById('a-task-wrap').style.display=(document.getElementById('a-type').value==='projeto'&&pid)?'':'none';
 }
 async function _actEnsureUsers(){
@@ -2933,6 +2933,8 @@ async function saveActivity(){
     createdAt:prev?prev.createdAt||Date.now():Date.now(),
     updatedAt:Date.now(),
   };
+  // Cria/atualiza a tarefa correspondente dentro do projeto
+  _syncActivityToTask(data);
   // Sincroniza horas executadas da tarefa (delta em relação ao valor anterior)
   // Atividades espelhadas de tarefa (taskRef) não somam — a tarefa é a origem.
   if(data.taskId && !data.taskRef){
@@ -2956,7 +2958,17 @@ async function saveActivity(){
 async function deleteActivity(){
   if(!_editingActId||!confirm('Excluir esta atividade?')) return;
   const a=activities.find(x=>String(x.id)===String(_editingActId));
-  if(a&&a.taskId){
+  // Remove a tarefa que nasceu desta atividade
+  if(a&&a.projectId&&a.taskId){
+    const p=projects.find(x=>String(x.id)===String(a.projectId));
+    const t=p&&(p.tasks||[]).find(x=>String(x.id)===String(a.taskId));
+    if(t&&String(t.fromActivity||'')===String(a.id)){
+      p.tasks=p.tasks.filter(x=>String(x.id)!==String(a.taskId));
+      p.updatedAt=Date.now(); saveToFirebase('projects',String(p.id),p);
+      try{ renderProjects(); renderProjDetail(); }catch(e){}
+    }
+  }
+  if(a&&a.taskId&&!a.taskRef){
     const p=projects.find(x=>String(x.id)===String(a.projectId));
     const t=p&&(p.tasks||[]).find(x=>x.id===a.taskId);
     if(t){ t.doneHours=Math.max(0,(Number(t.doneHours)||0)-(Number(a.hours)||0)); p.updatedAt=Date.now(); saveToFirebase('projects',String(p.id),p); }
@@ -3207,6 +3219,39 @@ function _tSegHours(task){
   if(!task.startTime||!task.endTime) return 0;
   const [sh,sm]=task.startTime.split(':').map(Number),[eh,em]=task.endTime.split(':').map(Number);
   let d=(eh*60+em)-(sh*60+sm); if(d<0)d+=1440; return d/60;
+}
+
+// Espelha a ATIVIDADE como tarefa dentro do projeto (caminho inverso)
+function _syncActivityToTask(data){
+  if(data.type!=='projeto' || !data.projectId) return;
+  const p=projects.find(x=>String(x.id)===String(data.projectId)); if(!p) return;
+  if(!p.tasks) p.tasks=[];
+  let t=data.taskId?p.tasks.find(x=>String(x.id)===String(data.taskId)):null;
+  const isNew=!t;
+  if(isNew){ t={id:nextTaskId++, fromActivity:String(data.id)}; p.tasks.push(t); }
+  // Só sobrescreve os campos quando a tarefa nasceu da atividade
+  if(String(t.fromActivity||'')===String(data.id) || isNew){
+    t.name=data.name;
+    t.owner=data.userName||'';
+    t.status='done';
+    t.concludedDate=data.date;
+    t.execDate=data.date;
+    t.startTime=data.startTime||'';
+    t.endTime=data.endTime||'';
+    t.doneHours=Number(data.hours)||0;
+    if(!t.estimated) t.estimated=Number(data.hours)||0;
+    t.obs=data.desc||'';
+    t.na=false;
+    t.fromActivity=String(data.id);
+  }
+  data.taskId=t.id;
+  // taskRef só quando a tarefa nasceu desta atividade (evita dupla contagem).
+  // Ao vincular uma tarefa já existente, mantém a soma nas horas executadas.
+  data.taskRef=(String(t.fromActivity||'')===String(data.id))?('task:'+p.id+':'+t.id):null;
+  p.updatedAt=Date.now();
+  saveToFirebase('projects',String(p.id),p);
+  try{ if(typeof renderProjects==='function') renderProjects(); }catch(e){}
+  try{ if(typeof renderProjDetail==='function') renderProjDetail(); }catch(e){}
 }
 
 function saveTask(){
@@ -6689,7 +6734,7 @@ window.addEventListener('appinstalled', () => {
 // Register inline service worker for offline support
 if('serviceWorker' in navigator){
   const swCode = `
-const CACHE = 'ativa360-v33';
+const CACHE = 'ativa360-v35';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
