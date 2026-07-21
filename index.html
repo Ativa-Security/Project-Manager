@@ -2959,6 +2959,24 @@ function _actClientName(a){
   if(a.clientId){ const c=clients.find(x=>String(x.id)===String(a.clientId)); return c?c.name:'—'; }
   return '';
 }
+// ── Horas esperadas (jornada) ────────────────────────────────────────────
+// Dias úteis (Seg–Sex) do período × 8h × nº de responsáveis considerados.
+const JORNADA_H=8;
+function _bizDays(start,end){
+  if(!start||!end) return 0;
+  let bd=0; const d0=new Date(start+'T12:00:00'), d1=new Date(end+'T12:00:00');
+  if(isNaN(d0)||isNaN(d1)||d1<d0) return 0;
+  for(let d=new Date(d0);d<=d1;d.setDate(d.getDate()+1)){ const w=d.getDay(); if(w!==0&&w!==6) bd++; }
+  return bd;
+}
+function _expectedHours(start,end,people){ return _bizDays(start,end)*JORNADA_H*(people||1); }
+function _expectedSub(totH,start,end,people){
+  const exp=_expectedHours(start,end,people);
+  if(!exp) return '';
+  const pct=Math.round(totH/exp*100);
+  return `<div class="kpi-sub">de ${fmtH(exp)} esperadas · ${pct}%${(people||1)>1?' · '+people+' resp.':''}</div>`;
+}
+
 // ── Meu resumo (produtividade pessoal, sem valores) ──────────────────────
 function openMyResumo(){
   const uid=currentUser&&currentUser.uid;
@@ -2968,9 +2986,8 @@ function openMyResumo(){
   const totH=list.reduce((s,a)=>s+(Number(a.hours)||0),0);
   const days=[...new Set(list.map(a=>a.date))].length;
   const avg=days?totH/days:0;
-  let bd=0; const d0=new Date(start+'T12:00:00'),d1=new Date(end+'T12:00:00');
-  for(let d=new Date(d0);d<=d1;d.setDate(d.getDate()+1)){ const w=d.getDay(); if(w!==0&&w!==6) bd++; }
-  const occ=bd*8>0?Math.round(totH/(bd*8)*100)+'%':'—';
+  const bd=_bizDays(start,end);
+  const occ=bd*JORNADA_H>0?Math.round(totH/(bd*JORNADA_H)*100)+'%':'—';
   const _tl=actTypesAll();
   const byType={}; list.forEach(a=>{ byType[a.type]=(byType[a.type]||0)+(Number(a.hours)||0); });
   const typeRows=Object.keys(byType).map(k=>({label:_tl[k]||k,h:byType[k]})).sort((a,b)=>b.h-a.h);
@@ -2980,7 +2997,7 @@ function openMyResumo(){
   if(!list.length){ html+=`<div class="empty-state" style="padding:24px 0"><div class="empty-state-icon">📊</div><div class="empty-state-text">Nenhuma atividade sua nos últimos 30 dias</div></div>`; document.getElementById('meuresumo-content').innerHTML=html; openModal('meuresumo-modal-overlay'); return; }
   html+=`<div class="kpi-grid" style="grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px">
     <div class="kpi-card"><div class="kpi-l">Atividades</div><div class="kpi-n">${list.length}</div></div>
-    <div class="kpi-card"><div class="kpi-l">Total de horas</div><div class="kpi-n" style="color:var(--accent2)">${fmtH(totH)}</div></div>
+    <div class="kpi-card"><div class="kpi-l">Total de horas</div><div class="kpi-n" style="color:var(--accent2)">${fmtH(totH)}</div>${_expectedSub(totH,start,end,1)}</div>
     <div class="kpi-card"><div class="kpi-l">Média por dia</div><div class="kpi-n">${fmtH(avg)}</div></div>
     <div class="kpi-card"><div class="kpi-l">Taxa de ocupação</div><div class="kpi-n" style="color:var(--green)">${occ}</div><div class="kpi-sub">${fmtH(totH)} de ${fmtH(bd*8)} esperadas · 8h/dia útil</div></div>
   </div>`;
@@ -3017,9 +3034,13 @@ function renderActivities(){
   list.sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||0)-(a.createdAt||0));
 
   const totH=list.reduce((s,a)=>s+(Number(a.hours)||0),0);
+  // Horas esperadas: período dos filtros (ou o intervalo coberto pelas atividades)
+  const _dts=list.map(a=>a.date).filter(Boolean).sort();
+  const eStart=fStart||_dts[0]||'', eEnd=fEnd||_dts[_dts.length-1]||'';
+  const nPeople=(!isAdmin()||fUser)?1:new Set(list.map(a=>String(a.userId))).size||1;
   let html=`<div class="kpi-grid" style="grid-template-columns:repeat(2,1fr);margin-bottom:16px">
     <div class="kpi-card"><div class="kpi-l">Atividades</div><div class="kpi-n">${list.length}</div></div>
-    <div class="kpi-card"><div class="kpi-l">Total de horas</div><div class="kpi-n" style="color:var(--accent2)">${fmtH(totH)}</div></div>
+    <div class="kpi-card"><div class="kpi-l">Total de horas</div><div class="kpi-n" style="color:var(--accent2)">${fmtH(totH)}</div>${_expectedSub(totH,eStart,eEnd,nPeople)}</div>
   </div>`;
   if(!list.length){ el.innerHTML=html+`<div class="empty-state" style="padding:30px 0"><div class="empty-state-icon">📝</div><div class="empty-state-text">Nenhuma atividade</div><button class="btn btn-accent btn-sm" onclick="openActivityModal()">+ Nova atividade</button></div>`; return; }
   // Agrupa por data
@@ -3536,13 +3557,10 @@ function repProductivity(){
   const totH=list.reduce((s,a)=>s+(Number(a.hours)||0),0);
   const days=[...new Set(list.map(a=>a.date))].length;
   const avg=days?totH/days:0;
-  // Taxa de ocupação: horas ÷ (dias úteis do período × 8h)
-  let occ='';
-  {
-    let bd=0; const d0=new Date(effStart+'T12:00:00'),d1=new Date(effEnd+'T12:00:00');
-    for(let d=new Date(d0);d<=d1;d.setDate(d.getDate()+1)){ const w=d.getDay(); if(w!==0&&w!==6) bd++; }
-    const exp=bd*8; occ=exp>0?Math.round(totH/exp*100)+'%':'—';
-  }
+  // Nº de responsáveis considerados (1 quando há filtro por responsável ou é técnico)
+  const nPeople=(!admin||user)?1:new Set(list.map(a=>String(a.userId))).size||1;
+  const expH=_expectedHours(effStart,effEnd,nPeople);
+  const occ=expH>0?Math.round(totH/expH*100)+'%':'—';
   // Agregações
   const byType={},byUser={},byClient={};
   list.forEach(a=>{
@@ -3558,9 +3576,9 @@ function repProductivity(){
   let html=filters;
   html+=`<div class="kpi-grid" style="grid-template-columns:repeat(${occ?4:3},1fr);margin-bottom:20px">
     <div class="kpi-card"><div class="kpi-l">Atividades</div><div class="kpi-n">${list.length}</div></div>
-    <div class="kpi-card"><div class="kpi-l">Total de horas</div><div class="kpi-n" style="color:var(--accent2)">${fmtH(totH)}</div></div>
+    <div class="kpi-card"><div class="kpi-l">Total de horas</div><div class="kpi-n" style="color:var(--accent2)">${fmtH(totH)}</div>${_expectedSub(totH,effStart,effEnd,nPeople)}</div>
     <div class="kpi-card"><div class="kpi-l">Média por dia</div><div class="kpi-n">${fmtH(avg)}</div></div>
-    ${occ?`<div class="kpi-card"><div class="kpi-l">Taxa de ocupação</div><div class="kpi-n" style="color:var(--green)">${occ}</div><div class="kpi-sub">vs 8h/dia útil</div></div>`:''}
+    ${occ?`<div class="kpi-card"><div class="kpi-l">Taxa de ocupação</div><div class="kpi-n" style="color:var(--green)">${occ}</div><div class="kpi-sub">${fmtH(totH)} de ${fmtH(expH)} esperadas${nPeople>1?' · '+nPeople+' resp.':''}</div></div>`:''}
   </div>`;
   html+=`<div class="panel" style="padding:16px;margin-bottom:16px"><div style="font-size:13px;font-weight:600;margin-bottom:12px">Horas por tipo de atividade</div>${_prodBars(typeRows,'#2563eb')}</div>`;
   if(admin&&userRows.length) html+=`<div class="panel" style="padding:16px;margin-bottom:16px"><div style="font-size:13px;font-weight:600;margin-bottom:12px">Horas por responsável</div>${_prodBars(userRows,'#8b5cf6')}</div>`;
@@ -6528,7 +6546,7 @@ window.addEventListener('appinstalled', () => {
 // Register inline service worker for offline support
 if('serviceWorker' in navigator){
   const swCode = `
-const CACHE = 'ativa360-v24';
+const CACHE = 'ativa360-v25';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
