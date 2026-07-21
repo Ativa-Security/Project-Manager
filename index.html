@@ -3725,8 +3725,8 @@ ${body}
   <button onclick="window.close()" style="background:#f1f5f9;color:#374151;border:none;border-radius:8px;padding:12px 20px;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif">
     ✕ Fechar
   </button>
-</div></body>
-</html>`;
+</div><\/body>
+<\/html>`;
 }
 
 // ── EXPORT SINGLE (current) REPORT TAB ──
@@ -5098,7 +5098,7 @@ function exportHoursClientPDF(rootId,companyId){
   <div style="margin-top:32px;text-align:center;color:#99a;font-size:11px">Ativa Security · Ativa360 · Documento gerado automaticamente</div>
 </div>
 <div class="np" style="position:fixed;bottom:20px;right:20px"><button onclick="window.print()" style="background:#2563eb;color:#fff;border:none;padding:12px 24px;border-radius:8px;font-weight:700;cursor:pointer;font-family:'DM Sans'">🖨 Imprimir / Salvar PDF</button></div>
-</body></html>`);
+<\/body><\/html>`);
   w.document.close();
 }
 
@@ -6333,7 +6333,7 @@ window.openStatusReport = function(projId){
 window.printStatusReport=function(){
   const c=document.getElementById('status-report-print')?.innerHTML||'';
   const w=window.open('','_blank');
-  w.document.write(`<html><head><title>Status Report</title><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet"><style>body{margin:0;padding:0;font-family:'DM Sans',sans-serif}@media print{@page{margin:15mm}}</style></head><body>${c}</body></html>`);
+  w.document.write(`<html><head><title>Status Report</title><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet"><style>body{margin:0;padding:0;font-family:'DM Sans',sans-serif}@media print{@page{margin:15mm}}</style></head><body>${c}<\/body><\/html>`);
   w.document.close();
   setTimeout(()=>w.print(),500);
 };
@@ -6546,7 +6546,7 @@ window.addEventListener('appinstalled', () => {
 // Register inline service worker for offline support
 if('serviceWorker' in navigator){
   const swCode = `
-const CACHE = 'ativa360-v25';
+const CACHE = 'ativa360-v26';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
