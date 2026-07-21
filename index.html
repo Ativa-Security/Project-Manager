@@ -897,18 +897,6 @@ input,select,textarea{font-family:var(--font)}
           </div>
         </div>
 
-        <!-- ── SUPORTE TÉCNICO (independente do MRR) ── -->
-        <div style="grid-column:1/-1">
-          <div style="background:rgba(52,201,126,0.05);border:1px solid rgba(52,201,126,0.2);border-radius:var(--r);padding:12px 14px">
-            <div style="font-size:12px;font-weight:600;color:var(--green);margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em">🛠 Suporte técnico</div>
-            <div class="form-grid">
-              <div class="form-group" style="margin:0"><label class="form-label">Horas de suporte incluídas/mês</label><input class="form-input" id="l-support-hours" oninput="_fmtHInput(this)" type="number" placeholder="0" step="0.5"></div>
-              <div class="form-group" style="margin:0"><label class="form-label">Horas despendidas (acumulado)</label><input class="form-input" id="l-support-used" oninput="_fmtHInput(this)" type="number" placeholder="0" step="0.5"></div>
-              <div class="form-group admin-only" style="margin:0"><label class="form-label">Proposta hora de suporte — cliente paga (R$)</label><input class="form-input" id="l-support-rate-client" type="text" placeholder="0,00" oninput="_maskBRL(this)" inputmode="decimal"></div>
-              <div class="form-group admin-only" style="margin:0"><label class="form-label">Custo hora de suporte — nosso custo (R$)</label><input class="form-input" id="l-support-rate-cost" type="text" placeholder="0,00" oninput="_maskBRL(this)" inputmode="decimal"></div>
-            </div>
-          </div>
-        </div>
 
         <div class="form-group admin-only"><label class="form-label">Vendedor</label><input class="form-input" id="l-seller" placeholder="Nome do vendedor"></div>
         <div class="form-group"><label class="form-label">Projeto vinculado</label><select class="form-select" id="l-project"><option value="">Nenhum</option></select></div>
@@ -3347,7 +3335,6 @@ function renderLicCard(l, compact){
       ${l.parentId?`<span style="font-size:10px;font-weight:600;color:var(--accent2);background:rgba(37,99,235,0.1);padding:2px 7px;border-radius:10px">🔄 Renovação</span>`:''}
     ${licenses.some(x=>x.parentId===l.id)?`<span style="font-size:10px;font-weight:600;color:var(--green);background:var(--green-bg);padding:2px 7px;border-radius:10px">✓ Renovado</span>`:''}
     ${l.monthly&&isAdmin()?`<span style="color:var(--green)">💰 ${fmtCur(l.monthlyProposal)}/mês</span>`:''}
-      ${l.supportHours?`<span>🛠 ${fmtH(l.supportHours)}/mês</span>`:''}
     </div>
     <div class="lic-progress-bar"><div style="height:100%;border-radius:3px;width:${prog}%;background:${progColor};transition:width .3s"></div></div>
   </div>`;
@@ -3366,8 +3353,6 @@ function openLicenseModal(id=null){
   document.getElementById('l-start').value        = l?l.start||'':'';
   document.getElementById('l-end').value          = l?l.end||'':'';
   document.getElementById('l-qty').value          = l?l.qty||1:1;
-  document.getElementById('l-support-hours').value= l&&l.supportHours?fmtH(l.supportHours):'';
-  document.getElementById('l-support-used').value = l&&l.supportUsed?fmtH(l.supportUsed):'';
 
   // Admin-only fields
   if(isAdmin()){
@@ -3375,8 +3360,6 @@ function openLicenseModal(id=null){
     document.getElementById('l-quote').value               = l&&l.quote?fmtBRL_input(l.quote):'';
     document.getElementById('l-monthly-proposal').value    = l&&l.monthlyProposal?fmtBRL_input(l.monthlyProposal):'';
     document.getElementById('l-monthly-quote').value       = l&&l.monthlyQuote?fmtBRL_input(l.monthlyQuote):'';
-    document.getElementById('l-support-rate-client').value = l&&l.supportRateClient?fmtBRL_input(l.supportRateClient):'';
-    document.getElementById('l-support-rate-cost').value   = l&&l.supportRateCost?fmtBRL_input(l.supportRateCost):'';
   }
 
   // Monthly checkbox + wrap visibility
@@ -3454,11 +3437,6 @@ function saveLicense(){
     seller:   document.getElementById('l-seller').value.trim(),
     notes:    document.getElementById('l-notes').value.trim(),
     monthly,
-    // Support fields — always saved, independent of monthly
-    supportHours:      parseHM(document.getElementById('l-support-hours').value),
-    supportUsed:       parseHM(document.getElementById('l-support-used').value),
-    supportRateClient: isAdmin()?parseBRL(document.getElementById('l-support-rate-client').value):0,
-    supportRateCost:   isAdmin()?parseBRL(document.getElementById('l-support-rate-cost').value):0,
     // Admin financial fields
     proposal:          isAdmin()?parseBRL(document.getElementById('l-proposal').value):0,
     quote:             isAdmin()?parseBRL(document.getElementById('l-quote').value):0,
@@ -3554,22 +3532,7 @@ function openLicDetail(id){
       <div class="progress-bar" style="height:8px"><div style="height:100%;border-radius:4px;width:${prog}%;background:${progColor}"></div></div>
     </div>
     ${l.seller?`<div style="font-size:12px;color:var(--text3);margin-bottom:16px">🧑‍💼 Vendedor: <strong style="color:var(--text2)">${esc(l.seller)}</strong></div>`:''}
-    ${l.supportHours||l.supportRateClient||l.supportUsed?`
-    <div class="rep-section"><div class="rep-section-title">🛠 Suporte técnico</div>
-      <div class="kpi-grid" style="grid-template-columns:repeat(${isAdmin()?4:2},1fr)">
-        <div class="kpi-card"><div class="kpi-n" style="color:var(--accent2)">${l.supportHours||0}h</div><div class="kpi-l">Incluídas/mês</div></div>
-        <div class="kpi-card"><div class="kpi-n" style="color:${(l.supportUsed||0)>(l.supportHours||0)?'var(--red)':'var(--green)'}">${fmtH(l.supportUsed||0)}</div><div class="kpi-l">Horas despendidas</div><div class="kpi-sub">${l.supportHours?`${fmtH(Math.max(0,(l.supportHours||0)-(l.supportUsed||0)))} disponíveis`:'—'}</div></div>
-        ${isAdmin()?`
-        <div class="kpi-card"><div class="kpi-n" style="color:var(--green)">${fmtCur(l.supportRateClient)}/h</div><div class="kpi-l">Proposta hora suporte</div><div class="kpi-sub">(cliente paga)</div></div>
-        <div class="kpi-card"><div class="kpi-n" style="color:var(--amber)">${fmtCur(l.supportRateCost)}/h</div><div class="kpi-l">Custo hora suporte</div><div class="kpi-sub">(nosso custo)</div></div>
-        `:''}
-      </div>
-      ${isAdmin()&&l.supportUsed>0?`<div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-top:10px">
-        <div class="kpi-card"><div class="kpi-n" style="color:var(--green)">${fmtCur((l.supportRateClient||0)*l.supportUsed)}</div><div class="kpi-l">Receita horas suporte</div></div>
-        <div class="kpi-card"><div class="kpi-n" style="color:var(--amber)">${fmtCur((l.supportRateCost||0)*l.supportUsed)}</div><div class="kpi-l">Custo horas suporte</div></div>
-        <div class="kpi-card"><div class="kpi-n" style="color:${((l.supportRateClient||0)-(l.supportRateCost||0))>=0?'var(--green)':'var(--red)'}">${fmtCur(((l.supportRateClient||0)-(l.supportRateCost||0))*l.supportUsed)}</div><div class="kpi-l">Margem suporte</div></div>
-      </div>`:''}
-    </div>`:''}`;
+  `;
 
   if(isAdmin()){
     html+=`<div class="rep-section"><div class="rep-section-title">💰 Financeiro</div>
@@ -4705,8 +4668,6 @@ function repLicenses(){
   const active=sorted.filter(l=>{ const d=daysUntil(l.end); return d!==null&&d>150; });
   const expired=sorted.filter(l=>{ const d=daysUntil(l.end); return d!==null&&d<0; });
   const totalMRR=licenses.filter(l=>l.monthly).reduce((s,l)=>s+(Number(l.monthlyProposal)||0),0);
-  const totalSupportUsed=licenses.reduce((s,l)=>s+(Number(l.supportUsed)||0),0);
-  const totalSupportRevenue=licenses.reduce((s,l)=>s+(Number(l.supportRateClient)||0)*(Number(l.supportUsed)||0),0);
 
   function monthsPaid(l){ if(!l.start) return 0; return Math.max(1,Math.round((new Date()-new Date(l.start+'T12:00:00'))/(1000*3600*24*30))); }
   const totalRecurring=licenses.filter(l=>l.monthly).reduce((s,l)=>s+(Number(l.monthlyProposal)||0)*monthsPaid(l),0);
@@ -4724,8 +4685,6 @@ function repLicenses(){
     let rows=lics.map(function(l){
       const st=getLicStatus(l); const d=daysUntil(l.end);
       const mp=monthsPaid(l); const recAcum=(Number(l.monthlyProposal)||0)*mp;
-      const recSup=(Number(l.supportRateClient)||0)*(Number(l.supportUsed)||0);
-      const sOver=(l.supportUsed||0)>(l.supportHours||0)&&(l.supportHours||0)>0;
       const dCol=d!==null&&d<=75?'var(--red)':d!==null&&d<=150?'var(--amber)':'var(--green)';
       return '<tr onclick="openLicDetail('+l.id+')" style="cursor:pointer">'
         +'<td style="font-weight:600">'+l.product+'</td>'
@@ -4735,17 +4694,12 @@ function repLicenses(){
         +'<td><span style="font-family:var(--mono);font-size:11px;font-weight:700;color:'+dCol+'">'+(d!==null?d+'d':'—')+'</span></td>'
         +(adminCols?'<td style="color:var(--green);font-size:11px">'+(l.monthly?fmtCur(l.monthlyProposal)+'/m':'—')+'</td>'
           +'<td style="font-family:var(--mono);font-size:11px;color:var(--green);font-weight:700">'+(l.monthly?fmtCur(recAcum):'—')+'</td>':'')
-        +'<td style="font-size:11px">'+(l.supportHours?fmtH(l.supportHours)+'/m':'—')+'</td>'
-        +'<td style="font-size:11px;color:'+(sOver?'var(--red)':'var(--text2)')+';font-weight:'+(sOver?700:400)+'">'+( l.supportUsed?fmtH(l.supportUsed):'—')+(sOver?' ⚠':'')+'</td>'
-        +(adminCols?'<td style="font-size:11px;color:var(--green)">'+(recSup>0?fmtCur(recSup):'—')+'</td>':'')
         +'<td><span class="badge '+st.cls+'">'+st.label+'</span></td>'
         +'</tr>';
     }).join('');
     return '<div class="panel" style="overflow:hidden"><div style="overflow-x:auto"><table class="data-table">'
       +'<thead><tr><th>Produto</th><th>Cliente</th><th>Fabricante</th><th>Vencimento</th><th>Dias</th>'
       +(adminCols?'<th>MRR</th><th>Receita acum.</th>':'')
-      +'<th>Suporte</th><th>H.usadas</th>'
-      +(adminCols?'<th>Rec. suporte</th>':'')
       +'<th>Status</th></tr></thead>'
       +'<tbody>'+rows+'</tbody>'
       +'</table></div></div>';
@@ -4777,8 +4731,6 @@ function repLicenses(){
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;align-content:start">
       <div class="kpi-card"><div class="kpi-n" style="color:var(--green)">${fmtCur(totalMRR)}</div><div class="kpi-l">MRR Licenças</div></div>
       <div class="kpi-card"><div class="kpi-n" style="color:var(--accent2)">${fmtCur(totalRecurring)}</div><div class="kpi-l">Receita recorrente total</div></div>
-      <div class="kpi-card"><div class="kpi-n" style="color:var(--amber)">${fmtH(totalSupportUsed)}</div><div class="kpi-l">Horas suporte usadas</div></div>
-      <div class="kpi-card"><div class="kpi-n" style="color:var(--green)">${fmtCur(totalSupportRevenue)}</div><div class="kpi-l">Receita suporte</div></div>
       <div class="kpi-card" style="background:${critical.length>0?'rgba(255,95,95,0.06)':'var(--bg2)'};border-color:${critical.length>0?'rgba(255,95,95,0.3)':'var(--border)'}">
         <div class="kpi-n" style="color:${critical.length>0?'var(--red)':'var(--green)'}">${critical.length}</div><div class="kpi-l">🔴 Críticas ≤75d</div>
       </div>
@@ -6111,7 +6063,6 @@ window.confirmRenewal = function(){
     id: nextLicId++,
     start, end,
     parentId: l.id,
-    supportUsed: 0,  // reset used hours for new period
     createdAt: Date.now(),
   };
   // Override values if provided
@@ -6734,7 +6685,7 @@ window.addEventListener('appinstalled', () => {
 // Register inline service worker for offline support
 if('serviceWorker' in navigator){
   const swCode = `
-const CACHE = 'ativa360-v35';
+const CACHE = 'ativa360-v37';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
@@ -6803,7 +6754,7 @@ window.doLogin=async function(){
 // liberadas só p/ admin nas Firestore Rules. O técnico nunca baixa esses dados.
 const FIN_FIELDS={
   projects:     ['proposal','quote','hourrate','monthlyProposal'],
-  licenses:     ['proposal','quote','supportRateClient','supportRateCost','monthlyProposal','monthlyQuote','attachments'],
+  licenses:     ['proposal','quote','monthlyProposal','monthlyQuote','attachments'],
   hoursPackages:['rateWeekday','rateAfterhours','rateSaturday','rateSunday','monthlyProposal','monthlyQuote','value'],
   commitments:  ['value'],
 };
