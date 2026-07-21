@@ -1019,6 +1019,7 @@ input,select,textarea{font-family:var(--font)}
     </div>
     <div class="modal-footer">
       <button class="btn btn-danger" id="a-delete-btn" onclick="deleteActivity()" style="margin-right:auto;display:none">Excluir</button>
+      <button class="btn btn-ghost" id="a-dup-btn" onclick="openActivityModal(_editingActId,true)" style="display:none">⧉ Duplicar</button>
       <button class="btn btn-ghost" onclick="closeModal('activity-modal-overlay')">Cancelar</button>
       <button class="btn btn-accent" onclick="saveActivity()">Salvar atividade</button>
     </div>
@@ -2812,11 +2813,12 @@ async function _actEnsureUsers(){
     _actUsers=[]; snap.forEach(d=>{const u=d.data(); if(u.active!==false) _actUsers.push({uid:d.id,name:u.name||u.email,email:u.email||'',role:u.role||''});});
   }catch(e){ _actUsers=[]; }
 }
-async function openActivityModal(id){
-  _editingActId=id||null;
+async function openActivityModal(id,dup){
   const a=id?activities.find(x=>String(x.id)===String(id)):null;
-  document.getElementById('activity-modal-title').textContent=a?'Editar Atividade':'Nova Atividade';
-  document.getElementById('a-delete-btn').style.display=a?'':'none';
+  _editingActId=dup?null:(id||null);
+  document.getElementById('activity-modal-title').textContent=dup?'Duplicar Atividade':(a?'Editar Atividade':'Nova Atividade');
+  document.getElementById('a-delete-btn').style.display=(a&&!dup)?'':'none';
+  document.getElementById('a-dup-btn').style.display=(a&&!dup)?'':'none';
   // Responsável
   await _actEnsureUsers();
   const uWrap=document.getElementById('a-user-wrap'), uSel=document.getElementById('a-user');
@@ -2845,8 +2847,8 @@ async function openActivityModal(id){
   document.getElementById('a-name').value=a?a.name||'':'';
   document.getElementById('a-type').value=a?a.type||'chamado':'chamado';
   document.getElementById('a-date').value=a?a.date||todayStr():todayStr();
-  document.getElementById('a-start-time').value=a?a.startTime||'':'';
-  document.getElementById('a-end-time').value=a?a.endTime||'':'';
+  document.getElementById('a-start-time').value=(a&&!dup)?a.startTime||'':'';
+  document.getElementById('a-end-time').value=(a&&!dup)?a.endTime||'':'';
   _actCalcDur();
   document.getElementById('a-desc').value=a?a.desc||'':'';
   _actTypeChange(); _actLoadTasks();
@@ -3058,7 +3060,10 @@ function renderActivities(){
           <div style="font-size:11px;color:var(--text3);margin-top:2px">${a.startTime&&a.endTime?'🕒 '+esc(a.startTime)+'–'+esc(a.endTime)+' · ':''}📌 ${esc(_tl[a.type]||a.type)}${isAdmin()?' · 👤 '+esc(a.userName||'—'):''}${cli?' · '+esc(cli):''}${proj?' · 🗂 '+esc(proj):''}${a.qual?' · '+(QUAL_LBL[a.qual]||''):''}${a.billFromHours?' · <span style="color:var(--amber)">💳 Abatido do pacote</span>':''}${a.source==='spiceworks'?' · <span style="color:var(--accent2)">Spiceworks</span>':''}</div>
           ${a.desc?`<div style="font-size:11px;color:var(--text2);margin-top:5px;padding:6px 8px;background:var(--bg2);border-left:2px solid var(--accent2);border-radius:4px;white-space:pre-wrap">📝 ${esc(a.desc)}</div>`:''}
         </div>
-        <div style="font-size:13px;font-family:var(--mono);font-weight:700;color:var(--accent2)">${fmtH(a.hours)}</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="font-size:13px;font-family:var(--mono);font-weight:700;color:var(--accent2)">${fmtH(a.hours)}</div>
+          <button class="btn btn-ghost btn-sm" title="Duplicar atividade" onclick="event.stopPropagation();openActivityModal('${a.id}',true)" style="padding:4px 8px">⧉</button>
+        </div>
       </div>`;
     });
   });
@@ -6546,7 +6551,7 @@ window.addEventListener('appinstalled', () => {
 // Register inline service worker for offline support
 if('serviceWorker' in navigator){
   const swCode = `
-const CACHE = 'ativa360-v26';
+const CACHE = 'ativa360-v27';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
