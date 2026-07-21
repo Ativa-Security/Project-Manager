@@ -3528,7 +3528,7 @@ function _prodBars(rows,color){
     <div style="width:60px;font-size:11px;font-family:var(--mono);color:var(--text3)">${fmtH(r.h)}</div>
   </div>`).join('');
 }
-function repProductivity(){
+function repProductivity(forPrint){
   const admin=isAdmin();
   // Filtros
   let list=activities.slice();
@@ -3547,14 +3547,14 @@ function repProductivity(){
   const userOpts=admin?[...new Map(activities.map(a=>[a.userId,a.userName])).entries()]:[];
   const cliOpts=clientGroups.map(g=>[`g:${g.id}`,'👥 '+g.name]).concat(clients.map(c=>[`c:${c.id}`,c.name]));
 
-  const filters=`<div style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;align-items:center">
+  const filters=(forPrint?'':`<div style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;align-items:center">
     <div style="display:flex;align-items:center;gap:6px"><label style="font-size:11px;color:var(--text3)">De:</label><input type="date" class="form-input" style="padding:5px 8px;font-size:12px;width:140px" value="${start}" onchange="setProdFilter('start',this.value)"></div>
     <div style="display:flex;align-items:center;gap:6px"><label style="font-size:11px;color:var(--text3)">Até:</label><input type="date" class="form-input" style="padding:5px 8px;font-size:12px;width:140px" value="${end}" onchange="setProdFilter('end',this.value)"></div>
     <select class="form-select" style="width:auto;padding:6px 10px;font-size:12px" onchange="setProdFilter('type',this.value)"><option value="">Todos os tipos</option>${Object.entries(actTypesAll()).map(([k,lb])=>`<option value="${k}" ${type===k?'selected':''}>${lb}</option>`).join('')}</select>
     ${admin?`<select class="form-select" style="width:auto;padding:6px 10px;font-size:12px" onchange="setProdFilter('user',this.value)"><option value="">Todos os responsáveis</option>${userOpts.map(([id,nm])=>`<option value="${id}" ${user===id?'selected':''}>${nm||'—'}</option>`).join('')}</select>`:''}
     <select class="form-select" style="width:auto;padding:6px 10px;font-size:12px" onchange="setProdFilter('client',this.value)"><option value="">Todos os clientes</option>${cliOpts.map(([v,nm])=>`<option value="${v}" ${client===v?'selected':''}>${nm}</option>`).join('')}</select>
     <button class="btn btn-ghost btn-sm" onclick="prodFilter={start:'',end:'',type:'',user:'',client:''};renderReport('productivity')">✕ Limpar</button>
-  </div>
+  </div>`)+`
   <div style="font-size:12px;color:var(--text2);margin:-6px 0 16px;padding:6px 10px;background:var(--bg3);border-radius:6px;display:inline-block">📅 Período: <strong>${custom?'personalizado':'últimos 30 dias'}</strong> · ${fmtDate(effStart)} → ${fmtDate(effEnd)}</div>`;
 
   if(!list.length) return filters+`<div class="empty-state" style="padding:30px 0"><div class="empty-state-icon">📝</div><div class="empty-state-text">Nenhuma atividade no filtro</div></div>`;
@@ -3736,7 +3736,8 @@ ${body}
 
 // ── EXPORT SINGLE (current) REPORT TAB ──
 window.exportReportTab = function(){
-  const map={overview:['Visão Geral','📊',repOverview],projects:['Projetos','📋',repByProject],financial:['Financeiro — Projetos','💰',repFinancial],mrr:['MRR','📈',repMRR],performance:['Desempenho','🏆',repPerformance],licenses:['Licenciamentos','🔑',repLicenses],hours:['Horas Técnicas','⏱',repHours]};
+  window._pdfExport=true;
+  const map={overview:['Visão Geral','📊',repOverview],projects:['Projetos','📋',repByProject],financial:['Financeiro — Projetos','💰',repFinancial],mrr:['MRR','📈',repMRR],performance:['Desempenho','🏆',repPerformance],licenses:['Licenciamentos','🔑',repLicenses],hours:['Horas Técnicas','⏱',repHours],productivity:['Produtividade','📝',()=>repProductivity(true)]};
   const cur=map[currentReport]||map.overview;
   const [title,icon,fn]=cur;
   const now=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
@@ -3757,11 +3758,13 @@ window.exportReportTab = function(){
     </div></div>`;
   const body=cover+'<div class="report-section"><div class="report-section-body">'+content+'</div></div>';
   const w=window.open('','_blank','width=1200,height=900');
+  window._pdfExport=false;
   w.document.write(_reportPrintShell(title,now,body));
   w.document.close();
 };
 
 window.exportFullReportPDF = function(withFinancials){
+  window._pdfExport=true;
   if(withFinancials===undefined) withFinancials=true;
   window._pdfNoFinancials = !withFinancials;
   const btn = document.querySelector(`[onclick="exportFullReportPDF(${withFinancials})"]`);
@@ -3822,6 +3825,7 @@ window.exportFullReportPDF = function(withFinancials){
     { fn: repPerformance, title:'Desempenho',             icon:'🏆' },
     { fn: repLicenses,    title:'Licenciamentos',         icon:'🔑' },
     { fn: repHours,       title:'Horas Técnicas',         icon:'⏱' },
+    { fn: ()=>repProductivity(true), title:'Produtividade', icon:'📝' },
   ];
 
   let body = cover;
@@ -3840,6 +3844,7 @@ window.exportFullReportPDF = function(withFinancials){
 
   // Build print window with self-contained styles
   const w = window.open('','_blank','width=1200,height=900');
+  window._pdfExport=false;
   w.document.write(_reportPrintShell("Relatório Completo — Ativa Security", now, body));
   w.document.close();
   // Re-enable export button
@@ -4492,6 +4497,7 @@ function repHours(){
         </tbody></table>
     </div></div>
 
+    ${window._pdfExport?'':`
     <div class="rep-section-title">📋 Todos os registros de horas</div>
     <div class="panel" style="overflow:hidden"><div style="overflow-x:auto">
       <table class="data-table">
@@ -4510,7 +4516,7 @@ function repHours(){
               <td style="font-size:11px;color:var(--purple)">${proj?proj.name:'—'}</td>
             </tr>`;}).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">Sem registros</td></tr>'}
         </tbody></table>
-    </div></div>
+    </div></div>`}
 
   </div>`;
 }
@@ -6551,7 +6557,7 @@ window.addEventListener('appinstalled', () => {
 // Register inline service worker for offline support
 if('serviceWorker' in navigator){
   const swCode = `
-const CACHE = 'ativa360-v27';
+const CACHE = 'ativa360-v28';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
