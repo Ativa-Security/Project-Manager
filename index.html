@@ -6734,7 +6734,7 @@ window.addEventListener('appinstalled', () => {
 // Register inline service worker for offline support
 if('serviceWorker' in navigator){
   const swCode = `
-const CACHE = 'ativa360-v38';
+const CACHE = 'ativa360-v39';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
@@ -7018,12 +7018,26 @@ window.addUser=async function(){
   const role=document.getElementById('nu-role').value;
   const err=document.getElementById('nu-err'); err.style.display='none';
   if(!name||!email||!pass){err.textContent='Preencha todos os campos.';err.style.display='block';return;}
+  if(!isAdmin()){err.textContent='Apenas administradores podem criar usuários.';err.style.display='block';return;}
+  let secondary=null;
   try{
-    const cred=await _auth.createUserWithEmailAndPassword(email,pass);
-    await _db.collection('Users').doc(cred.user.uid).set({name,email,role,active:true,mfaEnabled:false,createdAt:Date.now()});
+    // App secundário: cria a conta de Auth SEM deslogar o admin da sessão atual
+    secondary=firebase.initializeApp(firebase.app().options, 'userCreator_'+Date.now());
+    const cred=await secondary.auth().createUserWithEmailAndPassword(email,pass);
+    const newUid=cred.user.uid;
+    await secondary.auth().signOut();
+    // O doc em Users é gravado pela sessão do ADMIN (a regra permite admin criar qualquer perfil)
+    await _db.collection('Users').doc(newUid).set({name,email,role,active:true,mfaEnabled:false,createdAt:Date.now()});
+    document.getElementById('nu-name').value='';
+    document.getElementById('nu-email').value='';
+    document.getElementById('nu-pass').value='';
     alert('Usuário criado com sucesso!');
     window.renderSettingsUsers(document.getElementById('settings-panel'));
-  }catch(e){ err.textContent='Erro: '+e.message; err.style.display='block'; }
+  }catch(e){
+    err.textContent='Erro: '+e.message; err.style.display='block';
+  }finally{
+    if(secondary){ try{ await secondary.delete(); }catch(_){} }
+  }
 };
 
 // Settings user tab init
