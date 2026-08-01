@@ -3062,7 +3062,7 @@ function renderActivities(){
   if(fType)  list=list.filter(a=>a.type===fType);
   if(fUser)  list=list.filter(a=>a.userId===fUser);
   if(fClient)list=list.filter(a=>a.clientRef===fClient);
-  list.sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||0)-(a.createdAt||0));
+  list.sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(a.startTime||'99:99').localeCompare(b.startTime||'99:99')||(a.createdAt||0)-(b.createdAt||0));
 
   const totH=list.reduce((s,a)=>s+(Number(a.hours)||0),0);
   // Horas esperadas: período dos filtros (ou o intervalo coberto pelas atividades)
@@ -6734,7 +6734,7 @@ window.addEventListener('appinstalled', () => {
 // Register inline service worker for offline support
 if('serviceWorker' in navigator){
   const swCode = `
-const CACHE = 'ativa360-v39';
+const CACHE = 'ativa360-v40';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
