@@ -1160,11 +1160,18 @@ input,select,textarea{font-family:var(--font)}
         </div>
       </div>
 
-      <div class="form-grid">
-        <div class="form-group admin-only">
-          <label class="form-label">Horas contratadas *</label>
-          <input class="form-input" id="hp-hours" type="text" placeholder="Ex: 10:00" maxlength="6" oninput="_fmtHInput(this)">
+      <div class="form-group admin-only">
+        <label class="form-label">Horas contratadas por tipo *</label>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">
+          <label class="hp-ct-row" style="display:flex;align-items:center;gap:8px"><input type="checkbox" class="hp-ct-cb" data-q="weekday" onchange="_hpToggleCt(this)" style="width:15px;height:15px;accent-color:var(--accent)"><span style="flex:1;font-size:13px">🗓 Seg–Sex</span><input class="form-input hp-ct-h" data-q="weekday" style="width:110px;display:none" placeholder="HH:MM" maxlength="6" oninput="_fmtHInput(this);_hpContractedTotal()"></label>
+          <label class="hp-ct-row" style="display:flex;align-items:center;gap:8px"><input type="checkbox" class="hp-ct-cb" data-q="afterhours" onchange="_hpToggleCt(this)" style="width:15px;height:15px;accent-color:var(--purple)"><span style="flex:1;font-size:13px">🌙 Seg–Sex fora do comercial</span><input class="form-input hp-ct-h" data-q="afterhours" style="width:110px;display:none" placeholder="HH:MM" maxlength="6" oninput="_fmtHInput(this);_hpContractedTotal()"></label>
+          <label class="hp-ct-row" style="display:flex;align-items:center;gap:8px"><input type="checkbox" class="hp-ct-cb" data-q="saturday" onchange="_hpToggleCt(this)" style="width:15px;height:15px;accent-color:var(--amber)"><span style="flex:1;font-size:13px">🟡 Sábado</span><input class="form-input hp-ct-h" data-q="saturday" style="width:110px;display:none" placeholder="HH:MM" maxlength="6" oninput="_fmtHInput(this);_hpContractedTotal()"></label>
+          <label class="hp-ct-row" style="display:flex;align-items:center;gap:8px"><input type="checkbox" class="hp-ct-cb" data-q="sunday" onchange="_hpToggleCt(this)" style="width:15px;height:15px;accent-color:var(--red)"><span style="flex:1;font-size:13px">🔴 Domingo</span><input class="form-input hp-ct-h" data-q="sunday" style="width:110px;display:none" placeholder="HH:MM" maxlength="6" oninput="_fmtHInput(this);_hpContractedTotal()"></label>
+          <label class="hp-ct-row" style="display:flex;align-items:center;gap:8px"><input type="checkbox" class="hp-ct-cb" data-q="holiday" onchange="_hpToggleCt(this)" style="width:15px;height:15px;accent-color:var(--green)"><span style="flex:1;font-size:13px">🎌 Feriado</span><input class="form-input hp-ct-h" data-q="holiday" style="width:110px;display:none" placeholder="HH:MM" maxlength="6" oninput="_fmtHInput(this);_hpContractedTotal()"></label>
         </div>
+        <div style="font-size:12px;color:var(--text2);margin-top:8px">Total contratado: <span id="hp-contracted-total" style="font-weight:700;color:var(--accent2)">00:00</span></div>
+      </div>
+      <div class="form-grid">
         <div class="form-group admin-only">
           <label class="form-label">Valor do pacote (R$)</label>
           <input class="form-input" id="hp-value" type="text" placeholder="0,00" oninput="_maskBRL(this)" inputmode="decimal">
@@ -2758,7 +2765,7 @@ function _actHoursPkgChange(){
   const dur=_actDurHours();
   const after=st.remaining-dur;
   const segs=_segFromTimes(document.getElementById('a-date').value,document.getElementById('a-start-time').value,document.getElementById('a-end-time').value);
-  const segTxt=segs.length?('<div style="margin-top:4px">Faixas: '+segs.map(s=>`${HU_QUAL_LBL[s.qual]||s.qual} <strong>${fmtH(s.hours)}</strong>`).join(' + ')+'</div>'):'';
+  const segTxt=segs.length?('<div style="margin-top:4px">Faixas: '+segs.map(s=>{const c=Number((st.contracted||{})[s.qual])||0;const warn=c===0;return (HU_QUAL_LBL[s.qual]||s.qual)+' <strong>'+fmtH(s.hours)+'</strong>'+(warn?' <span style="color:var(--red)">⚠ não contratado</span>':'');}).join(' + ')+'</div>'):'';
   info.innerHTML=`Saldo atual: <strong>${fmtH(st.remaining)}</strong> · esta atividade: <strong>${fmtH(dur)}</strong> · saldo após: <strong style="color:${after<0?'var(--red)':'var(--green)'}">${fmtH(after)}</strong>${after<0?' ⚠ excede o saldo':''}${segTxt}`;
 }
 // Sincroniza o uso de horas vinculado a uma atividade (chave estável actId)
@@ -5004,13 +5011,26 @@ function hoursStatus(pkg){
     return u.date >= windowStart && u.date <= windowEnd;
   });
 
+  // Contratado por tipo (antigos sem "contracted" → tudo Seg-Sex)
+  const contracted = (pkg.contracted && Object.keys(pkg.contracted).length)
+    ? pkg.contracted
+    : { weekday: Number(pkg.hours)||0 };
+  const QT=['weekday','afterhours','saturday','sunday','holiday'];
+  const usedByType={}; QT.forEach(q=>usedByType[q]=0);
+  usages.forEach(u=>{ const q=u.qual||'weekday'; usedByType[q]=(usedByType[q]||0)+(Number(u.hours)||0); });
+  const byType={};
+  QT.forEach(q=>{
+    const c=Number(contracted[q])||0, us=usedByType[q]||0;
+    if(c>0 || us>0) byType[q]={contracted:c, used:us, remaining:Math.max(0,c-us), over:Math.max(0,us-c)};
+  });
+
+  const total     = Object.values(contracted).reduce((s,v)=>s+(Number(v)||0),0);
   const used      = usages.reduce((s,u) => s + (Number(u.hours) || 0), 0);
-  const total     = Number(pkg.hours) || 0;
-  const remaining = Math.max(0, total - used);
-  const over      = Math.max(0, used - total);
+  const remaining = QT.reduce((s,q)=>s+Math.max(0,(Number(contracted[q])||0)-(usedByType[q]||0)),0);
+  const over      = QT.reduce((s,q)=>s+Math.max(0,(usedByType[q]||0)-(Number(contracted[q])||0)),0);
   const pct       = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
   const expired   = pkg.end && pkg.end < today;
-  return {used, total, remaining, over, pct, expired, windowStart, windowEnd, tipo};
+  return {used, total, remaining, over, pct, expired, windowStart, windowEnd, tipo, byType, contracted, usedByType};
 }
 
 function hoursBadgeStatus(pkg){
@@ -5104,6 +5124,38 @@ function renderHoursGrid(){
 
 // ── PACKAGE MODAL ──
 let _editingHoursId=null;
+const HP_QUALS=['weekday','afterhours','saturday','sunday','holiday'];
+function _hpToggleCt(cb){
+  const q=cb.getAttribute('data-q');
+  const inp=document.querySelector('.hp-ct-h[data-q="'+q+'"]');
+  inp.style.display=cb.checked?'':'none';
+  if(!cb.checked) inp.value='';
+  _hpContractedTotal();
+}
+function _hpContractedTotal(){
+  let t=0; document.querySelectorAll('.hp-ct-cb').forEach(cb=>{ if(cb.checked){ const q=cb.getAttribute('data-q'); t+=parseHM(document.querySelector('.hp-ct-h[data-q="'+q+'"]').value); } });
+  const el=document.getElementById('hp-contracted-total'); if(el) el.textContent=fmtH(t);
+  return t;
+}
+function _hpLoadContracted(pkg){
+  // Antigos sem "contracted": tudo vira Seg-Sex
+  const c=(pkg&&pkg.contracted)||(pkg&&pkg.hours?{weekday:Number(pkg.hours)||0}:{});
+  HP_QUALS.forEach(q=>{
+    const cb=document.querySelector('.hp-ct-cb[data-q="'+q+'"]');
+    const inp=document.querySelector('.hp-ct-h[data-q="'+q+'"]');
+    const has=c[q]!==undefined && c[q]!==null && Number(c[q])>0;
+    cb.checked=has; inp.style.display=has?'':'none'; inp.value=has?fmtH(c[q]):'';
+  });
+  _hpContractedTotal();
+}
+function _hpReadContracted(){
+  const c={};
+  document.querySelectorAll('.hp-ct-cb').forEach(cb=>{
+    if(cb.checked){ const q=cb.getAttribute('data-q'); const h=parseHM(document.querySelector('.hp-ct-h[data-q="'+q+'"]').value); if(h>0) c[q]=h; }
+  });
+  return c;
+}
+
 function openHoursModal(id=null){
   _editingHoursId=id;
   const isEdit=id!==null;
@@ -5115,7 +5167,7 @@ function openHoursModal(id=null){
   const cliOpts='<optgroup label="🏢 Clientes">'+clients.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')+'</optgroup>';
   cs.innerHTML='<option value="">Selecione...</option>'+grpOpts+cliOpts;
   document.getElementById('hp-client').value=pkg?(pkg.groupId?('g:'+pkg.groupId):pkg.clientId||''):'';
-  document.getElementById('hp-hours').value=pkg&&pkg.hours?fmtH(pkg.hours):'';
+  _hpLoadContracted(pkg);
   document.getElementById('hp-desc').value=pkg?pkg.desc||'':'';
   document.getElementById('hp-start').value=pkg?pkg.start||todayStr():todayStr();
   document.getElementById('hp-end').value=pkg?pkg.end||'':'';
@@ -5175,15 +5227,16 @@ function saveHoursPackage(){
   const isGroup=sel.startsWith('g:');
   const clientId=isGroup?'':sel;
   const groupId=isGroup?parseInt(sel.slice(2)):null;
-  const hours=parseHM(document.getElementById('hp-hours').value);
+  const contracted=_hpReadContracted();
+  const hours=Object.values(contracted).reduce((s,v)=>s+(Number(v)||0),0);
   const start=document.getElementById('hp-start').value;
   const end=document.getElementById('hp-end').value;
-  if(!sel||!hours||!start||!end){alert('Preencha cliente/grupo, horas, data de contratação e validade');return;}
+  if(!sel||!hours||!start||!end){alert('Preencha cliente/grupo, ao menos um tipo de hora contratada, data de contratação e validade');return;}
   const tipo=document.getElementById('hp-tipo-mensal').checked?'mensal':document.getElementById('hp-tipo-trimestral').checked?'trimestral':'anual';
   const monthly=document.getElementById('hp-monthly').checked;
   const data={
     id:_editingHoursId||nextHoursId++,
-    clientId,groupId,hours,tipo,
+    clientId,groupId,hours,contracted,tipo,
     rateWeekday: parseBRL(document.getElementById('hp-rate-weekday').value)||0,
     rateAfterhours:parseBRL(document.getElementById('hp-rate-afterhours').value)||0,
     rateSaturday:parseBRL(document.getElementById('hp-rate-saturday').value)||0,
@@ -5388,6 +5441,10 @@ function renderHoursDetail(){
         <div style="height:100%;border-radius:5px;background:${pct>=100?'var(--red)':pct>=80?'var(--amber)':'var(--accent2)'};width:${Math.min(100,pct)}%;transition:width .5s"></div>
       </div>
     </div>
+
+    ${(()=>{ const bt=st2.byType||{}; const keys=Object.keys(bt); if(!keys.length) return '';
+      const LBL={weekday:'🗓 Seg–Sex',afterhours:'🌙 Fora do comercial',saturday:'🟡 Sábado',sunday:'🔴 Domingo',holiday:'🎌 Feriado'};
+      return '<div class="panel" style="padding:14px 16px;margin-bottom:16px"><div style="font-size:12px;font-weight:600;margin-bottom:10px">Saldo por tipo de hora</div>'+keys.map(q=>{const b=bt[q];const pp=b.contracted>0?Math.min(100,Math.round(b.used/b.contracted*100)):100;const col=b.over>0?'var(--red)':pp>=80?'var(--amber)':'var(--green)';return '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span>'+(LBL[q]||q)+(b.contracted===0?' <span style="color:var(--red)">(não contratado)</span>':'')+'</span><span style="font-family:var(--mono);color:var(--text2)">'+fmtH(b.used)+' / '+fmtH(b.contracted)+(b.over>0?' · <span style="color:var(--red)">excesso '+fmtH(b.over)+'</span>':' · saldo '+fmtH(b.remaining))+'</span></div><div style="height:6px;background:var(--bg4);border-radius:3px;overflow:hidden"><div style="height:100%;border-radius:3px;background:'+col+';width:'+pp+'%"></div></div></div>';}).join('')+'</div>';})()}
 
     <!-- Resumo anual -->
     <div class="panel" style="padding:14px 16px;margin-bottom:16px;display:grid;grid-template-columns:${pkg.monthly&&isAdmin()?'repeat(4,1fr)':'repeat(3,1fr)'};gap:12px">
@@ -5637,6 +5694,15 @@ async function saveHoursUsage(){
     if(hours>0) lines.push({qual,hours});
   });
   if(!lines.length){alert('Informe ao menos um tipo com horas (Ex: 01:30)');return;}
+  // Aviso (não bloqueia): tipo não contratado ou que estoura o saldo daquele tipo
+  const _st=hoursStatus(pkg); const _bt=_st.byType||{};
+  const _LBL={weekday:'Seg–Sex',afterhours:'fora do comercial',saturday:'Sábado',sunday:'Domingo',holiday:'Feriado'};
+  const _warn=[];
+  lines.forEach(l=>{ const c=Number((_st.contracted||{})[l.qual])||0; const jaUsado=(_bt[l.qual]?_bt[l.qual].used:0);
+    if(c===0) _warn.push('• '+(_LBL[l.qual]||l.qual)+': tipo NÃO contratado neste pacote');
+    else if(jaUsado + l.hours > c) _warn.push('• '+(_LBL[l.qual]||l.qual)+': excede o saldo contratado ('+fmtH(c)+')');
+  });
+  if(_warn.length && !confirm('⚠ Atenção:\n'+_warn.join('\n')+'\n\nRegistrar mesmo assim?')) return;
   const entries=lines.map(l=>({hours:l.hours,qual:l.qual,...shared}));
   // Edição: captura o registro original para localizar pela IDENTIDADE
   // (não pelo índice, que pode mudar se outra pessoa gravou antes)
@@ -6734,7 +6800,7 @@ window.addEventListener('appinstalled', () => {
 // Register inline service worker for offline support
 if('serviceWorker' in navigator){
   const swCode = `
-const CACHE = 'ativa360-v40';
+const CACHE = 'ativa360-v41';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
