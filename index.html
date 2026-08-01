@@ -6884,7 +6884,7 @@ window.addEventListener('appinstalled', () => {
 // Register inline service worker for offline support
 if('serviceWorker' in navigator){
   const swCode = `
-const CACHE = 'ativa360-v45';
+const CACHE = 'ativa360-v46';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
@@ -7231,29 +7231,63 @@ function mostrarBoasVindas(raw){
   _wlcSound(); // som tech sutil sincronizado com a entrada
   function fechar(){ if(!ov.parentNode) return; ov.classList.add('out'); setTimeout(function(){ if(ov.parentNode) ov.parentNode.removeChild(ov); },600); }
   ov.addEventListener('click',fechar);
-  setTimeout(fechar,2800);
+  setTimeout(fechar,3600);
 }
 
-// Som de entrada: dois tons suaves em glissando + brilho curto, volume baixo.
+// Som de entrada: pad tech fluido — acorde em glissando, sweep de filtro,
+// shimmer arpejado e um "sub" grave. Volume baixo, gerado no navegador.
 function _wlcSound(){
   try{
     if(localStorage.getItem('a360_mute')==='1') return;
     var AC=window.AudioContext||window.webkitAudioContext; if(!AC) return;
     var ctx=new AC(); var t=ctx.currentTime;
-    var master=ctx.createGain(); master.gain.value=0.10; master.connect(ctx.destination); // baixo
-    // dois osciladores em intervalo (quinta) com leve glissando ascendente
-    [[220,330,0],[330,440,0.12]].forEach(function(p){
+
+    var master=ctx.createGain(); master.gain.value=0.0001;
+    master.gain.exponentialRampToValueAtTime(0.13,t+0.4);      // fade-in suave
+    master.gain.setValueAtTime(0.13,t+2.4);
+    master.gain.exponentialRampToValueAtTime(0.0001,t+3.6);    // fade-out longo
+    // leve reverb/eco por delay realimentado (dá o "espaço" tech)
+    var delay=ctx.createDelay(); delay.delayTime.value=0.26;
+    var fb=ctx.createGain(); fb.gain.value=0.32;
+    var wet=ctx.createGain(); wet.gain.value=0.35;
+    delay.connect(fb); fb.connect(delay); delay.connect(wet);
+    master.connect(ctx.destination); master.connect(delay); wet.connect(ctx.destination);
+
+    // filtro geral com sweep (abre ao longo do som = sensação de "surge")
+    var lp=ctx.createBiquadFilter(); lp.type='lowpass';
+    lp.frequency.setValueAtTime(400,t); lp.frequency.exponentialRampToValueAtTime(6000,t+1.6);
+    lp.frequency.exponentialRampToValueAtTime(1200,t+3.2);
+    lp.Q.value=6; lp.connect(master);
+
+    // pad: acorde (A2, E3, A3, C#4) com glissando ascendente e detune para movimento
+    var chord=[110,164.81,220,277.18];
+    chord.forEach(function(f,i){
       var o=ctx.createOscillator(), g=ctx.createGain();
-      o.type='sine'; o.frequency.setValueAtTime(p[0],t+p[2]); o.frequency.exponentialRampToValueAtTime(p[1],t+p[2]+0.5);
-      g.gain.setValueAtTime(0,t+p[2]); g.gain.linearRampToValueAtTime(1,t+p[2]+0.08); g.gain.exponentialRampToValueAtTime(0.001,t+p[2]+1.1);
-      o.connect(g); g.connect(master); o.start(t+p[2]); o.stop(t+p[2]+1.2);
+      o.type=i%2? 'sawtooth':'triangle';
+      o.frequency.setValueAtTime(f*0.75,t); o.frequency.exponentialRampToValueAtTime(f,t+1.2);
+      o.detune.value=(i-1.5)*6;
+      g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.9/chord.length,t+0.5);
+      g.gain.setValueAtTime(0.9/chord.length,t+2.2); g.gain.exponentialRampToValueAtTime(0.001,t+3.5);
+      o.connect(g); g.connect(lp); o.start(t); o.stop(t+3.6);
     });
-    // brilho curto (tom agudo rápido) pra dar o toque "tech"
-    var o2=ctx.createOscillator(), g2=ctx.createGain();
-    o2.type='triangle'; o2.frequency.setValueAtTime(880,t+0.45); o2.frequency.exponentialRampToValueAtTime(1320,t+0.75);
-    g2.gain.setValueAtTime(0,t+0.45); g2.gain.linearRampToValueAtTime(0.5,t+0.5); g2.gain.exponentialRampToValueAtTime(0.001,t+0.9);
-    o2.connect(g2); g2.connect(master); o2.start(t+0.45); o2.stop(t+0.95);
-    setTimeout(function(){ try{ctx.close();}catch(e){} },1600);
+
+    // sub grave curto (impacto no início)
+    var sub=ctx.createOscillator(), sg=ctx.createGain();
+    sub.type='sine'; sub.frequency.setValueAtTime(55,t); sub.frequency.exponentialRampToValueAtTime(41,t+0.8);
+    sg.gain.setValueAtTime(0.0001,t); sg.gain.exponentialRampToValueAtTime(0.5,t+0.05); sg.gain.exponentialRampToValueAtTime(0.001,t+1.0);
+    sub.connect(sg); sg.connect(master); sub.start(t); sub.stop(t+1.1);
+
+    // shimmer: arpejo agudo e cristalino (o toque "tech")
+    var arp=[880,1174.66,1318.51,1760,2637.02];
+    arp.forEach(function(f,i){
+      var st=t+0.6+i*0.13;
+      var o=ctx.createOscillator(), g=ctx.createGain();
+      o.type='triangle'; o.frequency.value=f;
+      g.gain.setValueAtTime(0,st); g.gain.linearRampToValueAtTime(0.22,st+0.02); g.gain.exponentialRampToValueAtTime(0.001,st+0.6);
+      o.connect(g); g.connect(lp); o.start(st); o.stop(st+0.65);
+    });
+
+    setTimeout(function(){ try{ctx.close();}catch(e){} },4200);
   }catch(e){}
 }
 </script>
