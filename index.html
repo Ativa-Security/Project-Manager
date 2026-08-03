@@ -5128,11 +5128,11 @@ function renderHoursGrid(){
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
         <div style="background:var(--bg3);border-radius:var(--r);padding:8px;text-align:center">
-          <div style="font-size:10px;color:var(--text3)">Contratadas${tipo==='mensal'?' <span style="color:var(--accent2)">(mês)</span>':tipo==='trimestral'?' <span style="color:var(--accent2)">(trimestre)</span>':''}</div>
+          <div style="font-size:10px;color:var(--text3)">Contratadas${pkg.tipo==='mensal'?' <span style="color:var(--accent2)">(mês)</span>':pkg.tipo==='trimestral'?' <span style="color:var(--accent2)">(trimestre)</span>':''}</div>
           <div style="font-size:15px;font-weight:700;font-family:var(--mono);color:var(--accent2)">${fmtH(total)}</div>
         </div>
         <div style="background:var(--bg3);border-radius:var(--r);padding:8px;text-align:center">
-          <div style="font-size:10px;color:var(--text3)">Utilizadas${tipo==='mensal'?' <span style="color:var(--amber)">(mês)</span>':tipo==='trimestral'?' <span style="color:var(--amber)">(trimestre)</span>':''}</div>
+          <div style="font-size:10px;color:var(--text3)">Utilizadas${pkg.tipo==='mensal'?' <span style="color:var(--amber)">(mês)</span>':pkg.tipo==='trimestral'?' <span style="color:var(--amber)">(trimestre)</span>':''}</div>
           <div style="font-size:15px;font-weight:700;font-family:var(--mono);color:var(--amber)">${fmtH(used)}</div>
         </div>
         <div style="background:${st.bg};border-radius:var(--r);padding:8px;text-align:center;border:1px solid ${st.color}30">
@@ -6884,7 +6884,7 @@ window.addEventListener('appinstalled', () => {
 // Register inline service worker for offline support
 if('serviceWorker' in navigator){
   const swCode = `
-const CACHE = 'ativa360-v48';
+const CACHE = 'ativa360-v49';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
