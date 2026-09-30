@@ -5524,7 +5524,12 @@ function renderHoursDetail(){
 
     ${(()=>{ const bks=st2.buckets||[]; if(!bks.length) return '';
       const LBL={weekday:'🗓 Seg–Sex',afterhours:'🌙 Fora do comercial',saturday:'🟡 Sábado',sunday:'🔴 Domingo',holiday:'🎌 Feriado'};
-      return '<div class="panel" style="padding:14px 16px;margin-bottom:16px"><div style="font-size:12px;font-weight:600;margin-bottom:10px">Saldo por grupo de horas</div>'+bks.map(b=>{const pp=b.contracted>0?Math.min(100,Math.round(b.used/b.contracted*100)):100;const col=b.over>0?'var(--red)':pp>=80?'var(--amber)':'var(--green)';const nm=(b.types||[]).map(q=>LBL[q]||q).join(' + ');return '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span>'+nm+'</span><span style="font-family:var(--mono);color:var(--text2)">'+fmtH(b.used)+' / '+fmtH(b.contracted)+(b.over>0?' · <span style="color:var(--red)">excesso '+fmtH(b.over)+'</span>':' · saldo '+fmtH(b.remaining))+'</span></div><div style="height:6px;background:var(--bg4);border-radius:3px;overflow:hidden"><div style="height:100%;border-radius:3px;background:'+col+';width:'+pp+'%"></div></div></div>';}).join('')+'</div>';})()}
+      // horas usadas em tipos fora de qualquer grupo (aparecem como excesso "não contratado")
+      var _contr=new Set(); bks.forEach(function(b){(b.types||[]).forEach(function(q){_contr.add(q);});});
+      var _ubt=st2.usedByType||{}; var _unc=Object.keys(_ubt).filter(function(q){return !_contr.has(q)&&(_ubt[q]||0)>0;});
+      var rows='<div class="panel" style="padding:14px 16px;margin-bottom:16px"><div style="font-size:12px;font-weight:600;margin-bottom:10px">Saldo por grupo de horas</div>'+bks.map(b=>{const pp=b.contracted>0?Math.min(100,Math.round(b.used/b.contracted*100)):100;const col=b.over>0?'var(--red)':pp>=80?'var(--amber)':'var(--green)';const nm=(b.types||[]).map(q=>LBL[q]||q).join(' + ');return '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span>'+nm+'</span><span style="font-family:var(--mono);color:var(--text2)">'+fmtH(b.used)+' / '+fmtH(b.contracted)+(b.over>0?' · <span style="color:var(--red)">excesso '+fmtH(b.over)+'</span>':' · saldo '+fmtH(b.remaining))+'</span></div><div style="height:6px;background:var(--bg4);border-radius:3px;overflow:hidden"><div style="height:100%;border-radius:3px;background:'+col+';width:'+pp+'%"></div></div></div>';}).join('');
+      if(_unc.length){ var uh=_unc.reduce(function(s,q){return s+(_ubt[q]||0);},0); rows+='<div style="margin-top:4px;padding-top:10px;border-top:1px dashed var(--border2)"><div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--red)">⚠ Não contratado ('+_unc.map(function(q){return (LBL[q]||q).replace(/^..\\s/,'');}).join(', ')+')</span><span style="font-family:var(--mono);color:var(--red)">'+fmtH(uh)+' · excesso</span></div></div>'; }
+      return rows+'</div>';})()}
 
     <!-- Resumo anual -->
     <div class="panel" style="padding:14px 16px;margin-bottom:16px;display:grid;grid-template-columns:${pkg.monthly&&isAdmin()?'repeat(4,1fr)':'repeat(3,1fr)'};gap:12px">
@@ -6884,7 +6889,7 @@ window.addEventListener('appinstalled', () => {
 // Register inline service worker for offline support
 if('serviceWorker' in navigator){
   const swCode = `
-const CACHE = 'ativa360-v49';
+const CACHE = 'ativa360-v50';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.add('/')));
